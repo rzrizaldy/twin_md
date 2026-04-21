@@ -13,12 +13,14 @@ It is a local-first sprite that sits beside you while you work. It reads a singl
 It is not a dashboard. It is not a mascot. It is a small living thing that happens to be literate about your life.
 
 **The feeling we are selling:**
+
 - the warmth of an Animal Crossing villager waving when you log in
 - the urgency of a Tamagotchi when you have neglected it
 - the eye contact of a Nintendogs puppy when it wants a walk
 - the seasonal warmth of a Stardew festival — rare, specific, remembered
 
 **The feeling we are not selling:**
+
 - corporate mascot energy (Slackbot, Clippy)
 - Duolingo-owl passive aggression and guilt
 - generic flat-vector SaaS illustration
@@ -55,22 +57,26 @@ The code defines 3 species and 4 moods. Those are locked.
 
 **Species** (from [packages/core/src/pet.ts](packages/core/src/pet.ts)):
 
-| species | current palette | vibe |
-| --- | --- | --- |
+
+| species   | current palette                                          | vibe                                           |
+| --------- | -------------------------------------------------------- | ---------------------------------------------- |
 | `axolotl` | pink body `#ffd6e5`, accent `#ff92b2`, outline `#473643` | soft, curious, a little dramatic. The default. |
-| `cat` | cream `#ffe4b8`, accent `#f6b15d`, outline `#4b3a2a` | self-contained, judgmental, secretly loyal. |
-| `slime` | mint `#c4f2cb`, accent `#58cc7c`, outline `#30543d` | chaotic, bouncy, goofy. Lowest ego. |
+| `cat`     | cream `#ffe4b8`, accent `#f6b15d`, outline `#4b3a2a`     | self-contained, judgmental, secretly loyal.    |
+| `slime`   | mint `#c4f2cb`, accent `#58cc7c`, outline `#30543d`      | chaotic, bouncy, goofy. Lowest ego.            |
+
 
 You are allowed to refine these palettes during review gate 1. Keep outline colors — they have to read on a terminal black background too.
 
 **Moods** (from [packages/core/src/interpret.ts](packages/core/src/interpret.ts)):
 
-| mood id | caption (shown in UI) | emotional read | current hint |
-| --- | --- | --- | --- |
-| `healthy` | "Bloom Mode" | showing off, blooming, wants attention because life is good | eyes `^ ^`, mouth `v`, sunny island |
-| `sleep_deprived` | "Stars At Noon" | groggy, half-lidded, reality has not loaded yet | eyes `- -`, stars still visible in daytime |
-| `stressed` | "Paper Storm" | pacing, overstimulated, eyes scrunched `> <`, room is literally weather | storm cloud, rain indoors, paper on floor |
-| `neglected` | "Quiet Corner" | the one that hurts. Not sad. Quiet. Fading. | body opacity drops to 0.82, wilted plants |
+
+| mood id          | caption (shown in UI) | emotional read                                                          | current hint                               |
+| ---------------- | --------------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
+| `healthy`        | "Bloom Mode"          | showing off, blooming, wants attention because life is good             | eyes `^ ^`, mouth `v`, sunny island        |
+| `sleep_deprived` | "Stars At Noon"       | groggy, half-lidded, reality has not loaded yet                         | eyes `- -`, stars still visible in daytime |
+| `stressed`       | "Paper Storm"         | pacing, overstimulated, eyes scrunched `> <`, room is literally weather | storm cloud, rain indoors, paper on floor  |
+| `neglected`      | "Quiet Corner"        | the one that hurts. Not sad. Quiet. Fading.                             | body opacity drops to 0.82, wilted plants  |
+
 
 **Pose set — required per species × mood (12 combinations × 6 poses = 72 frames):**
 
@@ -94,6 +100,7 @@ The webapp currently fakes the four scenes with CSS shapes in [packages/web/app/
 Each scene is a **layered SVG** with at least: sky, middle-ground, floor, foreground props, particle layer. Layers must be separable so the webapp can animate them (parallax, drift, particle motion) without re-exporting.
 
 **Scene 1 — `sunny_island` (healthy)**
+
 - lush island at golden hour
 - flowers in foreground (3–5, asymmetric)
 - 2 lazy clouds drifting
@@ -102,6 +109,7 @@ Each scene is a **layered SVG** with at least: sky, middle-ground, floor, foregr
 - pet plays idle-breath here
 
 **Scene 2 — `stars_at_noon` (sleep_deprived)**
+
 - daytime sky that forgot to finish — washed-out blue, not night
 - 6 stars still visible (existing CSS has `.star-1` … `.star-6`)
 - hushed clouds, desaturated
@@ -109,6 +117,7 @@ Each scene is a **layered SVG** with at least: sky, middle-ground, floor, foregr
 - no pet motion noise — the whole frame is still
 
 **Scene 3 — `storm_room` (stressed)**
+
 - interior, indoors. Desk edge visible (existing CSS has `.desk-edge`)
 - two storm clouds *inside the room* — surreal on purpose
 - 4 rain drops (existing `.rain-1` … `.rain-4`), falling *inside*
@@ -117,6 +126,7 @@ Each scene is a **layered SVG** with at least: sky, middle-ground, floor, foregr
 - high visual density, small pet in middle, pacing
 
 **Scene 4 — `grey_nook` (neglected)**
+
 - an empty corner. The only scene with no pet, almost
 - pet is present but opacity 0.82 (already in code)
 - 3 wilted plants (existing `.wilt-a/b/c`)
@@ -126,6 +136,7 @@ Each scene is a **layered SVG** with at least: sky, middle-ground, floor, foregr
 - motion: almost none. Pet does not look at camera.
 
 **Scene consistency rules:**
+
 - same vanishing point and camera height across all four
 - same "grammar" of props (papers, plants, light source) but in different emotional states — so the user feels it is the *same room* changing with them
 - scenes should hint that they are the same physical space rewritten by mood, like the room in Inside Out or Hades' House
@@ -170,6 +181,7 @@ Mobile Companion                  Desktop Companion
 This is the current layout in [TwinPhoneShell.tsx](packages/web/app/components/TwinPhoneShell.tsx). Designer job: elevate it to the scene quality specified in section 4.
 
 Layout as-is:
+
 - header with eyebrow, title `twin.md`, scene caption
 - 5 source badges (Health / Calendar / Claude Memory / Obsidian / Location)
 - hero stage (the scene + pet + dialogue bubble)
@@ -178,6 +190,7 @@ Layout as-is:
 - chat card (textarea + "Ask twin" button)
 
 Things to improve visually:
+
 - replace the 5 source badges with 5 tiny stamp-style icons (health = heart, calendar = little island flag, claude = a book corner, obsidian = a diamond, location = a map pin) — still labeled on hover
 - scene caption should feel like an Animal Crossing screen title (small drop shadow, serif display)
 - dialogue bubble should match the reminder bubble language in section 6
@@ -190,6 +203,7 @@ Things to improve visually:
 This is the mechanism of the sprite's *agency*. Reminders come from [packages/core/src/reminders.ts](packages/core/src/reminders.ts) (new) and appear as stacked speech bubbles in every surface.
 
 **Bubble shape:**
+
 - rounded rectangle with a tail pointing down toward the pet
 - max width 280 px, wraps to multi-line
 - hair-thin outline in the pet's outline color
@@ -197,24 +211,29 @@ This is the mechanism of the sprite's *agency*. Reminders come from [packages/co
 
 **Per-state tone** (one variant per mood):
 
-| state | bubble bg | text color | example copy |
-| --- | --- | --- | --- |
-| healthy (soft) | `#fff8d2` cream | `#4b3a2a` | "hey, your focus streak is actually happening. keep going." |
-| sleep_deprived (groggy) | `#d5d8ff` pale lavender | `#3a3a66` | "…five hours last night. can we just, uh, sit for a sec." |
-| stressed (clipped) | `#ffe1d4` warning peach | `#a34a1f` | "density 0.87 and zero deep blocks. pick one thing." |
-| neglected (quiet) | `#e6e2d4` grey-beige | `#544e3c` | "the plants noticed. come back?" |
+
+| state                   | bubble bg               | text color | example copy                                                |
+| ----------------------- | ----------------------- | ---------- | ----------------------------------------------------------- |
+| healthy (soft)          | `#fff8d2` cream         | `#4b3a2a`  | "hey, your focus streak is actually happening. keep going." |
+| sleep_deprived (groggy) | `#d5d8ff` pale lavender | `#3a3a66`  | "…five hours last night. can we just, uh, sit for a sec."   |
+| stressed (clipped)      | `#ffe1d4` warning peach | `#a34a1f`  | "density 0.87 and zero deep blocks. pick one thing."        |
+| neglected (quiet)       | `#e6e2d4` grey-beige    | `#544e3c`  | "the plants noticed. come back?"                            |
+
 
 **Interaction:**
+
 - click the bubble to dismiss (fires acknowledge)
 - bubbles auto-dismiss after 45 seconds if not interacted with, but stay in the ledger
 - a "nevermind" small link dismisses without marking acknowledged (user is saying "saw it, won't act")
 
 **Stacking rule:**
+
 - max 3 bubbles visible at once
 - older bubbles fade toward 40 % opacity
 - 4th reminder displaces the oldest; the displaced one is still in `/api/reminders` but no longer rendered
 
 **Motion language:**
+
 - bubble appears with a 220 ms pop (scale 0.92 → 1.02 → 1.0) and the pet performs `reminder-speak` frame for the same 220 ms
 - on dismiss, bubble slides up 12 px and fades 180 ms; pet returns to `idle-breath`
 - avoid any "bounce" feel on the bubble itself; the *pet* is what bounces, the bubble is steady
@@ -226,6 +245,7 @@ This is the mechanism of the sprite's *agency*. Reminders come from [packages/co
 The terminal surface is rendered in [packages/cli/src/ui/TwinWatchApp.tsx](packages/cli/src/ui/TwinWatchApp.tsx) using `ink` (React for terminals). Current ASCII is a 5-line pet. Raise it to a 12-line pet, with distinct frames per mood, so the breath and blink read from across the room.
 
 **Specs:**
+
 - max 32 rows tall, 28 columns wide (fits inside a tmux pane)
 - 3 species × 4 moods × 2 breath frames + 1 blink frame = 36 ASCII frames to deliver
 - monospace assumed; no box-drawing characters that break on Windows terminals (stick to `/ \ | _ - ( ) { } [ ] o * . ~`)
@@ -262,12 +282,14 @@ Deliver as a single `tokens.json` (Style Dictionary compatible) so we can wire i
 - `color.bubble.soft` / `.groggy` / `.clipped` / `.quiet`
 
 **Typography:**
+
 - `font.display` — serif with warmth, suggestion: Fraunces or Young Serif (free). Used for captions, world-mode title.
 - `font.body` — humanist sans with a slight bounce, suggestion: Inter Tight or Recursive Sans. Used for bubbles and story cards.
 - `font.terminal` — JetBrains Mono or Berkeley Mono. Used in the CLI only.
 - Scale: 12 / 14 / 16 / 20 / 28 / 40. No other sizes.
 
 **Motion:**
+
 - `motion.breath.duration` = 2200ms, ease `easeInOut`
 - `motion.blink.duration` = 120ms
 - `motion.bubble.pop` = 220ms, custom spring (see section 6)
@@ -275,6 +297,7 @@ Deliver as a single `tokens.json` (Style Dictionary compatible) so we can wire i
 - `motion.reaction.happy` = 600ms, ease `backOut`
 
 **Sound (optional, stretch):**
+
 - `sound.reminder_appear.wav` — short soft wood-knock, like an AC villager opening speech
 - `sound.acknowledge.wav` — soft chime
 - `sound.neglect_fade.wav` — very low drone, 2s, only for neglected mood
@@ -326,6 +349,7 @@ packages/core/assets/
 ```
 
 **Format rules:**
+
 - SVG must be single-artboard, 256×256 for pets, 1440×900 for scenes (16:10 to fit most screens; we will crop to mobile via CSS)
 - no raster embeds inside SVG (no `<image href="data:image/png">`)
 - text should be converted to outlines if custom font is used
@@ -333,6 +357,7 @@ packages/core/assets/
 - layer IDs must match the names in this brief exactly so CSS can target them
 
 **Optional stretch deliverables:**
+
 - Lottie JSON of `reminder-speak` for the webapp (not required; we can stitch SVG frames)
 - 60 fps MP4 loop of each mood for marketing
 
@@ -343,6 +368,7 @@ packages/core/assets/
 Estimated effort: 10–14 designer days depending on ASCII appetite.
 
 **Gate 1 — Character sheet (day 3)**
+
 - all 3 species × 4 moods × 6 poses (SVG only, no scenes yet)
 - refined species palettes
 - silhouette test at 32 px passes
@@ -350,12 +376,14 @@ Estimated effort: 10–14 designer days depending on ASCII appetite.
 - Review: does each mood feel distinct at a glance? Does the neglected pose actually hurt a little?
 
 **Gate 2 — World scenes (day 7)**
+
 - all 4 scenes, layered SVG, composite previews
 - pet placed in each scene (composite preview)
 - bubble variants per mood
 - Review: do the four scenes feel like the same room in four emotional weathers?
 
 **Gate 3 — Web + terminal polish (day 12)**
+
 - ASCII pack complete (all 36 frames)
 - companion mode + world mode mocks in Figma, mobile and desktop
 - tokens.json final
