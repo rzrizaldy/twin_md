@@ -8,7 +8,7 @@ import {
   type TwinConfig,
   writePetState,
   writeTwinConfig
-} from "@twin/core";
+} from "@twin-md/core";
 import { resolveMcpEntrypoint } from "../support.js";
 
 type InitOptions = {

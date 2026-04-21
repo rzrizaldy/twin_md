@@ -1,6 +1,8 @@
 {
-  "name": "@twin/core",
+  "name": "@twin-md/core",
   "version": "0.1.0",
+  "description": "Local-first shared core for twin-md: schema, harvesters, interpretation, and reminder rule engine.",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,11 +14,16 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "assets"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

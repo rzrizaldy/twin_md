@@ -670,6 +670,193 @@ button:disabled {
   filter: saturate(0.82) drop-shadow(0 18px 26px rgba(115, 117, 99, 0.12));
 }
 
+.reminder-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.reminder-stack-world {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: min(320px, 42%);
+  z-index: 6;
+  align-items: flex-end;
+}
+
+.reminder-stack-companion {
+  width: 100%;
+  align-items: flex-end;
+}
+
+.reminder-bubble {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  max-width: 280px;
+  pointer-events: auto;
+  box-shadow: 0 6px 20px rgba(40, 44, 52, 0.12);
+  border: 1px solid rgba(49, 66, 58, 0.12);
+}
+
+.reminder-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  right: 28px;
+  width: 18px;
+  height: 18px;
+  background: inherit;
+  border-right: inherit;
+  border-bottom: inherit;
+  transform: rotate(45deg);
+  border-bottom-right-radius: 4px;
+}
+
+.reminder-bubble.tone-soft {
+  background: #fff8d2;
+  color: #4b3a2a;
+}
+
+.reminder-bubble.tone-groggy {
+  background: #d5d8ff;
+  color: #3a3a66;
+}
+
+.reminder-bubble.tone-clipped {
+  background: #ffe1d4;
+  color: #a34a1f;
+}
+
+.reminder-bubble.tone-quiet {
+  background: #e6e2d4;
+  color: #544e3c;
+}
+
+.reminder-body {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.reminder-title {
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.reminder-text {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.reminder-nevermind {
+  appearance: none;
+  align-self: flex-end;
+  background: transparent;
+  border: 0;
+  padding: 2px 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: currentColor;
+  opacity: 0.55;
+  cursor: pointer;
+  justify-self: end;
+}
+
+.reminder-nevermind:hover {
+  opacity: 0.9;
+}
+
+.companion-shell {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.companion-shell.state-healthy {
+  --accent: #f1a96b;
+}
+
+.companion-shell.state-sleep_deprived {
+  --accent: #7fa6da;
+}
+
+.companion-shell.state-stressed {
+  --accent: #a34a1f;
+}
+
+.companion-shell.state-neglected {
+  --accent: #95a184;
+}
+
+.companion-anchor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+  width: 340px;
+  pointer-events: auto;
+}
+
+.companion-pet {
+  width: 320px;
+  height: 320px;
+  position: relative;
+}
+
+.companion-pet .pet-svg {
+  width: 100%;
+}
+
+.companion-pet .pet-svg svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.companion-pet .pet-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  width: 180px;
+}
+
+.companion-caption {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent, #31423a);
+  opacity: 0.8;
+}
+
+body.companion-body {
+  background: transparent;
+}
+
 @media (max-width: 920px) {
   .page-shell {
     width: min(100vw - 18px, 760px);

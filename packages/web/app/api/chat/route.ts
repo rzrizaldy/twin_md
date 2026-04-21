@@ -6,7 +6,7 @@ import {
   readTwinConfigOrDefault,
   speakWithTwin,
   writePetState
-} from "@twin/core";
+} from "@twin-md/core";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { prompt?: string };

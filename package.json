@@ -2,13 +2,15 @@
   "name": "twin-md-workspace",
   "private": true,
   "version": "0.1.0",
+  "description": "twin-md monorepo: local-first sprite that reads your second brain.",
   "packageManager": "pnpm@10.33.0",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @twin/core && npm run build -w @twin/mcp && npm run build -w twin && npm run build -w @twin/web",
-    "dev:web": "npm run dev -w @twin/web",
+    "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/mcp && npm run build -w twin-md && npm run build -w @twin-md/web",
+    "dev:web": "npm run dev -w @twin-md/web",
+    "release": "./scripts/release.sh",
     "lint": "npm run lint -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present"
   },

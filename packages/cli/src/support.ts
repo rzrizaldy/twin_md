@@ -9,7 +9,7 @@ export function resolvePackageRoot(packageName: string): string {
 }
 
 export function resolveMcpEntrypoint(): string {
-  return require.resolve("@twin/mcp/server");
+  return require.resolve("@twin-md/mcp/server");
 }
 
 export function getLanUrl(port: number): string {

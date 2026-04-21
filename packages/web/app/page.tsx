@@ -1,11 +1,17 @@
 import {
+  getPendingReminders,
   interpretTwinDocument,
   readCurrentTwinDocument,
   readCurrentTwinState,
+  readReminderLedger,
   readTwinConfigOrDefault,
   writePetState
-} from "@twin/core";
+} from "@twin-md/core";
 import { TwinPhoneShell } from "./components/TwinPhoneShell";
+
+type PageProps = {
+  searchParams?: Promise<{ layout?: string | string[] }>;
+};
 
 async function loadTwinPayload() {
   const config = await readTwinConfigOrDefault();
@@ -14,12 +20,27 @@ async function loadTwinPayload() {
     (await readCurrentTwinState()) ??
     (await interpretTwinDocument(document, config));
   await writePetState(state);
+  const reminders = getPendingReminders(await readReminderLedger());
 
-  return { document, state };
+  return { document, state, reminders };
 }
 
-export default async function HomePage() {
-  const { document, state } = await loadTwinPayload();
+function resolveLayout(raw?: string | string[]): "world" | "companion" {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value === "companion" ? "companion" : "world";
+}
 
-  return <TwinPhoneShell initialDocument={document} initialState={state} />;
+export default async function HomePage({ searchParams }: PageProps) {
+  const resolved = (await searchParams) ?? {};
+  const layout = resolveLayout(resolved.layout);
+  const { document, state, reminders } = await loadTwinPayload();
+
+  return (
+    <TwinPhoneShell
+      initialDocument={document}
+      initialState={state}
+      initialReminders={reminders}
+      layout={layout}
+    />
+  );
 }

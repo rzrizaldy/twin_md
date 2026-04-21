@@ -5,7 +5,7 @@ import {
   readCurrentTwinState,
   readTwinConfigOrDefault,
   writePetState
-} from "@twin/core";
+} from "@twin-md/core";
 
 export async function GET() {
   const config = await readTwinConfigOrDefault();

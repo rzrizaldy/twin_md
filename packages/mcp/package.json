@@ -1,6 +1,8 @@
 {
-  "name": "@twin/mcp",
+  "name": "@twin-md/mcp",
   "version": "0.1.0",
+  "description": "twin-md MCP stdio server. Exposes pet state and reminder tools to Claude Desktop.",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,12 +23,16 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts src/server.ts --format esm --dts --clean",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
     "@modelcontextprotocol/server": "^2.0.0-alpha.2",
-    "@twin/core": "file:../core",
+    "@twin-md/core": "^0.1.0",
     "zod": "^4.3.6"
   }
 }

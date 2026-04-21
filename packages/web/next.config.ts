@@ -5,7 +5,7 @@ import type { NextConfig } from "next";
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@twin/core"],
+  transpilePackages: ["@twin-md/core"],
   outputFileTracingRoot: path.join(packageDir, "../../")
 };
 

@@ -4,20 +4,27 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
+  useMemo,
   useState,
   type FormEvent
 } from "react";
-import type { PetState, TwinDocument } from "@twin/core";
-import { motion } from "framer-motion";
+import type { PetState, Reminder, TwinDocument } from "@twin-md/core";
+import { motion, AnimatePresence } from "framer-motion";
 
 type TwinPhoneShellProps = {
   initialDocument: TwinDocument;
   initialState: PetState;
+  initialReminders?: Reminder[];
+  layout?: "world" | "companion";
 };
 
 type StatePayload = {
   document: TwinDocument;
   state: PetState;
+};
+
+type RemindersPayload = {
+  reminders: Reminder[];
 };
 
 const SOURCE_LABELS = [
@@ -28,32 +35,48 @@ const SOURCE_LABELS = [
   "Location"
 ];
 
+const MAX_VISIBLE_BUBBLES = 3;
+
 export function TwinPhoneShell({
   initialDocument,
-  initialState
+  initialState,
+  initialReminders = [],
+  layout = "world"
 }: TwinPhoneShellProps) {
   const [document, setDocument] = useState(initialDocument);
   const [petState, setPetState] = useState(initialState);
+  const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [prompt, setPrompt] = useState("");
   const [reply, setReply] = useState("");
   const [pending, setPending] = useState(false);
   const deferredState = useDeferredValue(petState);
+  const isCompanion = layout === "companion";
 
   useEffect(() => {
+    let cancelled = false;
     const interval = window.setInterval(async () => {
-      const response = await fetch("/api/state", { cache: "no-store" });
-      if (!response.ok) {
-        return;
+      const stateResponse = await fetch("/api/state", { cache: "no-store" });
+      if (stateResponse.ok && !cancelled) {
+        const payload = (await stateResponse.json()) as StatePayload;
+        startTransition(() => {
+          setDocument(payload.document);
+          setPetState(payload.state);
+        });
       }
 
-      const payload = (await response.json()) as StatePayload;
-      startTransition(() => {
-        setDocument(payload.document);
-        setPetState(payload.state);
+      const remindersResponse = await fetch("/api/reminders?sweep=1", {
+        cache: "no-store"
       });
-    }, 1000);
+      if (remindersResponse.ok && !cancelled) {
+        const payload = (await remindersResponse.json()) as RemindersPayload;
+        startTransition(() => setReminders(payload.reminders));
+      }
+    }, 3000);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -83,6 +106,54 @@ export function TwinPhoneShell({
     }
   }
 
+  async function handleReminderAction(
+    reminder: Reminder,
+    action: "acknowledge" | "dismiss"
+  ) {
+    setReminders((current) => current.filter((entry) => entry.id !== reminder.id));
+    try {
+      await fetch("/api/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reminder.id, action })
+      });
+    } catch {
+      // best effort; the next sweep will re-reconcile
+    }
+  }
+
+  const visibleReminders = useMemo(
+    () => reminders.slice(0, MAX_VISIBLE_BUBBLES),
+    [reminders]
+  );
+
+  if (isCompanion) {
+    return (
+      <main className={`companion-shell state-${deferredState.state}`}>
+        <div className="companion-anchor">
+          <ReminderStack
+            reminders={visibleReminders}
+            onAcknowledge={(reminder) => handleReminderAction(reminder, "acknowledge")}
+            onDismiss={(reminder) => handleReminderAction(reminder, "dismiss")}
+          />
+          <motion.div
+            className={`companion-pet pet-${deferredState.state}`}
+            animate={getPetAnimation(deferredState.state)}
+            transition={getPetTransition(deferredState.state)}
+          >
+            <div className="pet-shadow" />
+            <div
+              className="pet-svg"
+              aria-label={`${deferredState.species} ${deferredState.state}`}
+              dangerouslySetInnerHTML={{ __html: deferredState.svg }}
+            />
+          </motion.div>
+          <p className="companion-caption">{deferredState.caption}</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className={`page-shell state-${deferredState.state}`}>
       <section className="world-shell">
@@ -104,6 +175,13 @@ export function TwinPhoneShell({
 
         <section className={`world-stage state-${deferredState.state}`}>
           <SceneBackdrop state={deferredState.state} />
+
+          <ReminderStack
+            reminders={visibleReminders}
+            variant="world"
+            onAcknowledge={(reminder) => handleReminderAction(reminder, "acknowledge")}
+            onDismiss={(reminder) => handleReminderAction(reminder, "dismiss")}
+          />
 
           <motion.div
             className={`pet-stage pet-${deferredState.state}`}
@@ -170,6 +248,58 @@ export function TwinPhoneShell({
         {reply ? <p className="reply-card">{reply}</p> : null}
       </section>
     </main>
+  );
+}
+
+type ReminderStackProps = {
+  reminders: Reminder[];
+  variant?: "companion" | "world";
+  onAcknowledge: (reminder: Reminder) => void;
+  onDismiss: (reminder: Reminder) => void;
+};
+
+function ReminderStack({
+  reminders,
+  variant = "companion",
+  onAcknowledge,
+  onDismiss
+}: ReminderStackProps) {
+  return (
+    <div className={`reminder-stack reminder-stack-${variant}`} aria-live="polite">
+      <AnimatePresence initial={false}>
+        {reminders.map((reminder, index) => (
+          <motion.div
+            key={reminder.id}
+            className={`reminder-bubble tone-${reminder.tone}`}
+            initial={{ opacity: 0, y: 12, scale: 0.92 }}
+            animate={{
+              opacity: 1 - index * 0.18,
+              y: 0,
+              scale: 1
+            }}
+            exit={{ opacity: 0, y: -12, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: [0.2, 0.9, 0.2, 1] }}
+          >
+            <button
+              type="button"
+              className="reminder-body"
+              onClick={() => onAcknowledge(reminder)}
+            >
+              <span className="reminder-title">{reminder.title}</span>
+              <span className="reminder-text">{reminder.body}</span>
+            </button>
+            <button
+              type="button"
+              className="reminder-nevermind"
+              onClick={() => onDismiss(reminder)}
+              aria-label="dismiss"
+            >
+              nevermind
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
   );
 }
 

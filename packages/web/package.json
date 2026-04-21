@@ -1,18 +1,30 @@
 {
-  "name": "@twin/web",
+  "name": "@twin-md/web",
   "version": "0.1.0",
-  "private": true,
+  "description": "twin-md phone and desktop web surface. Renders the pet scene and companion overlay.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "start": "next start",
     "build": "next build",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },
+  "files": [
+    "app",
+    "next.config.ts",
+    "tsconfig.json",
+    ".next"
+  ],
   "exports": {
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "@twin/core": "file:../core",
+    "@twin-md/core": "^0.1.0",
     "framer-motion": "^12.38.0",
     "next": "^16.2.4",
     "react": "^19.2.5",

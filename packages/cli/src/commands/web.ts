@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
-import { readTwinConfigOrDefault, runTwinHarvest } from "@twin/core";
+import { readTwinConfigOrDefault, runTwinHarvest } from "@twin-md/core";
 import { getLanUrl, resolvePackageRoot } from "../support.js";
 
 type WebOptions = {
   port?: string;
+  dev?: boolean;
 };
 
 export async function runWebCommand(options: WebOptions): Promise<void> {
@@ -12,15 +15,18 @@ export async function runWebCommand(options: WebOptions): Promise<void> {
   const config = await readTwinConfigOrDefault();
   await runTwinHarvest(config);
 
-  const webRoot = resolvePackageRoot("@twin/web");
+  const webRoot = resolvePackageRoot("@twin-md/web");
   const url = getLanUrl(port);
 
-  console.log(`Starting twin web at ${url}`);
+  const hasBuild = existsSync(path.join(webRoot, ".next"));
+  const mode = options.dev || !hasBuild ? "dev" : "start";
+
+  console.log(`Starting twin web (${mode}) at ${url}`);
   qrcodeTerminal.generate(url, { small: true });
 
   const child = spawn(
     "npm",
-    ["run", "dev", "--", "--hostname", "0.0.0.0", "--port", String(port)],
+    ["run", mode, "--", "--hostname", "0.0.0.0", "--port", String(port)],
     {
       cwd: webRoot,
       stdio: "inherit"
