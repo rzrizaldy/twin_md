@@ -10,6 +10,7 @@
   "scripts": {
     "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/mcp && npm run build -w twin-md && npm run build -w @twin-md/web",
     "dev:web": "npm run dev -w @twin-md/web",
+    "generate:pet-assets": "node scripts/generate-pet-sprites.mjs",
     "release": "./scripts/release.sh",
     "lint": "npm run lint -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present"
