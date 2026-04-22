@@ -116,15 +116,22 @@ body.window {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-.chat-button {
+.companion-actions {
   position: absolute;
   bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.chat-button {
   background: var(--ink);
   color: var(--cream);
   border: none;
-  padding: 6px 16px;
+  padding: 6px 14px;
   border-radius: 999px;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -133,19 +140,28 @@ body.window {
   cursor: pointer;
   box-shadow: 0 6px 12px rgba(71, 54, 67, 0.35);
   opacity: 0;
-  transition: opacity 220ms ease, transform 220ms ease;
+  transition: opacity 220ms ease, transform 220ms ease, background 160ms ease;
   pointer-events: auto;
-  z-index: 3;
+}
+
+.chat-button.web-button {
+  background: var(--cream);
+  color: var(--ink);
+  border: 1px solid rgba(71, 54, 67, 0.25);
 }
 
 .stage:hover .chat-button,
 .chat-button:focus-visible {
   opacity: 1;
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateY(-2px);
 }
 
 .chat-button:hover {
   background: #2f2330;
+}
+
+.chat-button.web-button:hover {
+  background: #fff;
 }
 
 /* ───────── bubble window ───────── */

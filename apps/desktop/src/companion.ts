@@ -3,7 +3,8 @@ import {
   getState,
   onReminder,
   onStateChanged,
-  openChat
+  openChat,
+  openWebCompanion
 } from "./ipc.ts";
 import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
 
@@ -33,10 +34,12 @@ let frame: "breath-a" | "breath-b" = "breath-a";
 let blinkTimer: number | null = null;
 
 function pngPath(species: TwinSpecies, mood: TwinMood, frameName: string): string {
-  return `/pets/${species}/${mood}/${frameName}-reference.png`;
+  // Colourful 1024×1024 PNGs staged from packages/core/assets/pets.
+  return `/pets/${species}/${mood}/${frameName}.png`;
 }
 
 function svgPath(species: TwinSpecies, mood: TwinMood, frameName: string): string {
+  // Fallback to the legacy vectorised SVG if a frame hasn't been PNG'd yet.
   return `/pets/${species}/${mood}/${frameName}.svg`;
 }
 
@@ -104,6 +107,18 @@ function attachInteractions() {
       console.error("open_chat failed", err);
     }
   });
+
+  const webButton = document.getElementById("web-button") as HTMLButtonElement | null;
+  if (webButton) {
+    webButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      try {
+        await openWebCompanion();
+      } catch (err) {
+        console.error("open_web_companion failed", err);
+      }
+    });
+  }
 
   // Tilt toward cursor
   window.addEventListener("mousemove", (event) => {

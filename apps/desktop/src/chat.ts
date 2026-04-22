@@ -89,7 +89,7 @@ function appendPetBubble(initial = ""): { el: HTMLDivElement; buffer: string } {
 }
 
 function renderHeader(state: PetState) {
-  sprite.src = `/pets/${state.species}/${state.state}/breath-a.svg`;
+  sprite.src = `/pets/${state.species}/${state.state}/breath-a.png`;
   subtitle.textContent = `${state.caption.toLowerCase()} · ${state.state.replace(/_/g, " ")}`;
 }
 
