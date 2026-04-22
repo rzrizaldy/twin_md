@@ -5,6 +5,7 @@ out
 *.log
 .DS_Store
 .claude/
+.cursor/skills/
 output/
 .env
 .env.local
