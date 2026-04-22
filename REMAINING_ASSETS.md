@@ -1,45 +1,49 @@
 # Remaining Assets Generation Log
 
-This document tracks the sprites and assets from `DESIGN_BRIEF.md` that still need to be generated once the image generation API quota resets.
+This document tracks the remaining sprites and assets from `DESIGN_BRIEF.md`.
+
+Repo truth was re-audited on 2026-04-21 after the image generation pass. This file now distinguishes between generated raster references and final repo-native SVG / ASCII deliverables.
 
 ## 1. Character Sprites
 
-### Axolotl (Partial)
+### Axolotl
 - [x] Healthy (All SVGs generated)
 - [x] Sleep Deprived (All SVGs generated)
 - [x] Stressed (All SVGs generated)
-- [ ] Neglected:
-  - [x] `breath-a.svg`
-  - [x] `breath-b.svg`
-  - [ ] `blink.svg`
-  - [ ] `reminder-speak.svg`
-  - [ ] `reaction-wilt.svg`
+- [x] Neglected (All SVGs generated)
+- [x] Turnarounds: `turn-front.svg`, `turn-3q.svg`
 - [x] Terminal ASCII Text Files (All 4 moods completed)
 
-### Cat (Pending)
+### Cat
 **Color Palette**: cream `#ffe4b8`, accent `#f6b15d`, outline `#4b3a2a`
-- [ ] Healthy: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`, `reaction-happy.svg`
-- [ ] Sleep Deprived: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`
-- [ ] Stressed: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`
-- [ ] Neglected: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`, `reaction-wilt.svg`
+- [x] Healthy (All SVGs generated)
+- [x] Sleep Deprived (All SVGs generated)
+- [x] Stressed (All SVGs generated)
+- [x] Neglected (All SVGs generated)
 - [ ] Turnarounds: `turn-front.svg`, `turn-3q.svg`
+- [x] Turnaround reference PNGs: `turn-front-reference.png`, `turn-3q-reference.png`
 - [ ] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
 
-### Slime (Pending)
+### Slime
 **Color Palette**: mint `#c4f2cb`, accent `#58cc7c`, outline `#30543d`
-- [ ] Healthy: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`, `reaction-happy.svg`
-- [ ] Sleep Deprived: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`
-- [ ] Stressed: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`
-- [ ] Neglected: `breath-a.svg`, `breath-b.svg`, `blink.svg`, `reminder-speak.svg`, `reaction-wilt.svg`
+- [x] Healthy (All SVGs generated)
+- [x] Sleep Deprived (All SVGs generated)
+- [x] Stressed (All SVGs generated)
+- [x] Neglected (All SVGs generated)
 - [ ] Turnarounds: `turn-front.svg`, `turn-3q.svg`
+- [x] Turnaround reference PNGs: `turn-front-reference.png`, `turn-3q-reference.png`
 - [ ] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
 
-## 2. World Scenes (Pending)
+## 2. World Scenes
 Each scene must be a layered SVG (sky, mid, floor, props, particles, composite).
-- [ ] `sunny_island` (healthy)
-- [ ] `stars_at_noon` (sleep_deprived)
-- [ ] `storm_room` (stressed)
-- [ ] `grey_nook` (neglected)
+- [ ] `sunny_island` layered SVG (healthy)
+  Reference PNG generated: `packages/core/assets/scenes/sunny_island/reference.png`
+- [ ] `stars_at_noon` layered SVG (sleep_deprived)
+  Reference PNG generated: `packages/core/assets/scenes/stars_at_noon/reference.png`
+- [ ] `storm_room` layered SVG (stressed)
+  Reference PNG generated: `packages/core/assets/scenes/storm_room/reference.png`
+- [ ] `grey_nook` layered SVG (neglected)
+  Reference PNG generated: `packages/core/assets/scenes/grey_nook/reference.png`
 
 ## 3. Web & Terminal Polish (Pending)
 - [x] Reminder Bubbles (`soft.svg`, `groggy.svg`, `clipped.svg`, `quiet.svg`)
