@@ -1,5 +1,6 @@
 export * from "./chat.js";
 export * from "./config.js";
+export * from "./context-reply.js";
 export * from "./harvest/index.js";
 export * from "./interpret.js";
 export * from "./paths.js";

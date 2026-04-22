@@ -27,13 +27,7 @@ type RemindersPayload = {
   reminders: Reminder[];
 };
 
-const SOURCE_LABELS = [
-  "Health",
-  "Calendar",
-  "Claude Memory",
-  "Obsidian",
-  "Location"
-];
+const SOURCE_TITLES = ["health", "calendar", "memory", "obsidian", "location"] as const;
 
 const MAX_VISIBLE_BUBBLES = 3;
 
@@ -159,16 +153,17 @@ export function TwinPhoneShell({
       <section className="world-shell">
         <header className="world-header">
           <div>
-            <p className="eyebrow">animal-crossing energy, local-first brain</p>
             <h1>twin.md</h1>
             <p className="scene-title">{deferredState.caption}</p>
           </div>
 
-          <div className="source-ribbon" aria-label="Pet data sources">
-            {SOURCE_LABELS.map((label) => (
-              <span key={label} className="source-badge">
-                {label}
-              </span>
+          <div className="signal-dots" aria-label="connected sources">
+            {getSignalStatus(document).map((on, i) => (
+              <span
+                key={SOURCE_TITLES[i]}
+                className={`signal-dot${on ? " signal-on" : ""}`}
+                title={SOURCE_TITLES[i]}
+              />
             ))}
           </div>
         </header>
@@ -197,7 +192,6 @@ export function TwinPhoneShell({
           </motion.div>
 
           <div className="dialogue-bubble">
-            <p className="bubble-label">{getScenePrompt(deferredState.state)}</p>
             <p className="lede">{deferredState.message}</p>
           </div>
         </section>
@@ -212,36 +206,20 @@ export function TwinPhoneShell({
       </section>
 
       <section className="story-strip">
-        <StoryCard title="Scene Read" text={deferredState.scene} />
-        <StoryCard
-          title="Latest Reflection"
-          text={cleanText(document.sections.obsidian_signals.last_reflection)}
-        />
-        <StoryCard
-          title="Backend Thread"
-          text="Health, calendar, Claude memory, notes, and location harvest into one local twin.md file. That file is re-interpreted into this scene."
-        />
+        <ObservationCard scene={deferredState.scene} />
+        <SignalsCard document={document} />
       </section>
 
       <section className="chat-card">
-        <div className="chat-copy">
-          <p className="eyebrow">mirror voice</p>
-          <h2>Talk To Your Twin</h2>
-          <p>
-            Ask for focus, rest, or a blunt read on the room. The pet replies from the
-            same local state that drives the scene.
-          </p>
-        </div>
-
         <form onSubmit={handleSubmit} className="chat-form">
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Should I rest, ship, or stop pretending I can do both?"
-            rows={3}
+            placeholder={getChatPlaceholder(deferredState.state)}
+            rows={2}
           />
           <button type="submit" disabled={pending}>
-            {pending ? "Thinking..." : "Ask twin"}
+            {pending ? "…" : "→"}
           </button>
         </form>
 
@@ -359,35 +337,78 @@ function SceneBackdrop({ state }: { state: PetState["state"] }) {
   );
 }
 
-function StoryCard({ title, text }: { title: string; text: string }) {
+function ObservationCard({ scene }: { scene: string }) {
   return (
-    <article className="story-card">
-      <p className="story-card-title">{title}</p>
-      <p>{text}</p>
+    <article className="story-card story-card-observation">
+      <p className="observation-text">{scene}</p>
+    </article>
+  );
+}
+
+function SignalsCard({ document }: { document: TwinDocument }) {
+  const obs = document.sections.obsidian_signals;
+  const mem = document.sections.claude_memory_signals;
+  const topics = (mem.recent_topics as string[]).filter(Boolean).slice(0, 4);
+  const reflection = cleanText(obs.last_reflection);
+  const todos = obs.unfinished_todos as number;
+  const tone = mem.tone_7d as string;
+
+  return (
+    <article className="story-card story-card-signals">
+      {reflection ? (
+        <p className="signal-line signal-note">
+          <span className="signal-glyph">↩</span> {reflection}
+        </p>
+      ) : null}
+      {topics.length > 0 ? (
+        <p className="signal-line signal-topics">
+          {topics.join(" · ")}
+        </p>
+      ) : null}
+      <p className="signal-line signal-meta">
+        {todos > 0 ? `${todos} open · ` : ""}{tone}
+      </p>
     </article>
   );
 }
 
 function cleanText(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "No recent reflection reached the room.";
-  }
-
+  if (!value) return "";
   const text = String(value).trim();
-  return text || "No recent reflection reached the room.";
+  const empty = [
+    "No vault connected yet.",
+    "No Obsidian vault configured.",
+    "No reflection line found in recent notes.",
+    "No recent reflection reached the room."
+  ];
+  return empty.includes(text) ? "" : text;
 }
 
-function getScenePrompt(state: PetState["state"]): string {
+function getChatPlaceholder(state: PetState["state"]): string {
   switch (state) {
     case "healthy":
-      return "The pet is thriving";
+      return "what's good right now?";
     case "sleep_deprived":
-      return "The day feels too early";
+      return "need a reality check?";
     case "stressed":
-      return "Everything feels urgent";
+      return "what's the one thing?";
     default:
-      return "The room misses you";
+      return "something on your mind?";
   }
+}
+
+function getSignalStatus(document: TwinDocument): boolean[] {
+  const { health, calendar, location, claude_memory_signals, obsidian_signals } =
+    document.sections;
+  return [
+    (health.sleep_last_night as string) !== "unknown" || (health.steps_today as number) > 0,
+    (calendar.events_today as number) > 0 || (calendar.deep_work_blocks as number) > 0,
+    (claude_memory_signals.recent_topics as string[]).some((t) => t !== "setup"),
+    !["No vault connected yet.", "No Obsidian vault configured."].includes(
+      obsidian_signals.last_reflection as string
+    ),
+    (location.home_ratio_7d as string) !== "unknown"
+  ];
 }
 
 function getPetAnimation(state: PetState["state"]) {

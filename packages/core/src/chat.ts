@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { TwinConfig } from "./config.js";
 import type { PetState } from "./interpret.js";
 import { serializeTwinDocument, type TwinDocument } from "./schema.js";
+import { contextualReply, isContextQuestion } from "./context-reply.js";
 
 export async function speakWithTwin(
   document: TwinDocument,
@@ -11,6 +12,9 @@ export async function speakWithTwin(
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    if (isContextQuestion(prompt)) {
+      return contextualReply(document, state, prompt, config);
+    }
     return localTwinReply(state, prompt);
   }
 
