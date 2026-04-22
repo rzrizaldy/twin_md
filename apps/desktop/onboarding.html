@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>meet your twin</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body class="window window-onboarding" data-window="onboarding">
+    <main class="onboard">
+      <header class="onboard-header">
+        <h1>let's meet your twin</h1>
+        <p>pick a species, tell us who you are, and point to your vault.</p>
+      </header>
+
+      <section class="onboard-step">
+        <h2>species</h2>
+        <div class="species-row" role="radiogroup" aria-label="species">
+          <label class="species-card">
+            <input type="radio" name="species" value="axolotl" checked />
+            <img src="/pets/axolotl/healthy/breath-a.svg" alt="" />
+            <span>axolotl</span>
+          </label>
+          <label class="species-card">
+            <input type="radio" name="species" value="cat" />
+            <img src="/pets/cat/healthy/breath-a.svg" alt="" />
+            <span>cat</span>
+          </label>
+          <label class="species-card">
+            <input type="radio" name="species" value="slime" />
+            <img src="/pets/slime/healthy/breath-a.svg" alt="" />
+            <span>slime</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="onboard-step">
+        <h2>your name</h2>
+        <input
+          id="owner"
+          class="text-input"
+          type="text"
+          placeholder="what does your twin call you?"
+          autocomplete="off"
+        />
+      </section>
+
+      <section class="onboard-step">
+        <h2>obsidian vault <small>(optional)</small></h2>
+        <div class="vault-picker">
+          <button id="pick-vault" class="secondary-button" type="button">
+            pick a folder
+          </button>
+          <span id="vault-path" class="vault-path muted">none selected</span>
+        </div>
+      </section>
+
+      <footer class="onboard-footer">
+        <p id="onboard-status" class="muted"></p>
+        <button id="onboard-submit" class="primary-button" type="button">
+          summon my twin
+        </button>
+      </footer>
+    </main>
+    <script type="module" src="/src/onboarding.ts"></script>
+  </body>
+</html>

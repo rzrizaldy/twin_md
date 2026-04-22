@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>twin chat</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body class="window window-chat" data-window="chat">
+    <header class="chat-header">
+      <img id="chat-sprite" class="chat-sprite" alt="" />
+      <div class="chat-heading">
+        <h1 id="chat-title">your twin</h1>
+        <p id="chat-subtitle" class="chat-subtitle"></p>
+      </div>
+    </header>
+    <div id="chat-status" class="chat-status" hidden></div>
+    <section id="chat-log" class="chat-log" aria-live="polite"></section>
+    <footer class="chat-footer">
+      <form id="chat-form" class="chat-form">
+        <textarea
+          id="chat-input"
+          class="chat-input"
+          placeholder="talk to your twin"
+          rows="2"
+        ></textarea>
+        <button id="chat-send" class="chat-send" type="submit">send</button>
+      </form>
+    </footer>
+    <script type="module" src="/src/chat.ts"></script>
+  </body>
+</html>

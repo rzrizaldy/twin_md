@@ -1,0 +1,9 @@
+node_modules/
+dist/
+public/pets/
+public/bubbles/
+public/scenes/
+public/tokens.json
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock

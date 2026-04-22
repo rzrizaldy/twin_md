@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>twin companion</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body class="window window-companion" data-window="companion">
+    <main id="stage" class="stage" data-tauri-drag-region>
+      <div id="pet" class="pet" data-tauri-drag-region>
+        <img id="sprite" class="sprite" alt="" draggable="false" />
+      </div>
+      <div id="caption" class="caption" hidden></div>
+      <button id="chat-button" class="chat-button" type="button" title="open chat">
+        chat
+      </button>
+    </main>
+    <script type="module" src="/src/companion.ts"></script>
+  </body>
+</html>

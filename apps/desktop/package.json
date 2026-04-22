@@ -1,0 +1,31 @@
+{
+  "name": "@twin-md/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "twin-md floating desktop companion (Tauri 2 + Rust).",
+  "scripts": {
+    "stage-assets": "node scripts/stage-assets.mjs",
+    "predev": "npm run stage-assets",
+    "dev": "tauri dev",
+    "dev:web": "vite",
+    "prebuild": "npm run stage-assets",
+    "build": "tauri build",
+    "build:web": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.1.0",
+    "@tauri-apps/plugin-autostart": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-notification": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "typescript": "^5.8.0",
+    "vite": "^5.4.0"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "twin",
+  "version": "0.1.0",
+  "identifier": "md.twin.companion",
+  "build": {
+    "beforeDevCommand": "npm run dev:web",
+    "beforeBuildCommand": "npm run build:web",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "companion",
+        "title": "twin",
+        "url": "index.html",
+        "width": 320,
+        "height": 320,
+        "minWidth": 240,
+        "minHeight": 240,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "shadow": false,
+        "acceptFirstMouse": true,
+        "hiddenTitle": true,
+        "visible": false,
+        "center": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Utility",
+    "shortDescription": "A desk creature that reads your second brain.",
+    "longDescription": "twin.md lives on your desktop as a small transparent companion. It reads your Claude memory, Obsidian vault, calendar and health, and mirrors your state back at you.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "13.0",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": "entitlements.plist"
+    }
+  },
+  "plugins": {}
+}

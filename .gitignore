@@ -4,3 +4,7 @@ dist
 out
 *.log
 .DS_Store
+.claude/
+output/
+.env
+.env.local
