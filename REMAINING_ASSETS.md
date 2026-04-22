@@ -27,14 +27,10 @@ Repo truth was re-audited on 2026-04-21 after the image generation pass. This fi
 
 ### Slime
 **Color Palette**: mint `#c4f2cb`, accent `#58cc7c`, outline `#30543d`
-- [ ] Healthy SVG replacement pending
-  Reference PNGs generated: `breath-a-reference.png`, `breath-b-reference.png`, `blink-reference.png`, `reminder-speak-reference.png`, `reaction-happy-reference.png`
-- [ ] Sleep Deprived SVG replacement pending
-  Reference PNGs generated: `breath-a-reference.png`, `breath-b-reference.png`, `blink-reference.png`, `reminder-speak-reference.png`
-- [ ] Stressed SVG replacement pending
-  Reference PNGs generated: `breath-a-reference.png`, `breath-b-reference.png`, `blink-reference.png`, `reminder-speak-reference.png`
-- [ ] Neglected SVG replacement pending
-  Reference PNGs generated: `breath-a-reference.png`, `breath-b-reference.png`, `blink-reference.png`
+- [x] Healthy (All SVGs generated)
+- [x] Sleep Deprived (All SVGs generated)
+- [x] Stressed (All SVGs generated)
+- [ ] Neglected (Partial: missing `reaction-wilt.svg`, `reminder-speak.svg`)
   Remaining reference PNGs blocked by API billing limit on 2026-04-22: `reminder-speak-reference.png`, `reaction-wilt-reference.png`
 - [x] Turnarounds: `turn-front.svg`, `turn-3q.svg`
 - [x] Turnaround reference PNGs: `turn-front-reference.png`, `turn-3q-reference.png`
