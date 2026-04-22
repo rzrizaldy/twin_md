@@ -22,7 +22,7 @@ Repo truth was re-audited on 2026-04-21 after the image generation pass. This fi
 - [x] Neglected (All SVGs generated)
 - [x] Turnarounds: `turn-front.svg`, `turn-3q.svg`
 - [x] Turnaround reference PNGs: `turn-front-reference.png`, `turn-3q-reference.png`
-- [ ] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
+- [x] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
 
 ### Slime
 **Color Palette**: mint `#c4f2cb`, accent `#58cc7c`, outline `#30543d`
@@ -32,7 +32,7 @@ Repo truth was re-audited on 2026-04-21 after the image generation pass. This fi
 - [x] Neglected (All SVGs generated)
 - [x] Turnarounds: `turn-front.svg`, `turn-3q.svg`
 - [x] Turnaround reference PNGs: `turn-front-reference.png`, `turn-3q-reference.png`
-- [ ] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
+- [x] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
 
 ## 2. World Scenes
 Each scene must be a layered SVG (sky, mid, floor, props, particles, composite).
