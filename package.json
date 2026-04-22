@@ -15,7 +15,7 @@
     "dev:web": "npm run dev -w @twin-md/web",
     "dev:landing": "npm run dev -w @twin-md/landing",
     "dev:desktop": "npm run dev -w @twin-md/desktop",
-    "generate:pet-assets": "node scripts/generate-pet-sprites.mjs",
+    "generate:pet-assets": "node scripts/generate-pet-sprites-v2.mjs",
     "release": "./scripts/release.sh",
     "lint": "npm run lint -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present"

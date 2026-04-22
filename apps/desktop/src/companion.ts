@@ -12,7 +12,7 @@ const pet = document.getElementById("pet") as HTMLDivElement;
 const caption = document.getElementById("caption") as HTMLDivElement;
 
 const DEFAULT_STATE: PetState = {
-  species: "cat",
+  species: "axolotl",
   state: "healthy",
   energy: 80,
   stress: 20,
@@ -25,7 +25,7 @@ const DEFAULT_STATE: PetState = {
   reason: [],
   updated: new Date().toISOString(),
   sourceUpdated: new Date().toISOString(),
-  color: "#ffb86c"
+  color: "#8b5cf6"
 };
 
 let current: PetState = DEFAULT_STATE;

@@ -14,6 +14,24 @@ import {
 export const TWIN_SPECIES = ["axolotl", "cat", "slime"] as const;
 export type TwinSpecies = (typeof TWIN_SPECIES)[number];
 
+export const AI_PROVIDERS = ["anthropic", "openai", "gemini"] as const;
+export type AiProvider = (typeof AI_PROVIDERS)[number];
+
+export const AI_KEY_STORAGE = ["env", "keychain", "config"] as const;
+export type AiKeyStorage = (typeof AI_KEY_STORAGE)[number];
+
+export const AI_MODELS: Record<AiProvider, readonly string[]> = {
+  anthropic: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"],
+  openai: ["gpt-5", "gpt-5-mini", "gpt-4.1"],
+  gemini: ["gemini-2.5-pro", "gemini-2.5-flash"]
+} as const;
+
+export const AI_DEFAULT_MODEL: Record<AiProvider, string> = {
+  anthropic: "claude-sonnet-4-6",
+  openai: "gpt-5-mini",
+  gemini: "gemini-2.5-flash"
+};
+
 export const TwinConfigSchema = z.object({
   version: z.literal(1),
   owner: z.string().min(1),
@@ -24,13 +42,16 @@ export const TwinConfigSchema = z.object({
   locationPath: z.string().min(1),
   obsidianVaultPath: z.string().nullable(),
   anthropicModel: z.string().min(1),
+  aiProvider: z.enum(AI_PROVIDERS).default("anthropic"),
+  aiModel: z.string().min(1).default("claude-sonnet-4-6"),
+  aiKeyStorage: z.enum(AI_KEY_STORAGE).default("env"),
   mcpCommandId: z.string().min(1).optional()
 });
 
 export type TwinConfig = z.infer<typeof TwinConfigSchema>;
 
 export const DEFAULT_ANTHROPIC_MODEL =
-  process.env.TWIN_ANTHROPIC_MODEL ?? "claude-opus-4-20250514";
+  process.env.TWIN_ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
 
 export function createDefaultConfig(
   overrides: Partial<TwinConfig> = {}
@@ -45,6 +66,9 @@ export function createDefaultConfig(
     locationPath: expandHome(`${DEFAULT_SOURCE_DIR}/location.json`),
     obsidianVaultPath: null,
     anthropicModel: DEFAULT_ANTHROPIC_MODEL,
+    aiProvider: "anthropic",
+    aiModel: DEFAULT_ANTHROPIC_MODEL,
+    aiKeyStorage: "env",
     ...overrides
   });
 }

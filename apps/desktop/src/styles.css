@@ -266,16 +266,39 @@ body.window {
   flex-direction: column;
   gap: 10px;
   height: calc(100vh - 168px);
+  min-width: 0;
 }
 
 .chat-bubble {
-  max-width: 80%;
+  max-width: min(80%, 360px);
   padding: 10px 14px;
   border-radius: 14px;
   line-height: 1.45;
   font-size: 14px;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.chat-bubble pre,
+.chat-bubble code {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(--font-terminal, "JetBrains Mono", monospace);
+  font-size: 12.5px;
+}
+
+.chat-bubble pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: rgba(71, 54, 67, 0.08);
+  border-radius: 8px;
+}
+
+.chat-bubble a {
+  word-break: break-all;
 }
 
 .chat-bubble.pet {
@@ -497,4 +520,296 @@ body.window {
 .secondary-button:hover {
   background: var(--ink);
   color: var(--cream);
+}
+
+/* ───────── wizard onboarding (v2.1) ───────── */
+
+.wizard {
+  max-width: 560px;
+  gap: 18px;
+}
+
+.wizard-dots {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(71, 54, 67, 0.08);
+}
+
+.wizard-dot {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  text-align: center;
+  padding: 6px 4px;
+  color: rgba(71, 54, 67, 0.45);
+  border-top: 2px solid rgba(71, 54, 67, 0.12);
+  transition: color 180ms, border-color 180ms;
+}
+
+.wizard-dot.is-active {
+  color: var(--ink);
+  border-top-color: var(--ink);
+}
+
+.wizard-dot.is-done {
+  color: rgba(71, 54, 67, 0.7);
+  border-top-color: rgba(71, 54, 67, 0.55);
+}
+
+.wizard-step {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wizard-step.is-active {
+  display: flex;
+}
+
+.wizard-step h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 26px;
+}
+
+.wizard-step h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+}
+
+.wizard-step p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.wizard-step small {
+  opacity: 0.65;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.wizard-hero {
+  display: grid;
+  place-items: center;
+  padding: 10px 0 0;
+}
+
+.wizard-hero-sprite {
+  width: 120px;
+  height: 120px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: rgba(71, 54, 67, 0.7);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.where-link {
+  font-size: 10px;
+  color: rgba(71, 54, 67, 0.55);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.where-link:hover {
+  color: var(--ink);
+}
+
+.detection-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1.5px solid rgba(71, 54, 67, 0.12);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.detection-card.ok {
+  border-color: #7fbf8a;
+  background: #f3fbf4;
+}
+
+.detection-card.warn {
+  border-color: #e0a26d;
+  background: #fff5eb;
+}
+
+.detection-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(71, 54, 67, 0.08);
+  font-weight: 700;
+}
+
+.detection-card.ok .detection-icon {
+  background: #cfe9d1;
+  color: #2e7139;
+}
+
+.detection-card.warn .detection-icon {
+  background: #f6d6b5;
+  color: #9a5a1d;
+}
+
+.detection-body {
+  overflow-wrap: anywhere;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.choice-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid rgba(71, 54, 67, 0.14);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: var(--ink);
+  transition: border-color 180ms, transform 180ms;
+}
+
+.choice-card:hover {
+  transform: translateY(-2px);
+}
+
+.choice-card.is-active {
+  border-color: var(--ink);
+  background: var(--pink);
+}
+
+.choice-card strong {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.choice-card span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.vault-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+
+.provider-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.provider-card {
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  padding: 16px 10px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid rgba(71, 54, 67, 0.16);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 180ms, background 180ms;
+}
+
+.provider-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.provider-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.provider-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.provider-card:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--mint);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(71, 54, 67, 0.85);
+}
+
+.text-button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: rgba(71, 54, 67, 0.6);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  align-self: flex-start;
+  padding: 0;
+}
+
+.text-button:hover {
+  color: var(--ink);
+}
+
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.wizard-footer > :only-child {
+  margin-left: auto;
 }

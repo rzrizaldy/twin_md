@@ -7,14 +7,32 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body class="window window-onboarding" data-window="onboarding">
-    <main class="onboard">
-      <header class="onboard-header">
-        <h1>let's meet your twin</h1>
-        <p>pick a species, tell us who you are, and point to your vault.</p>
-      </header>
+    <main class="onboard wizard" data-current-step="0">
+      <nav class="wizard-dots" aria-label="onboarding progress">
+        <span class="wizard-dot is-active" data-step-dot="0">brief</span>
+        <span class="wizard-dot" data-step-dot="1">species</span>
+        <span class="wizard-dot" data-step-dot="2">.claude</span>
+        <span class="wizard-dot" data-step-dot="3">vault</span>
+        <span class="wizard-dot" data-step-dot="4">ai</span>
+        <span class="wizard-dot" data-step-dot="5">summon</span>
+      </nav>
 
-      <section class="onboard-step">
-        <h2>species</h2>
+      <!-- Step 0 — brief -->
+      <section class="wizard-step is-active" data-step="0">
+        <div class="wizard-hero">
+          <img src="/pets/axolotl/healthy/breath-a.svg" alt="" class="wizard-hero-sprite" />
+        </div>
+        <h1>meet your twin</h1>
+        <p>
+          twin.md is a desk creature that mirrors your state. it reads your
+          claude sessions and your second brain, and occasionally tells you
+          to take a break. everything stays on your machine.
+        </p>
+      </section>
+
+      <!-- Step 1 — species + name -->
+      <section class="wizard-step" data-step="1">
+        <h2>pick a species, tell it who you are</h2>
         <div class="species-row" role="radiogroup" aria-label="species">
           <label class="species-card">
             <input type="radio" name="species" value="axolotl" checked />
@@ -32,33 +50,130 @@
             <span>slime</span>
           </label>
         </div>
+        <label class="field">
+          <span>your name</span>
+          <input
+            id="owner"
+            class="text-input"
+            type="text"
+            placeholder="what does your twin call you?"
+            autocomplete="off"
+          />
+        </label>
       </section>
 
-      <section class="onboard-step">
-        <h2>your name</h2>
-        <input
-          id="owner"
-          class="text-input"
-          type="text"
-          placeholder="what does your twin call you?"
-          autocomplete="off"
-        />
-      </section>
-
-      <section class="onboard-step">
-        <h2>obsidian vault <small>(optional)</small></h2>
-        <div class="vault-picker">
-          <button id="pick-vault" class="secondary-button" type="button">
-            pick a folder
-          </button>
-          <span id="vault-path" class="vault-path muted">none selected</span>
+      <!-- Step 2 — .claude dir -->
+      <section class="wizard-step" data-step="2">
+        <h2><code>~/.claude/</code> directory</h2>
+        <p class="muted">
+          this is where twin.md reads your claude sessions and writes its own
+          state. it also stores your ai provider settings here.
+        </p>
+        <div class="detection-card" data-detection="claude-dir">
+          <span class="detection-icon" aria-hidden="true">·</span>
+          <span class="detection-body">checking…</span>
         </div>
+        <button id="retry-claude" class="secondary-button" type="button" hidden>
+          create it for me
+        </button>
       </section>
 
-      <footer class="onboard-footer">
+      <!-- Step 3 — obsidian vault -->
+      <section class="wizard-step" data-step="3">
+        <h2>obsidian vault <small>(optional)</small></h2>
+        <p class="muted">
+          twin reads daily notes, tags, and unfinished todos from your vault
+          to figure out what you're thinking about. nothing leaves your disk.
+        </p>
+        <div class="choice-grid">
+          <button class="choice-card" type="button" data-vault-choice="existing">
+            <strong>i have a vault</strong>
+            <span>point to an obsidian folder</span>
+          </button>
+          <button class="choice-card" type="button" data-vault-choice="create">
+            <strong>what's obsidian?</strong>
+            <span>we'll start one for you</span>
+          </button>
+          <button class="choice-card" type="button" data-vault-choice="skip">
+            <strong>skip</strong>
+            <span>claude harvest still runs</span>
+          </button>
+        </div>
+        <div class="vault-status" id="vault-status" hidden></div>
+      </section>
+
+      <!-- Step 4 — provider + key -->
+      <section class="wizard-step" data-step="4">
+        <h2>ai provider</h2>
+        <div class="provider-row" role="radiogroup" aria-label="provider">
+          <label class="provider-card">
+            <input type="radio" name="provider" value="anthropic" checked />
+            <span class="provider-name">anthropic</span>
+            <span class="provider-sub">claude</span>
+          </label>
+          <label class="provider-card">
+            <input type="radio" name="provider" value="openai" />
+            <span class="provider-name">openai</span>
+            <span class="provider-sub">gpt-5</span>
+          </label>
+          <label class="provider-card">
+            <input type="radio" name="provider" value="gemini" />
+            <span class="provider-name">google</span>
+            <span class="provider-sub">gemini</span>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>model</span>
+          <select id="model" class="text-input"></select>
+        </label>
+
+        <label class="field">
+          <span>
+            api key
+            <a href="#" class="where-link" id="where-link" target="_blank" rel="noreferrer">
+              where do i get this?
+            </a>
+          </span>
+          <input
+            id="api-key"
+            class="text-input"
+            type="password"
+            placeholder="sk-ant-… / sk-… / AIza…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="store-keychain" checked />
+          <span>save to macos keychain</span>
+        </label>
+
+        <button class="text-button" type="button" id="skip-ai">
+          skip for now — run without chat
+        </button>
+      </section>
+
+      <!-- Step 5 — summon -->
+      <section class="wizard-step" data-step="5">
+        <div class="wizard-hero">
+          <img src="/pets/axolotl/healthy/reaction-happy.svg" alt="" class="wizard-hero-sprite" />
+        </div>
+        <h1>ready to summon</h1>
+        <p class="muted">
+          we'll harvest your second brain, seed your <code>twin.md</code>, and
+          wake the companion window. this usually takes a few seconds.
+        </p>
         <p id="onboard-status" class="muted"></p>
-        <button id="onboard-submit" class="primary-button" type="button">
-          summon my twin
+      </section>
+
+      <footer class="wizard-footer">
+        <button id="wizard-back" class="secondary-button" type="button" hidden>
+          back
+        </button>
+        <button id="wizard-next" class="primary-button" type="button">
+          next
         </button>
       </footer>
     </main>

@@ -8,6 +8,8 @@ const dismiss = document.getElementById(
   "bubble-dismiss"
 ) as HTMLButtonElement;
 
+const AUTO_DISMISS_MS = 45_000;
+
 function readQuery(): {
   id: string;
   tone: BubbleTone;
@@ -34,8 +36,33 @@ function render() {
   text.textContent = body;
 }
 
+// Pausable countdown — freezes when the window is hidden (minimized, behind
+// focus, or on a locked screen). Per IMPROVEMENT_PLAN §5.
+let remaining = AUTO_DISMISS_MS;
+let lastResume = performance.now();
+let timer: number | null = null;
+
+function pauseTimer() {
+  if (timer === null) return;
+  window.clearTimeout(timer);
+  timer = null;
+  remaining = Math.max(0, remaining - (performance.now() - lastResume));
+}
+
+function resumeTimer() {
+  if (timer !== null) return;
+  lastResume = performance.now();
+  timer = window.setTimeout(close, remaining);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    pauseTimer();
+  } else {
+    resumeTimer();
+  }
+});
+
 render();
 dismiss.addEventListener("click", close);
-
-// Auto-dismiss per DESIGN_BRIEF §6: 45s
-window.setTimeout(close, 45_000);
+resumeTimer();

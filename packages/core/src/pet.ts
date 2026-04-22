@@ -1,6 +1,8 @@
 import type { TwinSpecies } from "./config.js";
 import { getPetSvgFrame, type PetSvgFrameName } from "./generated/pet-svg.js";
 
+export { getPetSvgFrame, type PetSvgFrameName } from "./generated/pet-svg.js";
+
 export const TWIN_STATES = [
   "healthy",
   "sleep_deprived",

@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { PetState, Reminder, TwinDocument } from "@twin-md/core";
 import { motion, AnimatePresence } from "framer-motion";
+import { SimsStatusRail } from "./SimsStatusRail";
 
 type TwinPhoneShellProps = {
   initialDocument: TwinDocument;
@@ -136,10 +137,9 @@ export function TwinPhoneShell({
             transition={getPetTransition(deferredState.state)}
           >
             <div className="pet-shadow" />
-            <div
-              className="pet-svg"
-              aria-label={`${deferredState.species} ${deferredState.state}`}
-              dangerouslySetInnerHTML={{ __html: deferredState.svg }}
+            <PetSpritePair
+              species={deferredState.species}
+              state={deferredState.state}
             />
           </motion.div>
           <p className="companion-caption">{deferredState.caption}</p>
@@ -184,12 +184,13 @@ export function TwinPhoneShell({
             transition={getPetTransition(deferredState.state)}
           >
             <div className="pet-shadow" />
-            <div
-              className="pet-svg"
-              aria-label={`${deferredState.species} ${deferredState.state}`}
-              dangerouslySetInnerHTML={{ __html: deferredState.svg }}
+            <PetSpritePair
+              species={deferredState.species}
+              state={deferredState.state}
             />
           </motion.div>
+
+          <SimsStatusRail state={deferredState} document={document} />
 
           <div className="dialogue-bubble">
             <p className="lede">{deferredState.message}</p>
@@ -369,6 +370,43 @@ function SignalsCard({ document }: { document: TwinDocument }) {
         {todos > 0 ? `${todos} open · ` : ""}{tone}
       </p>
     </article>
+  );
+}
+
+function PetSpritePair({
+  species,
+  state
+}: {
+  species: PetState["species"];
+  state: PetState["state"];
+}) {
+  const [phase, setPhase] = useState<"a" | "b">("a");
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setPhase((prev) => (prev === "a" ? "b" : "a"));
+    }, 900);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const src = (frame: string) => `/pets/${species}/${state}/${frame}.svg`;
+
+  return (
+    <div className="pet-svg" aria-label={`${species} ${state}`} role="img">
+      <img
+        key={`${species}-${state}-a`}
+        src={src("breath-a")}
+        alt=""
+        className={`pet-frame${phase === "a" ? " active" : ""}`}
+        draggable={false}
+      />
+      <img
+        key={`${species}-${state}-b`}
+        src={src("breath-b")}
+        alt=""
+        className={`pet-frame${phase === "b" ? " active" : ""}`}
+        draggable={false}
+      />
+    </div>
   );
 }
 

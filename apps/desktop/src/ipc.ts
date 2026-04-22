@@ -14,6 +14,60 @@ export interface ChatStatus {
   has_api_key: boolean;
   vault_path: string | null;
   notes_available: number;
+  provider: string;
+  model: string;
+}
+
+export type AiProvider = "anthropic" | "openai" | "gemini";
+
+export interface ClaudeDirStatus {
+  path: string;
+  existed: boolean;
+  created: boolean;
+}
+
+export interface StarterVaultResult {
+  path: string;
+}
+
+export interface ProviderCredentialsPayload {
+  provider: AiProvider;
+  model: string;
+  apiKey?: string | null;
+  storeInKeychain?: boolean;
+}
+
+export interface ProviderCredentialsResult {
+  ok: boolean;
+  storage: "env" | "keychain" | "config";
+  provider: AiProvider;
+  model: string;
+}
+
+export interface ModelList {
+  provider: AiProvider;
+  models: string[];
+  default_model: string;
+}
+
+export async function ensureClaudeDir(): Promise<ClaudeDirStatus> {
+  return invoke<ClaudeDirStatus>("ensure_claude_dir");
+}
+
+export async function createStarterVault(
+  path?: string | null
+): Promise<StarterVaultResult> {
+  return invoke<StarterVaultResult>("create_starter_vault", { path: path ?? null });
+}
+
+export async function saveProviderCredentials(
+  payload: ProviderCredentialsPayload
+): Promise<ProviderCredentialsResult> {
+  return invoke<ProviderCredentialsResult>("save_provider_credentials", { payload });
+}
+
+export async function listModels(provider: AiProvider): Promise<ModelList> {
+  return invoke<ModelList>("list_models", { provider });
 }
 
 export async function getChatStatus(): Promise<ChatStatus | null> {

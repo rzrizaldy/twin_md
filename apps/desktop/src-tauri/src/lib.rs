@@ -1,9 +1,12 @@
 mod chat;
 mod context;
+mod credentials;
 mod harvest;
 mod ipc;
 mod model;
 mod paths;
+mod presence;
+mod provider;
 mod screentime;
 mod state;
 mod tray;
@@ -15,6 +18,7 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 
 use crate::model::Reminder;
+use crate::presence::PresenceState;
 use crate::screentime::FatigueTracker;
 use crate::state::SharedState;
 
@@ -33,6 +37,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(SharedState::default())
         .manage(Arc::new(FatigueTracker::new()))
+        .manage(PresenceState::new())
         .invoke_handler(tauri::generate_handler![
             ipc::get_state,
             ipc::get_chat_status,
@@ -41,6 +46,10 @@ pub fn run() {
             ipc::trigger_harvest,
             ipc::send_chat,
             ipc::run_onboarding,
+            ipc::ensure_claude_dir,
+            ipc::create_starter_vault,
+            ipc::save_provider_credentials,
+            ipc::list_models,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -69,6 +78,10 @@ pub fn run() {
                 screentime::spawn_sampler(fatigue).await;
             });
 
+            // Presence sampler — gates bubble emission on active user.
+            let presence = app.state::<Arc<PresenceState>>().inner().clone();
+            presence::spawn_sampler(handle.clone(), presence);
+
             // Always boot into onboarding — the companion summons itself once
             // the user hits "summon my twin" (see ipc::run_onboarding).
             windows::open_onboarding(&handle)?;
@@ -90,8 +103,13 @@ fn register_reminder_listener(handle: AppHandle) {
     handle.listen("twin://reminder", move |event| {
         let payload = event.payload();
         if let Ok(reminder) = serde_json::from_str::<Reminder>(payload) {
-            if let Err(err) = windows::spawn_bubble(&app, &reminder) {
-                eprintln!("[twin] bubble spawn failed: {err:?}");
+            let presence = app.state::<Arc<PresenceState>>().inner().clone();
+            if presence.can_emit() {
+                if let Err(err) = windows::spawn_bubble(&app, &reminder) {
+                    eprintln!("[twin] bubble spawn failed: {err:?}");
+                }
+            } else {
+                presence.enqueue(reminder);
             }
         }
     });

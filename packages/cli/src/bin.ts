@@ -22,6 +22,9 @@ program
   .option("--health-path <path>", "health json path")
   .option("--calendar-path <path>", "calendar ics path")
   .option("--location-path <path>", "location json path")
+  .option("--provider <name>", "ai provider (anthropic | openai | gemini)")
+  .option("--model <name>", "model id for the chosen provider")
+  .option("--api-key <key>", "api key for the chosen provider")
   .action(runInitCommand);
 
 program.command("harvest").description("harvest local sources into twin.md").action(runHarvestCommand);

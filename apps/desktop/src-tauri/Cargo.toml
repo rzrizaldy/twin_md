@@ -33,6 +33,9 @@ futures = "0.3"
 once_cell = "1"
 url = "2"
 urlencoding = "2"
+keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+async-stream = "0.3"
+pin-project-lite = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Shell-out to ioreg + osascript keeps us off objc2 for v1 (see PLAN_V2 §8.2).
