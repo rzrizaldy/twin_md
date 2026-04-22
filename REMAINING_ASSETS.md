@@ -30,8 +30,8 @@ Repo truth was re-audited on 2026-04-21 after the image generation pass. This fi
 - [x] Healthy (All SVGs generated)
 - [x] Sleep Deprived (All SVGs generated)
 - [x] Stressed (All SVGs generated)
-- [ ] Neglected (Partial: missing `reaction-wilt.svg`, `reminder-speak.svg`)
-  Remaining reference PNGs blocked by API billing limit on 2026-04-22: `reminder-speak-reference.png`, `reaction-wilt-reference.png`
+- [x] Neglected (All SVGs generated)
+- [x] Neglected reference PNGs: `breath-a-reference.png`, `breath-b-reference.png`, `blink-reference.png`, `reminder-speak-reference.png`, `reaction-wilt-reference.png`
 - [x] Turnarounds: `turn-front.svg`, `turn-3q.svg`
 - [x] Turnaround reference PNGs: `turn-front-reference.png`, `turn-3q-reference.png`
 - [x] Terminal ASCII Text Files: 12 `.txt` files across the 4 moods
