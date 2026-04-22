@@ -10,7 +10,7 @@ import {
   readTwinConfigOrDefault,
   runReminderSweep,
   writePetState
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

@@ -1,12 +1,28 @@
-export * from "./chat.js";
+// Browser-safe public surface for @twin-md/core.
+//
+// Anything that reaches for `node:fs`, `node:os`, `node:path`, the Anthropic
+// SDK, or the local file vault lives under the `@twin-md/core/server`
+// subpath. Keeping the root entry fs-free is what lets the Next.js client
+// bundle and the Tauri webview import shared types without esbuild trying
+// to polyfill `fs/promises`.
+
 export * from "./chat-commands.js";
-// NOTE: commands/* is server-only (imports node:fs). Import it via the
-// `@twin-md/core/commands` subpath to keep the root entry browser-safe.
-export * from "./config.js";
-export * from "./context-reply.js";
-export * from "./harvest/index.js";
-export * from "./interpret.js";
-export * from "./paths.js";
 export * from "./pet.js";
-export * from "./reminders.js";
 export * from "./schema.js";
+
+// Type-only re-exports for bits that live alongside node-tainted code.
+// `export type` is erased at compile time, so esbuild never follows the
+// underlying module at runtime.
+export type {
+  AiKeyStorage,
+  AiProvider,
+  TwinConfig,
+  TwinSpecies
+} from "./config.js";
+export type { PetState } from "./interpret.js";
+export type {
+  Reminder,
+  ReminderRuleId,
+  ReminderTier,
+  ReminderTone
+} from "./reminders.js";

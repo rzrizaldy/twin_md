@@ -1,7 +1,22 @@
 import type { TwinSpecies } from "./config.js";
-import { getPetSvgFrame, type PetSvgFrameName } from "./generated/pet-svg.js";
 
-export { getPetSvgFrame, type PetSvgFrameName } from "./generated/pet-svg.js";
+// The 8 animation frames shipped per (species, state). Previously these were
+// procedurally-generated SVG strings inlined into the bundle via
+// `generated/pet-svg.ts`. Web + desktop now fetch the colourful PNGs from
+// disk via `/pets/[species]/[state]/[frame].png`, so the SVG inlining is
+// gone — we only keep the name union for callers that still want to pick
+// a frame by name.
+export const PET_SVG_FRAME_NAMES = [
+  "breath-a",
+  "breath-b",
+  "blink",
+  "reminder-speak",
+  "reaction-happy",
+  "reaction-wilt",
+  "turn-3q",
+  "turn-front"
+] as const;
+export type PetSvgFrameName = (typeof PET_SVG_FRAME_NAMES)[number];
 
 export const TWIN_STATES = [
   "healthy",
@@ -92,14 +107,6 @@ export function renderAsciiPet(
           ];
 
   return body.join("\n");
-}
-
-export function renderSvgPet(
-  species: TwinSpecies,
-  state: TwinState,
-  frame: PetSvgFrameName = "breath-a"
-): string {
-  return getPetSvgFrame(species, state, frame);
 }
 
 export function getStateColor(state: TwinState): string {

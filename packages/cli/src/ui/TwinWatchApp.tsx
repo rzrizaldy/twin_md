@@ -18,7 +18,7 @@ import {
   type Reminder,
   type TwinConfig,
   writePetState
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 
 type TwinWatchAppProps = {
   config: TwinConfig;

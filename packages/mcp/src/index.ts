@@ -14,7 +14,7 @@ import {
   runTwinHarvest,
   speakWithTwin,
   writePetState
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 
 export async function startTwinMcpServer(): Promise<void> {
   const config = await readTwinConfigOrDefault();

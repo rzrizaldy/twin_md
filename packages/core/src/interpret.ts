@@ -6,7 +6,6 @@ import { ensureParentDir, getTwinStatePath } from "./paths.js";
 import {
   getStateColor,
   renderAsciiPet,
-  renderSvgPet,
   type TwinAnimation,
   type TwinEnvironment,
   type TwinState
@@ -417,7 +416,9 @@ function finalizePetState(
     updated: new Date().toISOString(),
     sourceUpdated: document.updated,
     ascii: renderAsciiPet(document.species, partial.state),
-    svg: renderSvgPet(document.species, partial.state),
+    // Frontends now fetch sprites by URL from /pets/[species]/[state]/[frame].png.
+    // Kept as an empty string so the zod contract + Rust PetState still parse.
+    svg: "",
     color: getStateColor(partial.state)
   });
 }

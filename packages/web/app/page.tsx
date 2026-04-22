@@ -6,7 +6,7 @@ import {
   readReminderLedger,
   readTwinConfigOrDefault,
   writePetState
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 import { TwinPhoneShell } from "./components/TwinPhoneShell";
 
 type PageProps = {

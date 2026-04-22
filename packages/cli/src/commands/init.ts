@@ -12,7 +12,7 @@ import {
   type TwinConfig,
   writePetState,
   writeTwinConfig
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 import { resolveMcpEntrypoint } from "../support.js";
 
 type InitOptions = {
@@ -123,7 +123,7 @@ async function saveCliKey(
 ): Promise<void> {
   const { writeFile, mkdir, chmod } = await import("node:fs/promises");
   const { dirname } = await import("node:path");
-  const { getClaudeDir } = await import("@twin-md/core");
+  const { getClaudeDir } = await import("@twin-md/core/server");
 
   const path = `${getClaudeDir()}/twin-ai.json`;
   await mkdir(dirname(path), { recursive: true });

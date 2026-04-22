@@ -16,7 +16,7 @@ import {
   writePetState,
   type Reminder,
   type TwinConfig
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 
 const DEFAULT_INTERVAL_MINUTES = 15;
 

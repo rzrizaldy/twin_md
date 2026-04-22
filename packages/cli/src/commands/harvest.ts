@@ -1,4 +1,4 @@
-import { readTwinConfigOrDefault, runTwinHarvest } from "@twin-md/core";
+import { readTwinConfigOrDefault, runTwinHarvest } from "@twin-md/core/server";
 
 export async function runHarvestCommand(): Promise<void> {
   const config = await readTwinConfigOrDefault();

@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
-import { readTwinConfigOrDefault, runTwinHarvest } from "@twin-md/core";
+import { readTwinConfigOrDefault, runTwinHarvest } from "@twin-md/core/server";
 import { getLanUrl, resolvePackageRoot } from "../support.js";
 
 type WebOptions = {

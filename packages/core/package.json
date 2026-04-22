@@ -12,6 +12,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
     "./commands": {
       "types": "./dist/commands.d.ts",
       "import": "./dist/commands.js",
@@ -28,7 +33,7 @@
     "assets"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/commands.ts src/chat-commands.ts --format esm --dts --no-splitting",
+    "build": "tsup src/index.ts src/server.ts src/commands.ts src/chat-commands.ts --format esm --dts --no-splitting",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },

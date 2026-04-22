@@ -1,27 +1,45 @@
-import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { TWIN_ENVIRONMENTS, type TwinEnvironment } from "@twin-md/core";
 
-const require = createRequire(import.meta.url);
+// Walk up from the working dir to find packages/core/assets/scenes. Tries the
+// monorepo layout first, then falls back to a hoisted node_modules copy.
+function resolveAssetsDir(): string {
+  const candidates = [
+    resolve(process.cwd(), "../core/assets/scenes"),
+    resolve(process.cwd(), "../../packages/core/assets/scenes"),
+    resolve(process.cwd(), "node_modules/@twin-md/core/assets/scenes")
+  ];
 
-// Resolve once at module load; the Node server runtime can reach the
-// workspace-linked assets under `@twin-md/core/assets/scenes/{env}/composite.svg`.
-const coreAssetsRoot = (() => {
-  const pkgPath = require.resolve("@twin-md/core/package.json");
-  return join(dirname(pkgPath), "assets", "scenes");
-})();
+  for (const dir of candidates) {
+    try {
+      readFileSync(resolve(dir, "..", "tokens.json"));
+      return dir;
+    } catch {
+      // try next
+    }
+  }
+  return candidates[0];
+}
 
-// In-memory cache so we don't re-read 1-2MB SVGs on every request.
-const cache = new Map<TwinEnvironment, string>();
+let _assetsDir: string | undefined;
+function getAssetsDir(): string {
+  if (!_assetsDir) {
+    _assetsDir = resolveAssetsDir();
+  }
+  return _assetsDir;
+}
+
+// In-memory cache so we don't re-read ~1-2MB PNG buffers on every request.
+const cache = new Map<TwinEnvironment, Buffer>();
 
 type RouteContext = {
   params: Promise<{ env: string }>;
 };
 
 function normalise(raw: string): TwinEnvironment | null {
-  const bare = raw.replace(/\.svg$/, "") as TwinEnvironment;
+  const bare = raw.replace(/\.(png|svg)$/, "") as TwinEnvironment;
   return (TWIN_ENVIRONMENTS as readonly string[]).includes(bare) ? bare : null;
 }
 
@@ -32,23 +50,20 @@ export async function GET(_req: Request, ctx: RouteContext): Promise<Response> {
     return new Response("scene not found", { status: 404 });
   }
 
-  let svg = cache.get(scene);
-  if (!svg) {
+  let buf = cache.get(scene);
+  if (!buf) {
     try {
-      svg = await readFile(
-        join(coreAssetsRoot, scene, "composite.svg"),
-        "utf8"
-      );
-      cache.set(scene, svg);
+      buf = readFileSync(resolve(getAssetsDir(), scene, "reference.png"));
+      cache.set(scene, buf);
     } catch {
       return new Response("scene asset missing", { status: 404 });
     }
   }
 
-  return new Response(svg, {
+  return new Response(new Uint8Array(buf), {
     status: 200,
     headers: {
-      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Content-Type": "image/png",
       "Cache-Control": "public, max-age=300, must-revalidate"
     }
   });

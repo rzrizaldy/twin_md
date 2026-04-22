@@ -5,7 +5,7 @@ import {
   readTwinConfigOrDefault,
   readCurrentTwinState,
   writePetState
-} from "@twin-md/core";
+} from "@twin-md/core/server";
 import { TwinWatchApp } from "../ui/TwinWatchApp.js";
 
 export async function runWatchCommand(): Promise<void> {

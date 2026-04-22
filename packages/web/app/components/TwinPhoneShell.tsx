@@ -293,7 +293,7 @@ function SceneBackdrop({ state }: { state: PetState["state"] }) {
     <AnimatePresence mode="wait" initial={false}>
       <motion.img
         key={env}
-        src={`/scenes/${env}.svg`}
+        src={`/scenes/${env}.png`}
         alt=""
         aria-hidden
         draggable={false}
@@ -357,7 +357,7 @@ function PetSpritePair({
     return () => window.clearInterval(id);
   }, []);
 
-  const src = (frame: string) => `/pets/${species}/${state}/${frame}.svg`;
+  const src = (frame: string) => `/pets/${species}/${state}/${frame}.png`;
 
   return (
     <div className="pet-svg" aria-label={`${species} ${state}`} role="img">
