@@ -68,6 +68,55 @@ impl Provider {
 
 pub type TextStream = Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
 
+/// Lightweight liveness check for an API key. Hits a cheap models-list endpoint
+/// (or equivalent) with a 5-second timeout. Returns `Ok(())` when the key is
+/// accepted, `Err` with a human-facing message otherwise.
+pub async fn validate_key(provider: Provider, api_key: &str) -> Result<()> {
+    if api_key.trim().is_empty() {
+        return Err(anyhow!("empty api key"));
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()?;
+
+    let response = match provider {
+        Provider::Anthropic => client
+            .get("https://api.anthropic.com/v1/models")
+            .header("x-api-key", api_key)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .send()
+            .await
+            .map_err(|e| anyhow!("anthropic reachability: {e}"))?,
+        Provider::Openai => client
+            .get("https://api.openai.com/v1/models")
+            .bearer_auth(api_key)
+            .send()
+            .await
+            .map_err(|e| anyhow!("openai reachability: {e}"))?,
+        Provider::Gemini => {
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models?key={}",
+                urlencoding::encode(api_key)
+            );
+            client
+                .get(url)
+                .send()
+                .await
+                .map_err(|e| anyhow!("gemini reachability: {e}"))?
+        }
+    };
+
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        let snippet: String = body.chars().take(160).collect();
+        Err(anyhow!("key rejected ({status}): {snippet}"))
+    }
+}
+
 pub async fn stream(
     provider: Provider,
     model: &str,

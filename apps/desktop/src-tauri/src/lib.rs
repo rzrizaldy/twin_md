@@ -1,4 +1,5 @@
 mod chat;
+mod commands;
 mod context;
 mod credentials;
 mod harvest;
@@ -10,6 +11,7 @@ mod provider;
 mod screentime;
 mod state;
 mod tray;
+mod webshell;
 mod windows;
 
 use std::sync::Arc;
@@ -43,8 +45,13 @@ pub fn run() {
             ipc::get_chat_status,
             ipc::dismiss_bubble,
             ipc::open_chat,
+            ipc::open_web_companion,
             ipc::trigger_harvest,
             ipc::send_chat,
+            ipc::run_local_command,
+            ipc::stream_slash_command,
+            ipc::validate_provider_key,
+            ipc::set_vault_path,
             ipc::run_onboarding,
             ipc::ensure_claude_dir,
             ipc::create_starter_vault,

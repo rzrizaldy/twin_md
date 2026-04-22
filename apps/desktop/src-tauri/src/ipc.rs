@@ -1,9 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use crate::chat;
+use crate::commands as slash_commands;
 use crate::credentials;
 use crate::harvest;
 use crate::model::PetState;
@@ -59,6 +60,13 @@ pub async fn open_chat(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn open_web_companion(app: AppHandle) -> Result<(), String> {
+    crate::webshell::open_web_companion(app)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn trigger_harvest() -> Result<(), String> {
     harvest::harvest().await.map_err(|e| e.to_string())
 }
@@ -73,6 +81,128 @@ pub async fn send_chat(
     tauri::async_runtime::spawn(async move {
         if let Err(err) = chat::stream(app, message, state).await {
             eprintln!("[twin] chat stream error: {err:?}");
+        }
+    });
+    Ok(())
+}
+
+// ──────────────────────────── Slash commands ────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultPayload {
+    pub path: Option<String>,
+}
+
+/// Persists the vault path into `~/.claude/twin.config.json` immediately on
+/// select. Keeps the rest of the config intact; creates the file if missing.
+#[tauri::command]
+pub fn set_vault_path(payload: VaultPayload) -> Result<(), String> {
+    let cfg_path = claude_dir().join("twin.config.json");
+    fs::create_dir_all(claude_dir()).map_err(|e| e.to_string())?;
+
+    let mut value: serde_json::Value = match fs::read(&cfg_path) {
+        Ok(bytes) if !bytes.is_empty() => {
+            serde_json::from_slice(&bytes).unwrap_or_else(|_| serde_json::json!({}))
+        }
+        _ => serde_json::json!({}),
+    };
+
+    if !value.is_object() {
+        value = serde_json::json!({});
+    }
+
+    let obj = value.as_object_mut().expect("object");
+    match payload.path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(p) => {
+            obj.insert(
+                "obsidianVaultPath".into(),
+                serde_json::Value::String(p.to_string()),
+            );
+        }
+        None => {
+            obj.remove("obsidianVaultPath");
+        }
+    }
+
+    fs::write(&cfg_path, serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidateKeyPayload {
+    pub provider: String,
+    pub api_key: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidateKeyResult {
+    pub ok: bool,
+    pub message: String,
+}
+
+#[tauri::command]
+pub async fn validate_provider_key(
+    payload: ValidateKeyPayload,
+) -> Result<ValidateKeyResult, String> {
+    let provider = Provider::parse(&payload.provider)
+        .ok_or_else(|| format!("unknown provider: {}", payload.provider))?;
+    match crate::provider::validate_key(provider, &payload.api_key).await {
+        Ok(()) => Ok(ValidateKeyResult {
+            ok: true,
+            message: "key accepted".into(),
+        }),
+        Err(err) => Ok(ValidateKeyResult {
+            ok: false,
+            message: err.to_string(),
+        }),
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalCommandPayload {
+    pub handler: String, // "inbox" | "mood"
+    pub args: String,
+}
+
+#[tauri::command]
+pub fn run_local_command(
+    payload: LocalCommandPayload,
+) -> Result<slash_commands::CommandOutcome, String> {
+    let result = match payload.handler.as_str() {
+        "inbox" => slash_commands::run_inbox(&payload.args),
+        "mood" => slash_commands::run_mood(&payload.args),
+        other => return Err(format!("unknown local command handler: {other}")),
+    };
+    result.map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlashStreamPayload {
+    pub system_prompt: String,
+    pub user_message: String,
+}
+
+/// LLM-backed slash command — streams through the same `twin://chat-token`
+/// channel as regular chat but uses the caller-supplied system prompt (the
+/// pet-wellness persona).
+#[tauri::command]
+pub async fn stream_slash_command(
+    app: AppHandle,
+    shared: State<'_, SharedState>,
+    payload: SlashStreamPayload,
+) -> Result<(), String> {
+    let state = shared.get();
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) =
+            chat::stream_with_system(app, payload.user_message, state, Some(payload.system_prompt))
+                .await
+        {
+            eprintln!("[twin] slash command stream error: {err:?}");
         }
     });
     Ok(())

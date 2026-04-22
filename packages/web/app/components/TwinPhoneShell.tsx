@@ -8,7 +8,12 @@ import {
   useState,
   type FormEvent
 } from "react";
-import type { PetState, Reminder, TwinDocument } from "@twin-md/core";
+import {
+  getSceneForState,
+  type PetState,
+  type Reminder,
+  type TwinDocument
+} from "@twin-md/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { SimsStatusRail } from "./SimsStatusRail";
 
@@ -283,58 +288,22 @@ function ReminderStack({
 }
 
 function SceneBackdrop({ state }: { state: PetState["state"] }) {
+  const env = getSceneForState(state);
   return (
-    <>
-      <div className="scene-sky" />
-      <div className="scene-orb" />
-      <div className="scene-ground" />
-
-      {state === "healthy" ? (
-        <>
-          <div className="cloud cloud-a" />
-          <div className="cloud cloud-b" />
-          <div className="flower flower-a" />
-          <div className="flower flower-b" />
-          <div className="flower flower-c" />
-          <div className="sparkle sparkle-a" />
-          <div className="sparkle sparkle-b" />
-        </>
-      ) : null}
-
-      {state === "sleep_deprived" ? (
-        <>
-          <div className="cloud cloud-a hush" />
-          <div className="cloud cloud-b hush" />
-          {Array.from({ length: 6 }).map((_, index) => (
-            <span key={`star-${index}`} className={`star star-${index + 1}`} />
-          ))}
-        </>
-      ) : null}
-
-      {state === "stressed" ? (
-        <>
-          <div className="storm-cloud storm-a" />
-          <div className="storm-cloud storm-b" />
-          {Array.from({ length: 4 }).map((_, index) => (
-            <span key={`rain-${index}`} className={`rain-drop rain-${index + 1}`} />
-          ))}
-          <div className="paper paper-a" />
-          <div className="paper paper-b" />
-          <div className="paper paper-c" />
-          <div className="desk-edge" />
-        </>
-      ) : null}
-
-      {state === "neglected" ? (
-        <>
-          <div className="fog" />
-          <div className="wilt wilt-a" />
-          <div className="wilt wilt-b" />
-          <div className="wilt wilt-c" />
-          <div className="chair-outline" />
-        </>
-      ) : null}
-    </>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.img
+        key={env}
+        src={`/scenes/${env}.svg`}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="scene-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      />
+    </AnimatePresence>
   );
 }
 

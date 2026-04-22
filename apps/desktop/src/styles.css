@@ -1,3 +1,6 @@
+@import "@fontsource-variable/inter-tight/wght.css";
+@import "@fontsource-variable/fraunces/wght.css";
+
 :root {
   --cream: #fff8d2;
   --mint: #c4f2cb;
@@ -8,8 +11,8 @@
   --clipped: #ffe1d4;
   --groggy: #d5d8ff;
   --radius: 18px;
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Inter Tight", -apple-system, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
+  --font-body: "Inter Tight Variable", "Inter Tight", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
 
@@ -271,14 +274,40 @@ body.window {
 
 .chat-bubble {
   max-width: min(80%, 360px);
-  padding: 10px 14px;
+  padding: 11px 15px;
   border-radius: 14px;
-  line-height: 1.45;
-  font-size: 14px;
+  line-height: 1.55;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 420;
+  letter-spacing: -0.005em;
+  font-feature-settings: "ss01", "cv11";
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   word-break: normal;
-  hyphens: auto;
+}
+
+.chat-bubble p {
+  margin: 0 0 0.55em;
+}
+
+.chat-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble ul,
+.chat-bubble ol {
+  margin: 0.4em 0;
+  padding-left: 1.2em;
+}
+
+.chat-bubble strong {
+  font-weight: 600;
+}
+
+.chat-bubble em {
+  font-style: italic;
+  opacity: 0.9;
 }
 
 .chat-bubble pre,
@@ -286,7 +315,7 @@ body.window {
   max-width: 100%;
   overflow-x: auto;
   white-space: pre;
-  font-family: var(--font-terminal, "JetBrains Mono", monospace);
+  font-family: var(--font-mono);
   font-size: 12.5px;
 }
 
@@ -332,10 +361,89 @@ body.window {
   border: 1.5px solid rgba(71, 54, 67, 0.35);
   padding: 10px 12px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
   background: #fff;
   color: var(--ink);
   outline: none;
+  letter-spacing: -0.005em;
+}
+
+.chat-chips {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 0;
+  flex-wrap: wrap;
+  overflow-x: auto;
+}
+
+.chat-chip {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(71, 54, 67, 0.22);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: -0.005em;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.chat-chip:hover {
+  background: var(--cream);
+  transform: translateY(-1px);
+}
+
+.chat-chip .chip-args {
+  color: rgba(71, 54, 67, 0.55);
+  margin-left: 4px;
+}
+
+.chat-footer {
+  position: relative;
+}
+
+.chat-autocomplete {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 4px);
+  background: #fff;
+  border: 1px solid rgba(71, 54, 67, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(29, 22, 28, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 4px;
+  z-index: 20;
+}
+
+.chat-autocomplete-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.chat-autocomplete-item:hover,
+.chat-autocomplete-item.active {
+  background: var(--cream);
+}
+
+.chat-autocomplete-name {
+  font-weight: 540;
+}
+
+.chat-autocomplete-blurb {
+  color: rgba(71, 54, 67, 0.68);
+  font-size: 12px;
+  text-align: right;
 }
 
 .chat-input:focus {

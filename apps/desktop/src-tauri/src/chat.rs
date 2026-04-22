@@ -16,6 +16,17 @@ pub fn has_api_key() -> bool {
 }
 
 pub async fn stream(app: AppHandle, message: String, state: Option<PetState>) -> Result<()> {
+    stream_with_system(app, message, state, None).await
+}
+
+/// Streams using a custom system prompt. Used by slash commands that need the
+/// wellness persona (/daily, /recap, /weekahead, /reflect).
+pub async fn stream_with_system(
+    app: AppHandle,
+    message: String,
+    state: Option<PetState>,
+    system_override: Option<String>,
+) -> Result<()> {
     let (provider_kind, model) = active_provider_and_model();
     let Some(api_key) = resolve_api_key(provider_kind) else {
         fallback(&app, provider_kind);
@@ -24,7 +35,13 @@ pub async fn stream(app: AppHandle, message: String, state: Option<PetState>) ->
     };
 
     let ctx = context::gather();
-    let system = build_system(state.as_ref(), &ctx);
+    let system = match system_override {
+        Some(custom) => {
+            let base = context::render_prompt(&ctx);
+            format!("{base}\n\n== persona ==\n{custom}\n")
+        }
+        None => build_system(state.as_ref(), &ctx),
+    };
 
     match provider::stream(provider_kind, &model, &api_key, &system, &message).await {
         Ok(mut stream) => {

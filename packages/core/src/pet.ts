@@ -19,6 +19,23 @@ export const TWIN_ENVIRONMENTS = [
 ] as const;
 export type TwinEnvironment = (typeof TWIN_ENVIRONMENTS)[number];
 
+// Used by desktop + web to pick a scene backdrop for the current pet state.
+// The map is intentionally 1:1 — each state gets one canonical environment.
+export function getSceneForState(state: TwinState): TwinEnvironment {
+  switch (state) {
+    case "healthy":
+      return "sunny_island";
+    case "sleep_deprived":
+      return "stars_at_noon";
+    case "stressed":
+      return "storm_room";
+    case "neglected":
+      return "grey_nook";
+    default:
+      return "sunny_island";
+  }
+}
+
 export const TWIN_ANIMATIONS = [
   "dancing",
   "yawning",

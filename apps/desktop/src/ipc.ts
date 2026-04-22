@@ -90,6 +90,10 @@ export async function openChat(): Promise<void> {
   await invoke("open_chat");
 }
 
+export async function openWebCompanion(): Promise<void> {
+  await invoke("open_web_companion");
+}
+
 export async function triggerHarvest(): Promise<void> {
   await invoke("trigger_harvest");
 }
@@ -130,4 +134,46 @@ export function onChatDone(cb: () => void): Promise<UnlistenFn> {
 
 export async function sendChat(message: string): Promise<void> {
   await invoke("send_chat", { message });
+}
+
+export interface LocalCommandOutcome {
+  ok: boolean;
+  message: string;
+  path: string | null;
+}
+
+export async function runLocalCommand(
+  handler: "inbox" | "mood",
+  args: string
+): Promise<LocalCommandOutcome> {
+  return invoke<LocalCommandOutcome>("run_local_command", {
+    payload: { handler, args }
+  });
+}
+
+export async function streamSlashCommand(
+  systemPrompt: string,
+  userMessage: string
+): Promise<void> {
+  await invoke("stream_slash_command", {
+    payload: { systemPrompt, userMessage }
+  });
+}
+
+export interface ValidateKeyResult {
+  ok: boolean;
+  message: string;
+}
+
+export async function setVaultPath(path: string | null): Promise<void> {
+  await invoke("set_vault_path", { payload: { path } });
+}
+
+export async function validateProviderKey(
+  provider: AiProvider,
+  apiKey: string
+): Promise<ValidateKeyResult> {
+  return invoke<ValidateKeyResult>("validate_provider_key", {
+    payload: { provider, apiKey }
+  });
 }

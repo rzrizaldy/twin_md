@@ -1,4 +1,7 @@
 export * from "./chat.js";
+export * from "./chat-commands.js";
+// NOTE: commands/* is server-only (imports node:fs). Import it via the
+// `@twin-md/core/commands` subpath to keep the root entry browser-safe.
 export * from "./config.js";
 export * from "./context-reply.js";
 export * from "./harvest/index.js";

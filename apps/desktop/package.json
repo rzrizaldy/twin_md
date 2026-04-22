@@ -17,11 +17,16 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/inter-tight": "^5.2.7",
     "@tauri-apps/api": "^2.1.0",
     "@tauri-apps/plugin-autostart": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
     "@tauri-apps/plugin-notification": "^2.0.0",
-    "@tauri-apps/plugin-shell": "^2.0.0"
+    "@tauri-apps/plugin-shell": "^2.0.0",
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.4.1",
+    "marked": "^14.1.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",

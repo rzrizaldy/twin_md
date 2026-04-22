@@ -4,22 +4,22 @@ overview: Ship IMPROVEMENT_PLAN_V2.md grouping the five reported issues (chat wr
 todos:
   - id: write-plan-doc
     content: Write IMPROVEMENT_PLAN_V2.md at repo root with the five tracks (F-J) above
-    status: pending
+    status: completed
   - id: track-f
     content: "Track F: fix chat wrap regression (overflow-wrap: break-word, drop hyphens: auto) + Inter Tight typography for bubbles, desktop + web"
-    status: pending
+    status: completed
   - id: track-g
     content: "Track G: add 'open in browser' tray item + onboarding button + IPC command using tauri-plugin-shell"
-    status: pending
+    status: completed
   - id: track-h
     content: "Track H: serve composite scene SVGs via /scenes/[env] route and swap SceneBackdrop to use them"
-    status: pending
+    status: completed
   - id: track-i
     content: "Track I: slash-command registry in @twin-md/core, desktop + web chip strip + autocomplete, /inbox /daily /recap /weekahead + 2-3 extras"
-    status: pending
+    status: completed
   - id: track-j
     content: "Track J: onboarding vault autosave, provider key validation, empty-state chat copy, auto-fire /daily on first chat"
-    status: pending
+    status: completed
 isProject: false
 ---
 

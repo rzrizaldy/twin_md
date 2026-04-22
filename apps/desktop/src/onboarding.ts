@@ -4,8 +4,11 @@ import {
   createStarterVault,
   ensureClaudeDir,
   listModels,
+  openWebCompanion,
   runOnboarding,
   saveProviderCredentials,
+  setVaultPath,
+  validateProviderKey,
   type AiProvider,
   type ClaudeDirStatus
 } from "./ipc.ts";
@@ -117,6 +120,20 @@ nextBtn.addEventListener("click", async () => {
 
   if (state.step === 4 && !state.skipAi) {
     nextBtn.disabled = true;
+    statusEl.textContent = "checking your key…";
+    try {
+      const check = await validateProviderKey(state.provider, state.apiKey.trim());
+      if (!check.ok) {
+        statusEl.textContent = `key rejected — ${check.message}`;
+        nextBtn.disabled = false;
+        return;
+      }
+    } catch (e) {
+      statusEl.textContent = `couldn't reach ${state.provider}: ${String(e)}`;
+      nextBtn.disabled = false;
+      return;
+    }
+
     statusEl.textContent = "saving credentials…";
     try {
       await saveProviderCredentials({
@@ -130,6 +147,7 @@ nextBtn.addEventListener("click", async () => {
       nextBtn.disabled = false;
       return;
     }
+    statusEl.textContent = "key works.";
     nextBtn.disabled = false;
   }
 
@@ -200,6 +218,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn
         state.vaultChoice = "existing";
         state.vaultPath = selected;
         vaultStatusEl.textContent = `reading from ${selected}`;
+        await persistVault(selected);
       } else {
         state.vaultChoice = null;
         state.vaultPath = null;
@@ -211,6 +230,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn
         state.vaultChoice = "create";
         state.vaultPath = result.path;
         vaultStatusEl.textContent = `seeded ${result.path}`;
+        await persistVault(result.path);
       } catch (err) {
         state.vaultChoice = null;
         state.vaultPath = null;
@@ -220,9 +240,18 @@ document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn
       state.vaultChoice = "skip";
       state.vaultPath = null;
       vaultStatusEl.textContent = "skipping — claude session harvest still runs.";
+      await persistVault(null);
     }
   });
 });
+
+async function persistVault(path: string | null) {
+  try {
+    await setVaultPath(path);
+  } catch (err) {
+    console.warn("vault persist failed (non-fatal)", err);
+  }
+}
 
 // — Step 4 —
 const modelSelect = $<HTMLSelectElement>("#model");
@@ -307,3 +336,15 @@ async function runSummon() {
 // Boot.
 void loadModels(state.provider);
 setStep(0);
+
+// — Step 5 extras —
+const openBrowserBtn = document.getElementById(
+  "open-browser"
+) as HTMLButtonElement | null;
+if (openBrowserBtn) {
+  openBrowserBtn.addEventListener("click", () => {
+    openWebCompanion().catch((err) => {
+      statusEl.textContent = `couldn't open browser: ${String(err)}`;
+    });
+  });
+}

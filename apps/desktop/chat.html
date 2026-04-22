@@ -16,12 +16,14 @@
     </header>
     <div id="chat-status" class="chat-status" hidden></div>
     <section id="chat-log" class="chat-log" aria-live="polite"></section>
+    <div id="chat-chips" class="chat-chips" aria-label="quick commands"></div>
     <footer class="chat-footer">
+      <div id="chat-autocomplete" class="chat-autocomplete" hidden></div>
       <form id="chat-form" class="chat-form">
         <textarea
           id="chat-input"
           class="chat-input"
-          placeholder="talk to your twin"
+          placeholder="talk to your twin — try /daily"
           rows="2"
         ></textarea>
         <button id="chat-send" class="chat-send" type="submit">send</button>
