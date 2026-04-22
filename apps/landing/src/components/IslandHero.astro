@@ -1,0 +1,65 @@
+---
+import BreathingSprite from './BreathingSprite.astro';
+---
+
+<section class="relative mt-10 overflow-hidden rounded-[2.5rem] border border-[var(--color-ink)]/10 bg-gradient-to-b from-[var(--color-cream)] to-[var(--color-mint)] px-6 pt-14 pb-10 sm:px-10 sm:pt-20 sm:pb-14">
+  <!-- soft sun -->
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[var(--color-sand)] opacity-70 blur-2xl"
+  >
+  </div>
+  <!-- island shape -->
+  <svg
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-x-0 bottom-[-2px] h-40 w-full text-[var(--color-slime-accent)]/25"
+    viewBox="0 0 1200 160"
+    preserveAspectRatio="none"
+  >
+    <path
+      d="M0 100 C 200 40, 360 160, 600 100 S 1000 40, 1200 110 L1200 160 L0 160 Z"
+      fill="currentColor"
+    ></path>
+  </svg>
+
+  <div class="relative grid gap-10 sm:grid-cols-[1.1fr_1fr] sm:items-center">
+    <div>
+      <p class="inline-flex items-center gap-2 rounded-full border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 px-3 py-1 text-xs tracking-wide text-[var(--color-ink-soft)] backdrop-blur">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-slime-accent)]"></span>
+        local-first · no accounts · MIT
+      </p>
+      <h1 class="mt-4 font-display text-4xl leading-[1.05] sm:text-6xl">
+        a desk creature that<br />
+        <span class="wobble text-[var(--color-axolotl-accent)]">reads your second brain</span>
+      </h1>
+      <p class="mt-5 max-w-xl text-[var(--color-ink-soft)] sm:text-lg">
+        twin.md sits beside you. It reads one file — <code class="rounded bg-[var(--color-paper)] px-1.5 py-0.5 text-sm">~/.claude/twin.md</code> — harvested from your own sleep, calendar, Obsidian notes, and Claude memory. From that, it decides whether to cheer, yawn, pace, or hide.
+      </p>
+
+      <div class="mt-7 flex flex-wrap items-center gap-3">
+        <a
+          href="/install"
+          class="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
+        >
+          install →
+        </a>
+        <a
+          href="/how-it-works"
+          class="inline-flex items-center gap-2 rounded-full border border-[var(--color-ink)]/20 px-5 py-2.5 text-sm text-[var(--color-ink)] transition-colors hover:bg-[var(--color-paper)]"
+        >
+          how it works
+        </a>
+      </div>
+
+      <div class="mt-6 inline-flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-xs text-[var(--color-ink)]">
+        <span class="text-[var(--color-ink-soft)]">$</span>
+        <span>npx twin-md init</span>
+      </div>
+    </div>
+
+    <div class="relative flex items-end justify-center">
+      <div class="absolute bottom-6 h-6 w-40 rounded-full bg-[var(--color-ink)]/10 blur-md"></div>
+      <BreathingSprite species="axolotl" mood="healthy" size={280} />
+    </div>
+  </div>
+</section>

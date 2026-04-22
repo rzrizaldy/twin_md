@@ -1,0 +1,38 @@
+---
+import CozyLayout from '../layouts/CozyLayout.astro';
+import BreathingSprite from '../components/BreathingSprite.astro';
+---
+
+<CozyLayout title="world" active="world">
+  <section class="mt-14 grid gap-10 sm:grid-cols-[1.1fr_1fr] sm:items-center">
+    <div>
+      <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">phase three</p>
+      <h1 class="mt-2 font-display text-4xl sm:text-5xl">an ambient world. later.</h1>
+      <p class="mt-4 max-w-xl text-[var(--color-ink-soft)]">
+        A larger scene — your twin on its island, weather shifting with your state. Eventually: other people’s twins meeting in a shared browser world.
+      </p>
+      <p class="mt-3 max-w-xl text-[var(--color-ink-soft)]">
+        Not yet. The desktop companion comes first. The world will follow once the creature feels right to live with.
+      </p>
+
+      <div class="mt-6 rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-5">
+        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">no mailing list</p>
+        <p class="mt-2 text-sm text-[var(--color-ink)]">
+          No email form, no DM. Check back. Or, when you’re running twin.md, the creature will tell you the day the world opens.
+        </p>
+      </div>
+    </div>
+
+    <div class="relative overflow-hidden rounded-[2.5rem] border border-[var(--color-ink)]/10 bg-gradient-to-b from-[var(--color-dusk)] to-[var(--color-mint)] p-10">
+      <div aria-hidden="true" class="pointer-events-none absolute left-10 top-10 h-16 w-16 rounded-full bg-[var(--color-paper)] opacity-60 blur-md"></div>
+      <div aria-hidden="true" class="pointer-events-none absolute right-6 top-20 h-2 w-2 rounded-full bg-[var(--color-paper)]"></div>
+      <div aria-hidden="true" class="pointer-events-none absolute right-16 top-10 h-2 w-2 rounded-full bg-[var(--color-paper)]"></div>
+      <div class="flex flex-wrap items-end justify-center gap-6">
+        <BreathingSprite species="axolotl" mood="healthy" size={140} />
+        <BreathingSprite species="cat" mood="sleep_deprived" size={140} />
+        <BreathingSprite species="slime" mood="stressed" size={140} />
+      </div>
+      <p class="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">preview · not shipped</p>
+    </div>
+  </section>
+</CozyLayout>

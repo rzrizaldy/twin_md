@@ -1,0 +1,65 @@
+---
+import '../styles/global.css';
+import CozyNav from '../components/CozyNav.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  active?: 'home' | 'meet' | 'how' | 'install' | 'context' | 'world';
+}
+
+const {
+  title,
+  description = 'twin.md is a desk creature that reads your second brain and decides whether to cheer, yawn, pace, or hide.',
+  active = 'home',
+} = Astro.props;
+
+const fullTitle = active === 'home' ? title : `${title} — twin.md`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/pets/axolotl/healthy/breath-a.svg" />
+  </head>
+  <body class="min-h-dvh bg-[var(--color-paper)] text-[var(--color-ink)]">
+    <!-- SVG filter for hand-drawn wobble on display type -->
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+      <filter id="wobble" x="-2%" y="-2%" width="104%" height="104%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="3" />
+        <feDisplacementMap in="SourceGraphic" scale="1.2" />
+      </filter>
+    </svg>
+
+    <CozyNav active={active} />
+
+    <main class="mx-auto w-full max-w-6xl px-6 pb-24 sm:px-8">
+      <slot />
+    </main>
+
+    <footer class="mx-auto mt-16 w-full max-w-6xl px-6 pb-12 sm:px-8">
+      <div class="flex flex-wrap items-baseline justify-between gap-4 border-t border-[var(--color-ink)]/10 pt-6 text-sm text-[var(--color-ink-soft)]">
+        <p>
+          local-first. no accounts. no tracking. MIT.
+        </p>
+        <p>
+          <a href="https://github.com/anthropics" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]">
+            source
+          </a>
+          <span class="mx-2">·</span>
+          <a href="/build-your-context" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]">
+            feed your twin
+          </a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

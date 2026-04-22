@@ -1,0 +1,97 @@
+---
+import CozyLayout from '../layouts/CozyLayout.astro';
+import IslandHero from '../components/IslandHero.astro';
+import SpeciesCard from '../components/SpeciesCard.astro';
+import KarpathyGist from '../components/KarpathyGist.astro';
+import BreathingSprite from '../components/BreathingSprite.astro';
+---
+
+<CozyLayout title="twin.md — a desk creature that reads your second brain" active="home">
+  <IslandHero />
+
+  <!-- Three species -->
+  <section class="mt-16">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">character bible</p>
+        <h2 class="mt-1 font-display text-3xl sm:text-4xl">three species, four moods</h2>
+      </div>
+      <a
+        href="/meet"
+        class="text-sm text-[var(--color-ink-soft)] underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]"
+      >
+        meet the cast →
+      </a>
+    </div>
+
+    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+      <SpeciesCard
+        species="axolotl"
+        title="Axolotl"
+        vibe="soft, curious, a little dramatic. The default."
+      />
+      <SpeciesCard
+        species="cat"
+        title="Cat"
+        vibe="self-contained, judgmental, secretly loyal."
+      />
+      <SpeciesCard
+        species="slime"
+        title="Slime"
+        vibe="chaotic, bouncy, goofy. Lowest ego."
+      />
+    </div>
+  </section>
+
+  <!-- Four moods -->
+  <section class="mt-16">
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">mood map</p>
+    <h2 class="mt-1 font-display text-3xl sm:text-4xl">what your twin mirrors back</h2>
+    <p class="mt-2 max-w-2xl text-[var(--color-ink-soft)]">
+      The inference layer maps every life signal into one of four scenes. No dashboards, no numbers — just a small living thing reflecting the day you’re having.
+    </p>
+
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 text-center">
+        <BreathingSprite species="axolotl" mood="healthy" size={120} drift={false} />
+        <h3 class="mt-3 font-display text-xl">Bloom Mode</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">showing off, blooming, wants attention because life is good.</p>
+      </article>
+      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-dusk)] p-6 text-center">
+        <BreathingSprite species="axolotl" mood="sleep_deprived" size={120} drift={false} />
+        <h3 class="mt-3 font-display text-xl">Stars At Noon</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">groggy, half-lidded, reality has not loaded yet.</p>
+      </article>
+      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-storm)] p-6 text-center">
+        <BreathingSprite species="axolotl" mood="stressed" size={120} drift={false} />
+        <h3 class="mt-3 font-display text-xl">Paper Storm</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">pacing, overstimulated, the room is literally weather.</p>
+      </article>
+      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-fog)] p-6 text-center">
+        <BreathingSprite species="axolotl" mood="neglected" size={120} drift={false} />
+        <h3 class="mt-3 font-display text-xl">Quiet Corner</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">the one that hurts. Not sad. Quiet. Fading.</p>
+      </article>
+    </div>
+  </section>
+
+  <KarpathyGist />
+
+  <!-- Promise strip -->
+  <section class="mt-16 rounded-[1.75rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6 sm:p-8">
+    <div class="grid gap-6 sm:grid-cols-3">
+      <div>
+        <h3 class="font-display text-lg">not a dashboard</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">no numbers, no graphs. one file, one creature, one scene.</p>
+      </div>
+      <div>
+        <h3 class="font-display text-lg">not a mascot</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">no upsells, no notifications yelling at you. closer to Animal Crossing than Clippy.</p>
+      </div>
+      <div>
+        <h3 class="font-display text-lg">runs on your laptop</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">your data never leaves ~/.claude/. optional Anthropic key for richer dialogue.</p>
+      </div>
+    </div>
+  </section>
+</CozyLayout>

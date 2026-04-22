@@ -1,0 +1,119 @@
+---
+import CozyLayout from '../layouts/CozyLayout.astro';
+
+const steps = [
+  {
+    k: '01',
+    t: 'scaffold the config',
+    cmd: 'npx twin-md init',
+    hint: 'writes twin.config.json, seeds ~/.claude/twin.md, registers the MCP server in Claude Desktop.',
+  },
+  {
+    k: '02',
+    t: 'harvest your signals',
+    cmd: 'twin-md harvest',
+    hint: 'reads health / calendar / obsidian / claude memory / location into ~/.claude/twin.md.',
+  },
+  {
+    k: '03',
+    t: 'wake the pet',
+    cmd: 'twin-md watch',
+    hint: 'terminal pet, live-updating as twin.md changes. phone mirror is one command away.',
+  },
+];
+
+const surfaces = [
+  { name: 'Terminal pet', cmd: 'twin-md watch', where: 'any shell' },
+  { name: 'Phone mirror', cmd: 'twin-md web', where: 'localhost + QR' },
+  { name: 'Claude Desktop', cmd: 'auto-registered by init', where: 'MCP tools' },
+  { name: 'Desktop companion', cmd: '(coming soon — Tauri)', where: '.dmg' },
+];
+---
+
+<CozyLayout title="install" active="install">
+  <header class="mt-10 max-w-3xl">
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">install</p>
+    <h1 class="mt-2 font-display text-4xl sm:text-5xl">one command, no account</h1>
+    <p class="mt-4 text-[var(--color-ink-soft)]">
+      Node 20+ on macOS, Linux, or Windows. Your data stays under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>. The cloud is optional (Anthropic key for richer dialogue).
+    </p>
+  </header>
+
+  <section class="mt-10 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-10">
+    <ol class="flex flex-col gap-5">
+      {
+        steps.map((s) => (
+          <li class="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-6">
+            <p class="font-mono text-xs text-[var(--color-ink-soft)]">{s.k}</p>
+            <div>
+              <h3 class="font-display text-xl">{s.t}</h3>
+              <div class="mt-2 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+                <span class="text-[var(--color-ink-soft)]">$</span>
+                <code>{s.cmd}</code>
+                <button
+                  type="button"
+                  class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+                  data-copy={s.cmd}
+                >
+                  copy
+                </button>
+              </div>
+              <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{s.hint}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <section class="mt-12">
+    <h2 class="font-display text-2xl">four surfaces, one state</h2>
+    <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
+      All four read the same <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">twin-state.json</code>. Run any, all, or none.
+    </p>
+    <div class="mt-6 grid gap-3 sm:grid-cols-2">
+      {
+        surfaces.map((s) => (
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
+            <div>
+              <p class="font-display text-lg">{s.name}</p>
+              <p class="text-xs text-[var(--color-ink-soft)]">{s.where}</p>
+            </div>
+            <code class="rounded bg-[var(--color-cream)] px-2 py-1 font-mono text-xs">{s.cmd}</code>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="mt-12 rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-fog)] p-6">
+    <h2 class="font-display text-xl">going further</h2>
+    <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--color-ink-soft)]">
+      <li>
+        Feed the creature a personal system prompt — <a class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" href="/build-your-context">build your context →</a>
+      </li>
+      <li>
+        Set <code class="rounded bg-[var(--color-paper)] px-1 text-xs">ANTHROPIC_API_KEY</code> to upgrade from heuristic narration to Claude-refined dialogue.
+      </li>
+      <li>
+        Curious how the loop works? <a class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" href="/how-it-works">read the architecture →</a>
+      </li>
+    </ul>
+  </section>
+</CozyLayout>
+
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('button[data-copy]')) {
+    btn.addEventListener('click', async () => {
+      const text = btn.getAttribute('data-copy') ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+        const prev = btn.textContent;
+        btn.textContent = 'copied';
+        setTimeout(() => { btn.textContent = prev; }, 1200);
+      } catch {
+        /* clipboard unavailable; silent */
+      }
+    });
+  }
+</script>

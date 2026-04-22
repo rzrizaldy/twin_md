@@ -1,0 +1,25 @@
+{
+  "name": "@twin-md/landing",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "stage-assets": "node scripts/stage-assets.mjs",
+    "predev": "npm run stage-assets",
+    "dev": "astro dev",
+    "prebuild": "npm run stage-assets",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@fontsource-variable/fraunces": "^5.1.1",
+    "@fontsource-variable/inter-tight": "^5.1.1",
+    "@fontsource-variable/jetbrains-mono": "^5.1.1",
+    "@tailwindcss/vite": "^4.0.0",
+    "astro": "^5.5.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.8.0"
+  }
+}

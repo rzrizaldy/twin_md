@@ -1,0 +1,42 @@
+---
+import BreathingSprite from './BreathingSprite.astro';
+
+interface Props {
+  species: 'axolotl' | 'cat' | 'slime';
+  title: string;
+  vibe: string;
+  mood?: 'healthy' | 'sleep_deprived' | 'stressed' | 'neglected';
+}
+
+const { species, title, vibe, mood = 'healthy' } = Astro.props;
+
+const palette = {
+  axolotl: { bg: 'var(--color-pink)', accent: 'var(--color-axolotl-accent)' },
+  cat: { bg: 'var(--color-sand)', accent: 'var(--color-cat-accent)' },
+  slime: { bg: 'var(--color-mint)', accent: 'var(--color-slime-accent)' },
+}[species];
+---
+
+<article
+  class="group relative flex flex-col overflow-hidden rounded-[1.75rem] border border-[var(--color-ink)]/10 p-6 transition-transform hover:-translate-y-1"
+  style={`background: ${palette.bg}`}
+>
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <p
+        class="inline-block rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]"
+        style={`background: ${palette.accent}; color: var(--color-paper)`}
+      >
+        {species}
+      </p>
+      <h3 class="mt-3 font-display text-2xl">{title}</h3>
+      <p class="mt-1 max-w-xs text-sm text-[var(--color-ink-soft)]">{vibe}</p>
+    </div>
+    <BreathingSprite species={species} mood={mood} size={88} drift={false} />
+  </div>
+
+  <div class="mt-5 flex items-center gap-2 text-xs text-[var(--color-ink-soft)]">
+    <span class="inline-block h-1.5 w-1.5 rounded-full" style={`background: ${palette.accent}`}></span>
+    four moods · healthy · sleep-deprived · stressed · neglected
+  </div>
+</article>

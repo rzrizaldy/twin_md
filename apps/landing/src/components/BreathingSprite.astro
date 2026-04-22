@@ -1,0 +1,51 @@
+---
+interface Props {
+  species?: 'axolotl' | 'cat' | 'slime';
+  mood?: 'healthy' | 'sleep_deprived' | 'stressed' | 'neglected';
+  size?: number;
+  class?: string;
+  drift?: boolean;
+}
+
+const {
+  species = 'axolotl',
+  mood = 'healthy',
+  size = 240,
+  class: className = '',
+  drift = true,
+} = Astro.props;
+
+const base = `/pets/${species}/${mood}`;
+const a = `${base}/breath-a.svg`;
+const b = `${base}/breath-b.svg`;
+---
+
+<div
+  class:list={['relative inline-block', className]}
+  style={`width:${size}px;height:${size}px;${drift ? 'animation: drift 4.2s var(--ease-breath) infinite;' : ''}`}
+  data-species={species}
+  data-mood={mood}
+>
+  <img
+    src={a}
+    alt=""
+    aria-hidden="true"
+    width={size}
+    height={size}
+    class="absolute inset-0 h-full w-full"
+    style="animation: breath-a 2200ms var(--ease-breath) infinite;"
+    loading="eager"
+    decoding="async"
+  />
+  <img
+    src={b}
+    alt=""
+    aria-hidden="true"
+    width={size}
+    height={size}
+    class="absolute inset-0 h-full w-full"
+    style="animation: breath-b 2200ms var(--ease-breath) infinite;"
+    loading="eager"
+    decoding="async"
+  />
+</div>

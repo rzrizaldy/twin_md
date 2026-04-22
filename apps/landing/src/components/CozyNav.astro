@@ -1,0 +1,52 @@
+---
+interface Props {
+  active: 'home' | 'meet' | 'how' | 'install' | 'context' | 'world';
+}
+const { active } = Astro.props;
+
+const links: { id: Props['active']; href: string; label: string }[] = [
+  { id: 'meet', href: '/meet', label: 'meet' },
+  { id: 'how', href: '/how-it-works', label: 'how it works' },
+  { id: 'install', href: '/install', label: 'install' },
+  { id: 'context', href: '/build-your-context', label: 'feed it' },
+  { id: 'world', href: '/world', label: 'world' },
+];
+---
+
+<header class="mx-auto w-full max-w-6xl px-6 pt-6 sm:px-8 sm:pt-8">
+  <nav class="flex flex-wrap items-center justify-between gap-4">
+    <a href="/" class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
+      <img
+        src="/pets/axolotl/healthy/breath-a.svg"
+        alt=""
+        aria-hidden="true"
+        width="32"
+        height="32"
+        class="h-8 w-8 transition-transform duration-300 group-hover:-rotate-6"
+      />
+      <span class="font-display text-[1.05rem] font-medium">
+        twin<span class="text-[var(--color-axolotl-accent)]">.</span>md
+      </span>
+    </a>
+    <ul class="flex flex-wrap items-center gap-1 text-sm">
+      {
+        links.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              aria-current={active === link.id ? 'page' : undefined}
+              class:list={[
+                'inline-block rounded-full px-3 py-1.5 transition-colors',
+                active === link.id
+                  ? 'bg-[var(--color-ink)] text-[var(--color-paper)]'
+                  : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]',
+              ]}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+</header>

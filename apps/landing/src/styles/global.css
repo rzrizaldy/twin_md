@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@import "@fontsource-variable/fraunces/index.css";
+@import "@fontsource-variable/inter-tight/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+@theme {
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-body: "Inter Tight Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --color-cream: #fff8d2;
+  --color-mint: #c4f2cb;
+  --color-pink: #ffd6e5;
+  --color-sand: #ffe4b8;
+  --color-storm: #ffe1d4;
+  --color-fog: #e6e2d4;
+  --color-dusk: #d5d8ff;
+
+  --color-ink: #473643;
+  --color-ink-soft: #6b5660;
+  --color-paper: #fffaea;
+
+  --color-axolotl: #ffd6e5;
+  --color-axolotl-accent: #ff92b2;
+  --color-cat: #ffe4b8;
+  --color-cat-accent: #f6b15d;
+  --color-slime: #c4f2cb;
+  --color-slime-accent: #58cc7c;
+
+  --radius-bubble: 1.5rem;
+
+  --ease-breath: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+
+  code, pre, kbd {
+    font-family: var(--font-mono);
+  }
+
+  a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+
+  /* Hand-drawn wobble for display headings — DESIGN_BRIEF §11 "somebody made it" */
+  .wobble {
+    filter: url(#wobble);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --color-paper: #1b1822;
+      --color-ink: #f4e7d8;
+      --color-ink-soft: #b5a597;
+      --color-cream: #3a342a;
+      --color-mint: #27463a;
+      --color-pink: #3b2a36;
+      --color-sand: #3a2f22;
+      --color-storm: #3a2a26;
+      --color-fog: #2d2a26;
+      --color-dusk: #232337;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@keyframes breath-a {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes breath-b {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes bubble-pop {
+  0% { transform: scale(0.8) translateY(6px); opacity: 0; }
+  70% { transform: scale(1.04) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}

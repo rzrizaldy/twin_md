@@ -1,0 +1,65 @@
+---
+const gistUrl = 'https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f';
+const panels = [
+  {
+    n: '01',
+    title: 'observe yourself for a week',
+    body:
+      'Keep a single running note. Your tabs, your tags, the conversations you kept reopening. Don’t curate — just catch yourself.',
+  },
+  {
+    n: '02',
+    title: 'condense into a system prompt',
+    body:
+      'Distill it into three short blocks: who you are, how you work, what you want next. Karpathy’s gist is a good spine.',
+  },
+  {
+    n: '03',
+    title: 'drop it in ~/.claude/CLAUDE.md',
+    body:
+      'twin.md harvests that file on every refresh, so the creature starts answering from your own voice instead of a template.',
+  },
+];
+---
+
+<section class="mt-16">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">feed your twin</p>
+      <h2 class="mt-1 font-display text-3xl sm:text-4xl">grow a system prompt the Karpathy way</h2>
+    </div>
+    <a
+      href={gistUrl}
+      target="_blank"
+      rel="noreferrer noopener"
+      class="text-sm text-[var(--color-ink-soft)] underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]"
+    >
+      read the original gist →
+    </a>
+  </div>
+
+  <ol class="mt-8 grid gap-4 sm:grid-cols-3">
+    {
+      panels.map((p) => (
+        <li class="relative rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
+          <span class="font-mono text-xs text-[var(--color-ink-soft)]">{p.n}</span>
+          <h3 class="mt-2 font-display text-xl">{p.title}</h3>
+          <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{p.body}</p>
+        </li>
+      ))
+    }
+  </ol>
+
+  <div class="mt-6 flex flex-wrap items-center gap-3">
+    <a
+      href="/claude-starter.md"
+      download
+      class="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
+    >
+      download CLAUDE.md template
+    </a>
+    <code class="rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-xs">
+      mv claude-starter.md ~/.claude/CLAUDE.md
+    </code>
+  </div>
+</section>

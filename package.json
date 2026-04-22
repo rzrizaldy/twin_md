@@ -5,11 +5,14 @@
   "description": "twin-md monorepo: local-first sprite that reads your second brain.",
   "packageManager": "pnpm@10.33.0",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/mcp && npm run build -w twin-md && npm run build -w @twin-md/web",
+    "build:landing": "npm run build -w @twin-md/landing",
     "dev:web": "npm run dev -w @twin-md/web",
+    "dev:landing": "npm run dev -w @twin-md/landing",
     "generate:pet-assets": "node scripts/generate-pet-sprites.mjs",
     "release": "./scripts/release.sh",
     "lint": "npm run lint -ws --if-present",

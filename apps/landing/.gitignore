@@ -1,0 +1,8 @@
+dist/
+node_modules/
+.astro/
+
+# Staged from packages/core/assets by scripts/stage-assets.mjs
+public/pets/
+public/bubbles/
+public/tokens.json

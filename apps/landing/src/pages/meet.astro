@@ -1,0 +1,90 @@
+---
+import CozyLayout from '../layouts/CozyLayout.astro';
+import BreathingSprite from '../components/BreathingSprite.astro';
+
+const cast = [
+  {
+    species: 'axolotl' as const,
+    title: 'Axolotl',
+    kicker: 'the default · soft · curious · a little dramatic',
+    body: 'Frilled head reads from across the room. Best for people whose inner voice is mostly "oh no, oh wow, oh no".',
+    bg: 'var(--color-pink)',
+    accent: 'var(--color-axolotl-accent)',
+  },
+  {
+    species: 'cat' as const,
+    title: 'Cat',
+    kicker: 'self-contained · judgmental · secretly loyal',
+    body: 'Triangle ears. Low-key eye contact. Shows up when you do, pretends it was doing something else when you leave.',
+    bg: 'var(--color-sand)',
+    accent: 'var(--color-cat-accent)',
+  },
+  {
+    species: 'slime' as const,
+    title: 'Slime',
+    kicker: 'chaotic · bouncy · goofy · lowest ego',
+    body: 'Rounded dome, little droop. Will celebrate you finishing a sentence. Possibly a problem. Possibly a friend.',
+    bg: 'var(--color-mint)',
+    accent: 'var(--color-slime-accent)',
+  },
+];
+
+const moods = [
+  { id: 'healthy', label: 'Bloom Mode' },
+  { id: 'sleep_deprived', label: 'Stars At Noon' },
+  { id: 'stressed', label: 'Paper Storm' },
+  { id: 'neglected', label: 'Quiet Corner' },
+] as const;
+---
+
+<CozyLayout title="meet the cast" active="meet">
+  <header class="mt-10 max-w-3xl">
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">character bible</p>
+    <h1 class="mt-2 font-display text-4xl sm:text-5xl">three species, four moods, twelve faces</h1>
+    <p class="mt-4 text-[var(--color-ink-soft)]">
+      The species is vibe. The mood is what your week has been. You pick the first; your data picks the second.
+    </p>
+  </header>
+
+  <div class="mt-12 flex flex-col gap-12">
+    {
+      cast.map((c) => (
+        <section class="grid gap-6 sm:grid-cols-[1fr_2fr] sm:items-center">
+          <div
+            class="flex aspect-square items-center justify-center rounded-[2rem] border border-[var(--color-ink)]/10"
+            style={`background:${c.bg}`}
+          >
+            <BreathingSprite species={c.species} mood="healthy" size={200} />
+          </div>
+          <div>
+            <p
+              class="inline-block rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]"
+              style={`background:${c.accent};color:var(--color-paper)`}
+            >
+              {c.species}
+            </p>
+            <h2 class="mt-2 font-display text-3xl">{c.title}</h2>
+            <p class="mt-1 text-sm text-[var(--color-ink-soft)]">{c.kicker}</p>
+            <p class="mt-4 max-w-xl text-[var(--color-ink)]">{c.body}</p>
+
+            <div class="mt-5 grid grid-cols-4 gap-2">
+              {moods.map((m) => (
+                <figure class="flex flex-col items-center gap-1 rounded-xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-2">
+                  <BreathingSprite species={c.species} mood={m.id} size={68} drift={false} />
+                  <figcaption class="text-[10px] text-[var(--color-ink-soft)]">{m.label}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+      ))
+    }
+  </div>
+
+  <section class="mt-20 rounded-[1.75rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6 sm:p-8">
+    <h2 class="font-display text-2xl">silhouette test</h2>
+    <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
+      The pet must be recognizable at 32×32 px, black-on-white, no detail. Axolotl = frilled head. Cat = triangle ears. Slime = rounded dome with droop. If the silhouette fails, the pet fails.
+    </p>
+  </section>
+</CozyLayout>
