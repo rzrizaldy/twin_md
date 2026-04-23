@@ -41,7 +41,11 @@
           </label>
           <label class="species-card">
             <input type="radio" name="species" value="cat" />
-            <img src="/pets/cat/healthy/breath-a.png" alt="" />
+            <img
+              src="/pets/cat/healthy/breath-a-reference.png"
+              alt=""
+              onerror="this.onerror=null;this.src='/pets/cat/healthy/breath-a.png'"
+            />
             <span>cat</span>
           </label>
           <label class="species-card">
@@ -50,7 +54,7 @@
             <span>slime</span>
           </label>
         </div>
-        <p class="muted variant-hint">sprite look — type A matches the website; type B uses sketch reference frames where we ship them (mostly slime).</p>
+        <p class="muted variant-hint">sprite look — type A matches the website; type B uses sketch reference frames where we ship them (mostly slime). cat always tries reference art first.</p>
         <div class="variant-row" role="radiogroup" aria-label="sprite art style">
           <label class="variant-card">
             <input type="radio" name="pet-sprite-variant" value="clean" checked />

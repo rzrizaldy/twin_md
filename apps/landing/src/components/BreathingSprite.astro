@@ -24,6 +24,10 @@ const base = `${basePrefix}pets/${species}/${mood}`;
 // Match desktop companion: raster sprites (clean exports), not vector previews.
 const a = `${base}/breath-a.png`;
 const b = `${base}/breath-b.png`;
+const aRef = `${base}/breath-a-reference.png`;
+const bRef = `${base}/breath-b-reference.png`;
+const catFallbackA = `this.onerror=null;this.src='${a}'`;
+const catFallbackB = `this.onerror=null;this.src='${b}'`;
 ---
 
 <div
@@ -36,7 +40,7 @@ const b = `${base}/breath-b.png`;
     breath ? (
       <>
         <img
-          src={a}
+          src={species === 'cat' ? aRef : a}
           alt=""
           aria-hidden="true"
           width={size}
@@ -45,9 +49,10 @@ const b = `${base}/breath-b.png`;
           style="animation: breath-a 2200ms var(--ease-breath) infinite;"
           loading="eager"
           decoding="async"
+          {...species === 'cat' ? { onerror: catFallbackA } : {}}
         />
         <img
-          src={b}
+          src={species === 'cat' ? bRef : b}
           alt=""
           aria-hidden="true"
           width={size}
@@ -56,11 +61,12 @@ const b = `${base}/breath-b.png`;
           style="animation: breath-b 2200ms var(--ease-breath) infinite;"
           loading="eager"
           decoding="async"
+          {...species === 'cat' ? { onerror: catFallbackB } : {}}
         />
       </>
     ) : (
       <img
-        src={a}
+        src={species === 'cat' ? aRef : a}
         alt=""
         aria-hidden="true"
         width={size}
@@ -68,6 +74,7 @@ const b = `${base}/breath-b.png`;
         class="block h-full w-full"
         loading="eager"
         decoding="async"
+        {...species === 'cat' ? { onerror: catFallbackA } : {}}
       />
     )
   }

@@ -1,4 +1,6 @@
-/** Web mirror always uses clean production PNGs (breath-a/b.png) — same as the landing site. */
+/**
+ * Web mirror: clean PNGs by default (matches landing). Cat tries *-reference.png first.
+ */
 const POLL_MS = 4000;
 const BREATH_MS = 2200;
 const BLINK_MIN = 4000;
@@ -36,10 +38,46 @@ function sceneUrl(environment) {
   return `/scenes/${id}.svg`;
 }
 
-function petUrl(species, mood, frame) {
+function petCandidates(species, mood, frame) {
   const sp = species || "axolotl";
   const m = mood || "healthy";
-  return `/pets/${sp}/${m}/breath-${frame}.png`;
+  const base = `breath-${frame}`;
+  const clean = `/pets/${sp}/${m}/${base}.png`;
+  if (sp === "cat") {
+    return [`/pets/${sp}/${m}/${base}-reference.png`, clean];
+  }
+  return [clean];
+}
+
+function blinkCandidates(species, mood) {
+  const sp = species || "axolotl";
+  const m = mood || "healthy";
+  const clean = `/pets/${sp}/${m}/blink.png`;
+  if (sp === "cat") {
+    return [`/pets/${sp}/${m}/blink-reference.png`, clean];
+  }
+  return [clean];
+}
+
+function loadPetFromUrls(urls) {
+  let i = 0;
+  const next = () => {
+    if (i >= urls.length) {
+      petEl.onerror = null;
+      petEl.onload = null;
+      return;
+    }
+    petEl.onerror = () => {
+      i += 1;
+      next();
+    };
+    petEl.onload = () => {
+      petEl.onerror = null;
+      petEl.onload = null;
+    };
+    petEl.src = urls[i];
+  };
+  next();
 }
 
 function applyState(data) {
@@ -77,7 +115,9 @@ function applyState(data) {
 
   petEl.dataset.species = data.species || "axolotl";
   petEl.dataset.mood = data.state || "healthy";
-  petEl.src = petUrl(petEl.dataset.species, petEl.dataset.mood, breathFrame);
+  loadPetFromUrls(
+    petCandidates(petEl.dataset.species, petEl.dataset.mood, breathFrame)
+  );
 }
 
 async function fetchState() {
@@ -102,7 +142,7 @@ function breathLoop() {
     breathFrame = breathFrame === "a" ? "b" : "a";
     const sp = petEl.dataset.species || "axolotl";
     const mood = petEl.dataset.mood || "healthy";
-    petEl.src = petUrl(sp, mood, breathFrame);
+    loadPetFromUrls(petCandidates(sp, mood, breathFrame));
   }, BREATH_MS);
 }
 
@@ -112,9 +152,9 @@ function scheduleBlink() {
   blinkTimer = window.setTimeout(() => {
     const sp = petEl.dataset.species || "axolotl";
     const mood = petEl.dataset.mood || "healthy";
-    petEl.src = `/pets/${sp}/${mood}/blink.png`;
+    loadPetFromUrls(blinkCandidates(sp, mood));
     window.setTimeout(() => {
-      petEl.src = petUrl(sp, mood, breathFrame);
+      loadPetFromUrls(petCandidates(sp, mood, breathFrame));
       scheduleBlink();
     }, BLINK_HOLD_MS);
   }, delay);

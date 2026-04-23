@@ -62,15 +62,17 @@ function svgPath(species: TwinSpecies, mood: TwinMood, frameName: string): strin
 
 const missingPngs = new Set<string>();
 
-function basenamesForFrame(frameName: string): string[] {
-  if (spriteVariant === "reference") {
+function basenamesForFrame(frameName: string, species: TwinSpecies): string[] {
+  const referenceFirst =
+    spriteVariant === "reference" || species === "cat";
+  if (referenceFirst) {
     return [`${frameName}-reference`, frameName];
   }
   return [frameName];
 }
 
 function setSpriteFor(species: TwinSpecies, mood: TwinMood, frameName: string) {
-  const bases = basenamesForFrame(frameName);
+  const bases = basenamesForFrame(frameName, species);
   const tryBase = (i: number) => {
     if (i >= bases.length) {
       sprite.onerror = null;
