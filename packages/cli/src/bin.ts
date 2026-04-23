@@ -25,6 +25,10 @@ program
   .option("--provider <name>", "ai provider (anthropic | openai | gemini)")
   .option("--model <name>", "model id for the chosen provider")
   .option("--api-key <key>", "api key for the chosen provider")
+  .option(
+    "--pet-sprite-variant <variant>",
+    "clean (default, same as website) | reference (sketch frames where available)"
+  )
   .action(runInitCommand);
 
 program

@@ -12,6 +12,7 @@ import {
   type AiProvider,
   type ClaudeDirStatus
 } from "./ipc.ts";
+import type { PetSpriteVariant } from "./ipc.ts";
 import type { TwinSpecies } from "./types.ts";
 
 const TOTAL_STEPS = 6;
@@ -33,6 +34,7 @@ type VaultChoice = "existing" | "create" | "skip";
 interface WizardState {
   step: number;
   species: TwinSpecies;
+  petSpriteVariant: PetSpriteVariant;
   owner: string;
   vaultChoice: VaultChoice | null;
   vaultPath: string | null;
@@ -47,6 +49,7 @@ interface WizardState {
 const state: WizardState = {
   step: 0,
   species: "axolotl",
+  petSpriteVariant: "clean",
   owner: "",
   vaultChoice: null,
   vaultPath: null,
@@ -170,6 +173,14 @@ document.querySelectorAll<HTMLInputElement>('input[name="species"]').forEach((el
 
 $<HTMLInputElement>("#owner").addEventListener("input", (event) => {
   state.owner = (event.target as HTMLInputElement).value;
+});
+
+document.querySelectorAll<HTMLInputElement>('input[name="pet-sprite-variant"]').forEach((el) => {
+  el.addEventListener("change", () => {
+    if (el.checked) {
+      state.petSpriteVariant = el.value as PetSpriteVariant;
+    }
+  });
 });
 
 // — Step 2 —
@@ -336,7 +347,8 @@ async function runSummon() {
   const payload = {
     species: state.species,
     owner: state.owner.trim(),
-    obsidianVault: state.vaultPath
+    obsidianVault: state.vaultPath,
+    petSpriteVariant: state.petSpriteVariant
   };
 
   try {

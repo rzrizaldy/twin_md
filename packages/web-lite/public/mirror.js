@@ -1,3 +1,4 @@
+/** Web mirror always uses clean production PNGs (breath-a/b.png) — same as the landing site. */
 const POLL_MS = 4000;
 const BREATH_MS = 2200;
 const BLINK_MIN = 4000;

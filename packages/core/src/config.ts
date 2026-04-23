@@ -14,6 +14,10 @@ import {
 export const TWIN_SPECIES = ["axolotl", "cat", "slime"] as const;
 export type TwinSpecies = (typeof TWIN_SPECIES)[number];
 
+/** `clean` = production PNGs (same art as the public site). `reference` = `*-reference.png` frames where shipped. */
+export const PET_SPRITE_VARIANTS = ["clean", "reference"] as const;
+export type PetSpriteVariant = (typeof PET_SPRITE_VARIANTS)[number];
+
 export const AI_PROVIDERS = ["anthropic", "openai", "gemini"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
@@ -45,7 +49,8 @@ export const TwinConfigSchema = z.object({
   aiProvider: z.enum(AI_PROVIDERS).default("anthropic"),
   aiModel: z.string().min(1).default("claude-sonnet-4-6"),
   aiKeyStorage: z.enum(AI_KEY_STORAGE).default("env"),
-  mcpCommandId: z.string().min(1).optional()
+  mcpCommandId: z.string().min(1).optional(),
+  petSpriteVariant: z.enum(PET_SPRITE_VARIANTS).default("clean")
 });
 
 export type TwinConfig = z.infer<typeof TwinConfigSchema>;
@@ -69,6 +74,7 @@ export function createDefaultConfig(
     aiProvider: "anthropic",
     aiModel: DEFAULT_ANTHROPIC_MODEL,
     aiKeyStorage: "env",
+    petSpriteVariant: "clean",
     ...overrides
   });
 }
