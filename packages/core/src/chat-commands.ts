@@ -17,7 +17,11 @@ export const SLASH_HANDLERS = [
   "weekahead",
   "reflect",
   "mood",
-  "help"
+  "help",
+  "buddy",
+  "buddy_toggle",
+  "quote",
+  "focus"
 ] as const;
 
 export type SlashHandler = (typeof SLASH_HANDLERS)[number];
@@ -90,6 +94,48 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     visibleInChips: false,
     usesLLM: false,
     handler: "help"
+  },
+  {
+    name: "/buddy",
+    label: "buddy memory",
+    blurb: "show recent observations from your twin buddy",
+    visibleInChips: false,
+    usesLLM: false,
+    handler: "buddy"
+  },
+  {
+    name: "/buddy off",
+    label: "buddy off",
+    blurb: "pause diary writebacks (reading stays on)",
+    visibleInChips: false,
+    usesLLM: false,
+    handler: "buddy_toggle"
+  },
+  {
+    name: "/buddy on",
+    label: "buddy on",
+    blurb: "resume diary writebacks",
+    visibleInChips: false,
+    usesLLM: false,
+    handler: "buddy_toggle"
+  },
+  {
+    name: "/quote",
+    label: "quote yourself",
+    blurb: "surface a quote from your own notes on a topic",
+    argsHint: "<topic>",
+    visibleInChips: false,
+    usesLLM: false,
+    handler: "quote"
+  },
+  {
+    name: "/focus",
+    label: "focus mode",
+    blurb: "set a focus task and pause nudges for N minutes",
+    argsHint: "<task> [min]",
+    visibleInChips: true,
+    usesLLM: false,
+    handler: "focus"
   }
 ] as const;
 
@@ -103,6 +149,21 @@ export type ParsedCommand = {
 export function parseSlashCommand(message: string): ParsedCommand | null {
   const trimmed = message.trim();
   if (!trimmed.startsWith("/")) return null;
+
+  // Special-case compound commands that contain a space in their name
+  // e.g. "/buddy off" and "/buddy on" must be matched before the generic
+  // single-token lookup that would otherwise only see "/buddy".
+  const compoundCmd = SLASH_COMMANDS.find((c) => {
+    if (!c.name.includes(" ")) return false;
+    const lower = trimmed.toLowerCase();
+    return lower === c.name || lower.startsWith(c.name + " ");
+  });
+  if (compoundCmd) {
+    const args = trimmed.length > compoundCmd.name.length
+      ? trimmed.slice(compoundCmd.name.length + 1).trim()
+      : "";
+    return { command: compoundCmd, raw: trimmed, args };
+  }
 
   const firstSpace = trimmed.indexOf(" ");
   const head = firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);

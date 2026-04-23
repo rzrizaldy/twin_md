@@ -9,9 +9,13 @@ export * from "./chat.js";
 export * from "./config.js";
 export * from "./context-reply.js";
 export * from "./harvest/index.js";
+export * from "./harvest/claude.js";
 export * from "./interpret.js";
 export * from "./paths.js";
 export * from "./reminders.js";
+export * from "./buddy/memory.js";
+export * from "./buddy/greet.js";
+export * from "./buddy/diary.js";
 
 // Re-export the browser-safe bits so server code has one import line.
 export * from "./chat-commands.js";

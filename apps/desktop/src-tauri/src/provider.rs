@@ -51,17 +51,33 @@ impl Provider {
 
     pub fn default_model(&self) -> &'static str {
         match self {
-            Self::Anthropic => "claude-sonnet-4-6",
-            Self::Openai => "gpt-5-mini",
-            Self::Gemini => "gemini-2.5-flash",
+            Self::Anthropic => "claude-haiku-4-5",
+            Self::Openai => "gpt-5.4-mini",
+            Self::Gemini => "gemini-3-flash-preview",
         }
     }
 
     pub fn models(&self) -> &'static [&'static str] {
         match self {
-            Self::Anthropic => &["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"],
-            Self::Openai => &["gpt-5", "gpt-5-mini", "gpt-4.1"],
-            Self::Gemini => &["gemini-2.5-pro", "gemini-2.5-flash"],
+            Self::Anthropic => &[
+                "claude-haiku-4-5",
+                "claude-sonnet-4-6",
+                "claude-opus-4-6",
+            ],
+            Self::Openai => &[
+                "gpt-5.4-mini",
+                "gpt-5.4-nano",
+                "gpt-5-mini",
+                "gpt-5",
+                "gpt-4.1",
+            ],
+            Self::Gemini => &[
+                "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite-preview",
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-flash-latest",
+            ],
         }
     }
 }

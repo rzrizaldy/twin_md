@@ -105,21 +105,24 @@
       <!-- Step 4 — provider + key -->
       <section class="wizard-step" data-step="4">
         <h2>ai provider</h2>
+        <p class="muted model-tier-hint">
+          we recommend a flash / mini model — the pet doesn't need heavy reasoning, just warmth.
+        </p>
         <div class="provider-row" role="radiogroup" aria-label="provider">
           <label class="provider-card">
             <input type="radio" name="provider" value="anthropic" checked />
             <span class="provider-name">anthropic</span>
-            <span class="provider-sub">claude</span>
+            <span class="provider-sub">claude haiku</span>
           </label>
           <label class="provider-card">
             <input type="radio" name="provider" value="openai" />
             <span class="provider-name">openai</span>
-            <span class="provider-sub">gpt-5</span>
+            <span class="provider-sub">gpt-5.4 mini</span>
           </label>
           <label class="provider-card">
             <input type="radio" name="provider" value="gemini" />
             <span class="provider-name">google</span>
-            <span class="provider-sub">gemini</span>
+            <span class="provider-sub">gemini flash</span>
           </label>
         </div>
 

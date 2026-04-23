@@ -44,7 +44,6 @@ pub fn run() {
             ipc::get_state,
             ipc::get_chat_status,
             ipc::dismiss_bubble,
-            ipc::open_chat,
             ipc::open_web_companion,
             ipc::trigger_harvest,
             ipc::send_chat,

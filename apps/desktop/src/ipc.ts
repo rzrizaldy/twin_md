@@ -86,10 +86,6 @@ export async function dismissBubble(id: string): Promise<void> {
   }
 }
 
-export async function openChat(): Promise<void> {
-  await invoke("open_chat");
-}
-
 export async function openWebCompanion(): Promise<void> {
   await invoke("open_web_companion");
 }

@@ -22,7 +22,10 @@ export const REMINDER_RULES = [
   "idle_healthy",
   "idle_sleep_deprived",
   "idle_stressed",
-  "idle_neglected"
+  "idle_neglected",
+  "claude_session_over_120m",
+  "tone_shift_negative",
+  "mood_streak_low"
 ] as const;
 export type ReminderRuleId = (typeof REMINDER_RULES)[number];
 
@@ -59,7 +62,10 @@ const COOLDOWN_MINUTES: Record<ReminderRuleId, number> = {
   idle_healthy: 90,
   idle_sleep_deprived: 60,
   idle_stressed: 45,
-  idle_neglected: 90
+  idle_neglected: 90,
+  claude_session_over_120m: 120,
+  tone_shift_negative: 480,
+  mood_streak_low: 1440
 };
 
 export function getTwinRemindersPath(): string {
@@ -256,6 +262,40 @@ const RULES: Rule[] = [
       default:
         return null;
     }
+  },
+
+  // Buddy: long Claude session passthrough template
+  // Fired externally when harvestClaudeSessions detects a session with durationMinutes > 120.
+  // This rule is a no-op in the normal sweep; callers inject directly via appendReminderLedger.
+  () => null,
+
+  // Buddy: tone shift — fired when recent claude tone is anxious/negative
+  ({ document }) => {
+    const tone = String(document.sections.claude_memory_signals.tone_7d ?? "").toLowerCase();
+    if (!/(anxious|stressed|overloaded)/u.test(tone)) {
+      return null;
+    }
+    return {
+      ruleId: "tone_shift_negative",
+      tier: "nudge",
+      title: "noticed something",
+      body: "your recent sessions have felt heavy. want to name what's underneath?"
+    };
+  },
+
+  // Buddy: mood log streak low
+  ({ document }) => {
+    const mood = document.sections.now.mood_self_report;
+    const score = typeof mood === "number" ? mood : Number(String(mood ?? "").replace(/[^\d]/g, ""));
+    if (!Number.isFinite(score) || score > 4) {
+      return null;
+    }
+    return {
+      ruleId: "mood_streak_low",
+      tier: "nudge",
+      title: "low mood logged",
+      body: "your last mood log was low. want to /reflect for a minute?"
+    };
   }
 ];
 

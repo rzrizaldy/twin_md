@@ -16,6 +16,12 @@ pub struct ChatContext {
     pub twin_md: Option<String>,
     pub notes: Vec<VaultNote>,
     pub vault_path: Option<PathBuf>,
+    #[allow(dead_code)]
+    pub buddy_memory: Vec<String>,
+    #[allow(dead_code)]
+    pub stuck_threads: Vec<String>,
+    #[allow(dead_code)]
+    pub recent_last_user_msg: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -39,10 +45,15 @@ pub fn gather() -> ChatContext {
         .map(|p| collect_recent_notes(p))
         .unwrap_or_default();
 
+    let buddy = read_buddy_context();
+
     ChatContext {
         twin_md,
         notes,
         vault_path,
+        buddy_memory: buddy.0,
+        stuck_threads: buddy.1,
+        recent_last_user_msg: buddy.2,
     }
 }
 
@@ -65,6 +76,58 @@ fn shellexpand_tilde(input: &str) -> String {
         }
     }
     input.to_string()
+}
+
+/// Read buddy memory and session metadata from ~/.claude/.
+/// Returns (buddy_memory_bodies, stuck_threads, recent_last_user_msg).
+fn read_buddy_context() -> (Vec<String>, Vec<String>, Option<String>) {
+    let home = match std::env::var("HOME") {
+        Ok(h) => h,
+        Err(_) => return (vec![], vec![], None),
+    };
+    let claude_dir = format!("{home}/.claude");
+
+    // Read last 5 buddy memory entries from twin-buddy-memory.jsonl
+    let memory_path = format!("{claude_dir}/twin-buddy-memory.jsonl");
+    let buddy_memory = std::fs::read_to_string(&memory_path)
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let obj: serde_json::Value = serde_json::from_str(line).ok()?;
+            obj.get("body")?.as_str().map(|s| s.to_string())
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .take(5)
+        .collect::<Vec<_>>();
+
+    // Read stuck_threads and recent_last_user_msg from twin-buddy-sessions.json if it exists
+    let sessions_path = format!("{claude_dir}/twin-buddy-sessions.json");
+    let sessions_json = std::fs::read_to_string(&sessions_path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
+
+    let stuck_threads = sessions_json
+        .as_ref()
+        .and_then(|v| v.get("stuckThreads"))
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let recent_last_user_msg = sessions_json
+        .as_ref()
+        .and_then(|v| v.get("recentLastUserMsg"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+
+    (buddy_memory, stuck_threads, recent_last_user_msg)
 }
 
 fn collect_recent_notes(root: &Path) -> Vec<VaultNote> {
@@ -171,6 +234,23 @@ pub fn render_prompt(context: &ChatContext) -> String {
         }
     } else {
         buf.push_str("== Obsidian vault: not configured ==\n\n");
+    }
+
+    if !context.buddy_memory.is_empty() {
+        buf.push_str("== recent buddy observations ==\n");
+        for obs in &context.buddy_memory {
+            buf.push_str(&format!("- {obs}\n"));
+        }
+        buf.push('\n');
+    }
+
+    if !context.stuck_threads.is_empty() {
+        let threads = context.stuck_threads.join(", ");
+        buf.push_str(&format!("== recurring threads: {threads} ==\n\n"));
+    }
+
+    if let Some(msg) = &context.recent_last_user_msg {
+        buf.push_str(&format!("== last thing you were asking Claude: {msg} ==\n\n"));
     }
 
     buf

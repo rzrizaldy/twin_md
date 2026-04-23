@@ -70,7 +70,7 @@ const SCENE_META: Record<
   sleep_deprived: {
     environment: "stars_at_noon",
     animation: "yawning",
-    caption: "Stars At Noon"
+    caption: "Low Charge"
   },
   stressed: {
     environment: "storm_room",

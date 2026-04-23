@@ -17,7 +17,7 @@ const links: { id: Props['active']; href: string; label: string }[] = [
   <nav class="flex flex-wrap items-center justify-between gap-4">
     <a href="/" class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
       <img
-        src="/pets/axolotl/healthy/breath-a.svg"
+        src={import.meta.env.BASE_URL + 'pets/axolotl/healthy/breath-a.svg'}
         alt=""
         aria-hidden="true"
         width="32"

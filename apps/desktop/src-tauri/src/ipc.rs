@@ -55,11 +55,6 @@ pub async fn dismiss_bubble(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn open_chat(app: AppHandle) -> Result<(), String> {
-    windows::open_chat_window(&app).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub async fn open_web_companion(app: AppHandle) -> Result<(), String> {
     crate::webshell::open_web_companion(app)
         .await

@@ -1,108 +1,175 @@
 ---
 import CozyLayout from '../layouts/CozyLayout.astro';
-
-const steps = [
-  {
-    k: '01',
-    t: 'scaffold the config',
-    cmd: 'npx twin-md init',
-    hint: 'writes twin.config.json, seeds ~/.claude/twin.md, registers the MCP server in Claude Desktop.',
-  },
-  {
-    k: '02',
-    t: 'harvest your signals',
-    cmd: 'twin-md harvest',
-    hint: 'reads health / calendar / obsidian / claude memory / location into ~/.claude/twin.md.',
-  },
-  {
-    k: '03',
-    t: 'wake the pet',
-    cmd: 'twin-md watch',
-    hint: 'terminal pet, live-updating as twin.md changes. phone mirror is one command away.',
-  },
-];
-
-const surfaces = [
-  { name: 'Terminal pet', cmd: 'twin-md watch', where: 'any shell' },
-  { name: 'Phone mirror', cmd: 'twin-md web', where: 'localhost + QR' },
-  { name: 'Claude Desktop', cmd: 'auto-registered by init', where: 'MCP tools' },
-  { name: 'Desktop companion', cmd: '(coming soon — Tauri)', where: '.dmg' },
-];
 ---
 
 <CozyLayout title="install" active="install">
   <header class="mt-10 max-w-3xl">
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">install</p>
-    <h1 class="mt-2 font-display text-4xl sm:text-5xl">one command, no account</h1>
+    <h1 class="mt-2 font-display text-4xl sm:text-5xl">get your twin running</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Node 20+ on macOS, Linux, or Windows. Your data stays under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>. The cloud is optional (Anthropic key for richer dialogue).
+      Node 20+ on macOS, Linux, or Windows. Everything stays under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>. The cloud is optional — you need an API key only for chat.
     </p>
   </header>
 
-  <section class="mt-10 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-10">
-    <ol class="flex flex-col gap-5">
-      {
-        steps.map((s) => (
-          <li class="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-6">
-            <p class="font-mono text-xs text-[var(--color-ink-soft)]">{s.k}</p>
-            <div>
-              <h3 class="font-display text-xl">{s.t}</h3>
-              <div class="mt-2 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
-                <span class="text-[var(--color-ink-soft)]">$</span>
-                <code>{s.cmd}</code>
-                <button
-                  type="button"
-                  class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
-                  data-copy={s.cmd}
-                >
-                  copy
-                </button>
-              </div>
-              <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{s.hint}</p>
-            </div>
-          </li>
-        ))
-      }
-    </ol>
-  </section>
-
-  <section class="mt-12">
-    <h2 class="font-display text-2xl">four surfaces, one state</h2>
-    <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
-      All four read the same <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">twin-state.json</code>. Run any, all, or none.
-    </p>
-    <div class="mt-6 grid gap-3 sm:grid-cols-2">
-      {
-        surfaces.map((s) => (
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
-            <div>
-              <p class="font-display text-lg">{s.name}</p>
-              <p class="text-xs text-[var(--color-ink-soft)]">{s.where}</p>
-            </div>
-            <code class="rounded bg-[var(--color-cream)] px-2 py-1 font-mono text-xs">{s.cmd}</code>
-          </div>
-        ))
-      }
+  <!-- Section 1: One-liner -->
+  <section class="mt-10" id="quick-start">
+    <h2 class="font-display text-2xl">1. one-liner</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">The fastest path. Scaffolds config, seeds twin.md, registers the MCP server.</p>
+    <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+        <span class="text-[var(--color-ink-soft)]">$</span>
+        <code>npx twin-md init</code>
+        <button
+          type="button"
+          class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+          data-copy="npx twin-md init"
+        >copy</button>
+      </div>
+      <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
+        Writes <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin.config.json</code>, creates <code class="rounded bg-[var(--color-paper)] px-1 text-xs">~/.claude/twin.md</code>, registers the MCP server in Claude Desktop.
+      </p>
     </div>
   </section>
 
-  <section class="mt-12 rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-fog)] p-6">
-    <h2 class="font-display text-xl">going further</h2>
-    <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--color-ink-soft)]">
-      <li>
-        Feed the creature a personal system prompt — <a class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" href="/build-your-context">build your context →</a>
-      </li>
-      <li>
-        Set <code class="rounded bg-[var(--color-paper)] px-1 text-xs">ANTHROPIC_API_KEY</code> to upgrade from heuristic narration to Claude-refined dialogue.
-      </li>
-      <li>
-        Curious how the loop works? <a class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" href="/how-it-works">read the architecture →</a>
-      </li>
-    </ul>
+  <!-- Section 2: Local dev from source -->
+  <section class="mt-12" id="local-dev">
+    <h2 class="font-display text-2xl">2. local dev from source</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+      For hacking on twin-md itself. The repo is a pnpm monorepo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code> (shared logic), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/web</code> (Next.js companion).
+    </p>
+    <div class="mt-4 flex flex-col gap-3 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      {[
+        { cmd: 'git clone https://github.com/rzrizaldy/twin_md', hint: 'clone the monorepo' },
+        { cmd: 'pnpm install', hint: 'install all workspace deps' },
+        { cmd: 'pnpm --filter @twin-md/desktop tauri dev', hint: 'launch the floating pet companion' },
+        { cmd: 'pnpm --filter @twin-md/web dev', hint: 'start the web companion at localhost:3000' },
+      ].map((s) => (
+        <div>
+          <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+            <span class="text-[var(--color-ink-soft)]">$</span>
+            <code>{s.cmd}</code>
+            <button
+              type="button"
+              class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+              data-copy={s.cmd}
+            >copy</button>
+          </div>
+          <p class="mt-1 text-xs text-[var(--color-ink-soft)] pl-2">{s.hint}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Section 3: Wire a Flash/Mini key -->
+  <section class="mt-12" id="api-keys">
+    <h2 class="font-display text-2xl">3. wire a flash / mini key</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+      The pet doesn't need heavy reasoning — a flash or mini model is faster, cheaper, and just as warm.
+    </p>
+    <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <div class="flex gap-2 mb-6 border-b border-[var(--color-ink)]/10 pb-4" role="tablist" aria-label="provider tabs">
+        <button class="provider-tab is-active" data-provider="anthropic" role="tab" aria-selected="true">anthropic</button>
+        <button class="provider-tab" data-provider="openai" role="tab" aria-selected="false">openai</button>
+        <button class="provider-tab" data-provider="gemini" role="tab" aria-selected="false">gemini</button>
+      </div>
+
+      <div class="provider-panel" data-panel="anthropic">
+        <p class="text-sm text-[var(--color-ink-soft)] mb-3">Recommended model: <code class="rounded bg-[var(--color-paper)] px-1 text-xs">claude-haiku-4-5</code> — flash-equivalent, cheap, warm.</p>
+        <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm mb-2">
+          <code>export ANTHROPIC_API_KEY=sk-ant-…</code>
+          <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="export ANTHROPIC_API_KEY=sk-ant-…">copy</button>
+        </div>
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" class="text-xs underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]">get key at console.anthropic.com →</a>
+      </div>
+
+      <div class="provider-panel hidden" data-panel="openai">
+        <p class="text-sm text-[var(--color-ink-soft)] mb-3">Recommended model: <code class="rounded bg-[var(--color-paper)] px-1 text-xs">gpt-5.4-mini</code> — most capable small model.</p>
+        <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm mb-2">
+          <code>export OPENAI_API_KEY=sk-…</code>
+          <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="export OPENAI_API_KEY=sk-…">copy</button>
+        </div>
+        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" class="text-xs underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]">get key at platform.openai.com →</a>
+      </div>
+
+      <div class="provider-panel hidden" data-panel="gemini">
+        <p class="text-sm text-[var(--color-ink-soft)] mb-3">Recommended model: <code class="rounded bg-[var(--color-paper)] px-1 text-xs">gemini-3-flash-preview</code> — frontier fast.</p>
+        <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm mb-2">
+          <code>export GOOGLE_API_KEY=AIza…</code>
+          <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="export GOOGLE_API_KEY=AIza…">copy</button>
+        </div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" class="text-xs underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]">get key at aistudio.google.com →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: Verify the pet is alive -->
+  <section class="mt-12" id="verify">
+    <h2 class="font-display text-2xl">4. verify the pet is alive</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">After first harvest, these files should exist:</p>
+    <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <ul class="space-y-2 font-mono text-sm">
+        {[
+          '~/.claude/twin.md',
+          '~/.claude/twin.config.json',
+          '~/.claude/twin-state.json',
+          '~/.claude/twin-buddy-memory.jsonl',
+        ].map((f) => (
+          <li class="flex items-center gap-2">
+            <span class="text-[var(--color-ink-soft)]">✓</span>
+            <code class="rounded bg-[var(--color-paper)] px-1.5 py-0.5">{f}</code>
+          </li>
+        ))}
+      </ul>
+      <div class="mt-6 border-t border-[var(--color-ink)]/10 pt-4">
+        <p class="text-sm font-medium mb-2">run the companion:</p>
+        <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+          <span class="text-[var(--color-ink-soft)]">$</span>
+          <code>twin-md watch</code>
+          <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="twin-md watch">copy</button>
+        </div>
+      </div>
+      <details class="mt-6">
+        <summary class="cursor-pointer text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">troubleshooting</summary>
+        <div class="mt-3 space-y-3 text-sm text-[var(--color-ink-soft)]">
+          <div>
+            <p class="font-medium text-[var(--color-ink)]">localhost connection refused</p>
+            <p>The web companion (Next.js) isn't running. Start it with <code class="rounded bg-[var(--color-cream)] px-1 text-xs">pnpm --filter @twin-md/web dev</code> or set <code class="rounded bg-[var(--color-cream)] px-1 text-xs">TWIN_WEB_URL</code> to point to your instance.</p>
+          </div>
+          <div>
+            <p class="font-medium text-[var(--color-ink)]">twin-md command not found</p>
+            <p>Install globally: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm install -g twin-md</code></p>
+          </div>
+          <div>
+            <p class="font-medium text-[var(--color-ink)]">pet shows blank / default state</p>
+            <p>Run <code class="rounded bg-[var(--color-cream)] px-1 text-xs">twin-md harvest</code> to pull fresh signals. The companion auto-updates.</p>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- Section 5: Quickstart video placeholder -->
+  <section class="mt-12 mb-16" id="quickstart-video">
+    <h2 class="font-display text-2xl">5. see it in action</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">A guided walkthrough — coming soon.</p>
+    <div class="mt-4 flex h-48 items-center justify-center rounded-[2rem] border-2 border-dashed border-[var(--color-ink)]/15 bg-[var(--color-fog)]">
+      <p class="text-sm text-[var(--color-ink-soft)]">video / GIF placeholder</p>
+    </div>
   </section>
 </CozyLayout>
 
+<style>
+  .provider-tab {
+    @apply rounded-lg px-3 py-1.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-ink)];
+  }
+  .provider-tab.is-active {
+    @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-medium;
+  }
+  .provider-panel.hidden { display: none; }
+</style>
+
 <script>
+  // Copy buttons
   for (const btn of document.querySelectorAll<HTMLButtonElement>('button[data-copy]')) {
     btn.addEventListener('click', async () => {
       const text = btn.getAttribute('data-copy') ?? '';
@@ -111,9 +178,21 @@ const surfaces = [
         const prev = btn.textContent;
         btn.textContent = 'copied';
         setTimeout(() => { btn.textContent = prev; }, 1200);
-      } catch {
-        /* clipboard unavailable; silent */
-      }
+      } catch { /* silent */ }
     });
   }
+
+  // Provider tabs
+  const tabs = document.querySelectorAll<HTMLButtonElement>('.provider-tab');
+  const panels = document.querySelectorAll<HTMLElement>('.provider-panel');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const provider = tab.dataset.provider;
+      tabs.forEach((t) => { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
+      panels.forEach((p) => p.classList.add('hidden'));
+      tab.classList.add('is-active');
+      tab.setAttribute('aria-selected', 'true');
+      document.querySelector<HTMLElement>(`.provider-panel[data-panel="${provider}"]`)?.classList.remove('hidden');
+    });
+  });
 </script>

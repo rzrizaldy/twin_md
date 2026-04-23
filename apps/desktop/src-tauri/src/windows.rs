@@ -26,23 +26,6 @@ pub fn show_companion(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-pub fn open_chat_window(app: &AppHandle) -> Result<()> {
-    if let Some(win) = app.get_webview_window("chat") {
-        win.show().ok();
-        win.set_focus().ok();
-        return Ok(());
-    }
-    WebviewWindowBuilder::new(app, "chat", WebviewUrl::App("chat.html".into()))
-        .title("twin · chat")
-        .inner_size(420.0, 540.0)
-        .min_inner_size(360.0, 420.0)
-        .resizable(true)
-        .visible(true)
-        .build()
-        .context("build chat window")?;
-    Ok(())
-}
-
 pub fn open_onboarding(app: &AppHandle) -> Result<()> {
     if let Some(win) = app.get_webview_window("onboarding") {
         win.show().ok();

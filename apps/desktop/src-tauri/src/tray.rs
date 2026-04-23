@@ -10,7 +10,6 @@ use crate::windows;
 
 pub fn install(app: &AppHandle) -> Result<()> {
     let summon = MenuItem::with_id(app, "summon", "summon twin", true, None::<&str>)?;
-    let chat = MenuItem::with_id(app, "chat", "open chat", true, None::<&str>)?;
     let open_web = MenuItem::with_id(app, "open_web", "open in browser", true, None::<&str>)?;
     let harvest = MenuItem::with_id(app, "harvest", "harvest now", true, None::<&str>)?;
     let autostart_item = CheckMenuItem::with_id(
@@ -28,7 +27,6 @@ pub fn install(app: &AppHandle) -> Result<()> {
         app,
         &[
             &summon,
-            &chat,
             &open_web,
             &harvest,
             &separator,
@@ -44,9 +42,6 @@ pub fn install(app: &AppHandle) -> Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "summon" => {
                 let _ = windows::show_companion(app);
-            }
-            "chat" => {
-                let _ = windows::open_chat_window(app);
             }
             "open_web" => {
                 let app_clone = app.clone();

@@ -52,7 +52,7 @@ const state: WizardState = {
   vaultPath: null,
   claudeDir: null,
   provider: "anthropic",
-  model: "claude-sonnet-4-6",
+  model: "claude-haiku-4-5",
   apiKey: "",
   storeInKeychain: true,
   skipAi: false
@@ -267,13 +267,34 @@ async function loadModels(provider: AiProvider) {
   try {
     const { models, default_model } = await listModels(provider);
     modelSelect.innerHTML = "";
-    models.forEach((name) => {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      if (name === default_model) opt.selected = true;
-      modelSelect.appendChild(opt);
-    });
+
+    // Group into flash/mini (recommended) vs pro/legacy
+    const flashIds = new Set([
+      "claude-haiku-4-5",
+      "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini",
+      "gemini-3-flash-preview", "gemini-3.1-flash-lite-preview",
+      "gemini-2.5-flash", "gemini-flash-latest",
+    ]);
+    const flashModels = models.filter((m) => flashIds.has(m));
+    const proModels = models.filter((m) => !flashIds.has(m));
+
+    function addGroup(label: string, items: string[]) {
+      if (!items.length) return;
+      const group = document.createElement("optgroup");
+      group.label = label;
+      items.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        if (name === default_model) opt.selected = true;
+        group.appendChild(opt);
+      });
+      modelSelect.appendChild(group);
+    }
+
+    addGroup("flash / mini — recommended", flashModels);
+    addGroup("pro / legacy — heavy, slow", proModels);
+
     state.model = default_model;
   } catch (err) {
     statusEl.textContent = `couldn't load models: ${String(err)}`;

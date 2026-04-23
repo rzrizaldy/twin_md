@@ -12,8 +12,29 @@
         <img id="sprite" class="sprite" alt="" draggable="false" />
       </div>
       <div id="caption" class="caption" hidden></div>
+
+      <!-- Speech bubble (hidden by default, shown on chat-button click) -->
+      <div id="speech-bubble" class="speech-bubble" data-state="hidden" aria-live="polite">
+        <div id="bubble-content" class="bubble-content"></div>
+        <footer class="bubble-footer">
+          <form id="bubble-form" class="bubble-form">
+            <textarea
+              id="bubble-input"
+              class="bubble-input"
+              placeholder="talk to your twin…"
+              rows="1"
+              autocomplete="off"
+            ></textarea>
+            <button id="bubble-send" class="bubble-send" type="submit">↑</button>
+          </form>
+          <button id="bubble-expand" class="bubble-expand" type="button" title="open in browser">
+            expand ↗
+          </button>
+        </footer>
+      </div>
+
       <div class="companion-actions">
-        <button id="chat-button" class="chat-button" type="button" title="open chat">
+        <button id="chat-button" class="chat-button" type="button" title="chat with twin">
           chat
         </button>
         <button

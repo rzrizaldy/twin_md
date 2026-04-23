@@ -937,3 +937,129 @@ body.window {
 .wizard-footer > :only-child {
   margin-left: auto;
 }
+
+/* ── Speech bubble ────────────────────────── */
+.speech-bubble {
+  position: absolute;
+  bottom: 56px;         /* sit above the chat/web buttons */
+  left: 8px;
+  right: 8px;
+  width: auto;
+  max-height: 240px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(0 0 0 / 0.1);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0 0 0 / 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: "Inter Tight", system-ui, sans-serif;
+  font-size: 13px;
+  z-index: 10;
+}
+
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: rgba(0 0 0 / 0.08);
+  border-bottom: none;
+}
+
+.speech-bubble[data-state="hidden"] {
+  display: none;
+}
+
+.bubble-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  max-height: 155px;
+}
+
+.bubble-message {
+  margin: 0 0 8px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.bubble-message--user {
+  background: rgba(0 0 0 / 0.06);
+  text-align: right;
+  margin-left: auto;
+  max-width: 85%;
+}
+
+.bubble-message--pet {
+  background: transparent;
+  color: inherit;
+}
+
+.bubble-footer {
+  padding: 8px 10px;
+  border-top: 1px solid rgba(0 0 0 / 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bubble-form {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.bubble-input {
+  flex: 1;
+  resize: none;
+  border: 1.5px solid rgba(0 0 0 / 0.1);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.4;
+  background: rgba(0 0 0 / 0.03);
+  outline: none;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.bubble-input:focus {
+  border-color: rgba(0 0 0 / 0.2);
+}
+
+.bubble-send {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.bubble-send:hover { opacity: 0.8; }
+
+.bubble-expand {
+  font-size: 11px;
+  color: rgba(0 0 0 / 0.4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: color 0.15s;
+}
+.bubble-expand:hover { color: rgba(0 0 0 / 0.8); }
