@@ -5,6 +5,8 @@ interface Props {
   size?: number;
   class?: string;
   drift?: boolean;
+  /** Two-frame breath crossfade (desktop-style). Landing defaults to one still frame + optional float only. */
+  breath?: boolean;
 }
 
 const {
@@ -13,6 +15,7 @@ const {
   size = 240,
   class: className = '',
   drift = true,
+  breath = false,
 } = Astro.props;
 
 const rawBase = import.meta.env.BASE_URL;
@@ -29,26 +32,43 @@ const b = `${base}/breath-b.png`;
   data-species={species}
   data-mood={mood}
 >
-  <img
-    src={a}
-    alt=""
-    aria-hidden="true"
-    width={size}
-    height={size}
-    class="absolute inset-0 h-full w-full"
-    style="animation: breath-a 2200ms var(--ease-breath) infinite;"
-    loading="eager"
-    decoding="async"
-  />
-  <img
-    src={b}
-    alt=""
-    aria-hidden="true"
-    width={size}
-    height={size}
-    class="absolute inset-0 h-full w-full"
-    style="animation: breath-b 2200ms var(--ease-breath) infinite;"
-    loading="eager"
-    decoding="async"
-  />
+  {
+    breath ? (
+      <>
+        <img
+          src={a}
+          alt=""
+          aria-hidden="true"
+          width={size}
+          height={size}
+          class="absolute inset-0 h-full w-full"
+          style="animation: breath-a 2200ms var(--ease-breath) infinite;"
+          loading="eager"
+          decoding="async"
+        />
+        <img
+          src={b}
+          alt=""
+          aria-hidden="true"
+          width={size}
+          height={size}
+          class="absolute inset-0 h-full w-full"
+          style="animation: breath-b 2200ms var(--ease-breath) infinite;"
+          loading="eager"
+          decoding="async"
+        />
+      </>
+    ) : (
+      <img
+        src={a}
+        alt=""
+        aria-hidden="true"
+        width={size}
+        height={size}
+        class="block h-full w-full"
+        loading="eager"
+        decoding="async"
+      />
+    )
+  }
 </div>
