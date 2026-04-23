@@ -1,4 +1,6 @@
 ---
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 const gistUrl = 'https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f';
 const panels = [
   {
@@ -52,7 +54,7 @@ const panels = [
 
   <div class="mt-6 flex flex-wrap items-center gap-3">
     <a
-      href={import.meta.env.BASE_URL + 'claude-starter.md'}
+      href={`${base}claude-starter.md`}
       download
       class="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
     >

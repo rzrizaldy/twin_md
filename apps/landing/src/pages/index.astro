@@ -5,7 +5,8 @@ import SpeciesCard from '../components/SpeciesCard.astro';
 import KarpathyGist from '../components/KarpathyGist.astro';
 import BreathingSprite from '../components/BreathingSprite.astro';
 
-const base = import.meta.env.BASE_URL;
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 ---
 
 <CozyLayout title="twin.md — a desk creature that reads your second brain" active="home">

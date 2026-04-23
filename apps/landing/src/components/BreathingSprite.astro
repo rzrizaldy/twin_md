@@ -15,7 +15,9 @@ const {
   drift = true,
 } = Astro.props;
 
-const base = import.meta.env.BASE_URL + `pets/${species}/${mood}`;
+const rawBase = import.meta.env.BASE_URL;
+const basePrefix = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const base = `${basePrefix}pets/${species}/${mood}`;
 const a = `${base}/breath-a.svg`;
 const b = `${base}/breath-b.svg`;
 ---
