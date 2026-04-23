@@ -1,8 +1,8 @@
 import path from "node:path";
-import os from "node:os";
 import fs from "node:fs/promises";
 import type { TwinConfig } from "../config.js";
 import type { TwinSection } from "../schema.js";
+import { expandHome } from "../paths.js";
 import { mostRecentFiles, pickTopItems, safeReadText, walkFiles } from "./shared.js";
 
 const STOPWORDS = new Set([
@@ -34,9 +34,9 @@ export interface ClaudeHarvestResult {
 }
 
 export async function harvestClaudeSessions(
-  _config: TwinConfig
+  config: TwinConfig
 ): Promise<ClaudeHarvestResult> {
-  const claudeDir = path.join(os.homedir(), ".claude");
+  const claudeDir = expandHome(config.claudeDir);
   const projectsDir = path.join(claudeDir, "projects");
   const sessions: ClaudeSession[] = [];
 
@@ -200,12 +200,14 @@ function countContextSwitches24h(sessions: ClaudeSession[]): number {
   return projects.size;
 }
 
-// ─── Legacy TwinSection harvester (unchanged interface) ───────────────────────
+// ─── twin.md claude_memory_signals: memory files + JSONL session transcripts ─
 
 export async function harvestClaudeSignals(
   config: TwinConfig
 ): Promise<TwinSection> {
-  const candidateFiles = await walkFiles(config.claudeDir, {
+  const sessions = await harvestClaudeSessions(config);
+
+  const candidateFiles = await walkFiles(expandHome(config.claudeDir), {
     include: (filePath) =>
       filePath.endsWith(".md") ||
       filePath.endsWith(".txt") ||
@@ -233,32 +235,88 @@ export async function harvestClaudeSignals(
     await Promise.all(prioritized.map((filePath) => safeReadText(filePath)))
   ).filter(Boolean) as string[];
 
-  if (!texts.length) {
-    return {
-      recent_topics: ["setup"],
-      tone_7d: "neutral",
-      wins: "No recent Claude memory files found.",
-      frictions: "Memory source not connected yet."
-    };
+  const combined = texts.join("\n");
+  const memoryTopics = texts.length
+    ? pickTopItems(
+        combined
+          .toLowerCase()
+          .match(/[a-z][a-z0-9_-]{3,}/g) ?? []
+          .filter((word) => !STOPWORDS.has(word)),
+        8
+      )
+    : [];
+
+  const sessionTopicBag = sessions.sessions.flatMap((s) => s.topics);
+  const mergedTopics = pickTopItems([...sessionTopicBag, ...memoryTopics], 8);
+
+  const sessionBlob = sessions.sessions.map((s) => s.lastUserMsg).join("\n");
+  const toneSource = [combined, sessionBlob].filter(Boolean).join("\n");
+  const tone = inferTone(toneSource);
+
+  const projectSet = [...new Set(sessions.sessions.map((s) => s.project))];
+  const sessionCount = sessions.sessions.length;
+
+  let wins: string;
+  if (texts.length) {
+    wins =
+      extractSignalLine(combined, /(shipped|done|completed|win|finished)/iu) ??
+      (sessionCount > 0
+        ? `${sessionCount} Claude session(s) in the last 7 days across ${projectSet.length} project(s).`
+        : "Kept pushing work forward.");
+  } else if (sessionCount > 0) {
+    wins = `${sessionCount} Claude session(s) in the last 7 days across ${projectSet.length} project(s).`;
+  } else {
+    wins = "No recent Claude memory files or JSONL sessions found.";
   }
 
-  const combined = texts.join("\n");
-  const topics = pickTopItems(
-    combined
-      .toLowerCase()
-      .match(/[a-z][a-z0-9_-]{3,}/g) ?? []
-        .filter((word) => !STOPWORDS.has(word))
-  );
+  const frictionBits: string[] = [];
+  if (texts.length) {
+    const line = extractSignalLine(
+      combined,
+      /(blocked|risk|issue|failed|stress|debt|anxious)/iu
+    );
+    if (line) frictionBits.push(line);
+  } else {
+    frictionBits.push("Memory markdown (CLAUDE.md / MEMORY.md) not harvested yet.");
+  }
+  if (sessions.stuckThreads.length) {
+    frictionBits.push(
+      `Recurring threads: ${sessions.stuckThreads.slice(0, 5).join(", ")}`
+    );
+  }
+  if (sessions.contextSwitches24h >= 4) {
+    frictionBits.push(
+      `${sessions.contextSwitches24h} project context switches in 24h`
+    );
+  }
+  if (sessions.longSessionStreak >= 3) {
+    frictionBits.push(
+      `${sessions.longSessionStreak}-day streak of long Claude sessions (90m+)`
+    );
+  }
+  const frictions =
+    frictionBits.join(" · ") ||
+    "Context switching is the main visible drag.";
 
-  const tone = inferTone(combined);
+  const recentTopics =
+    mergedTopics.length > 0
+      ? mergedTopics
+      : sessionCount > 0
+        ? ["claude-sessions"]
+        : ["setup"];
+
+  const snippet = sessions.recentLastUserMsg.trim().slice(0, 240);
 
   return {
-    recent_topics: topics.length ? topics : ["build", "notes"],
+    recent_topics: recentTopics,
     tone_7d: tone,
-    wins: extractSignalLine(combined, /(shipped|done|completed|win|finished)/iu) ?? "Kept pushing work forward.",
-    frictions:
-      extractSignalLine(combined, /(blocked|risk|issue|failed|stress|debt|anxious)/iu) ??
-      "Context switching is the main visible drag."
+    wins,
+    frictions,
+    sessions_jsonl_7d: sessionCount,
+    session_projects_7d: projectSet.slice(0, 16),
+    last_user_message_snippet: snippet || "—",
+    context_switches_24h: sessions.contextSwitches24h,
+    long_session_streak_days: sessions.longSessionStreak
   };
 }
 

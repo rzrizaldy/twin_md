@@ -12,7 +12,7 @@ if (!existsSync(core)) {
   process.exit(1);
 }
 
-for (const sub of ['pets', 'bubbles']) {
+for (const sub of ['pets', 'bubbles', 'scenes']) {
   const src = resolve(core, sub);
   const dst = resolve(out, sub);
   if (existsSync(dst)) rmSync(dst, { recursive: true, force: true });

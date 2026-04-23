@@ -71,7 +71,12 @@ export function createSeedTwinDocument(config: TwinConfig): TwinDocument {
         recent_topics: ["setup"],
         tone_7d: "neutral",
         wins: "bootstrapped twin.md",
-        frictions: "data sources not connected yet"
+        frictions: "data sources not connected yet",
+        sessions_jsonl_7d: 0,
+        session_projects_7d: [],
+        last_user_message_snippet: "—",
+        context_switches_24h: 0,
+        long_session_streak_days: 0
       },
       obsidian_signals: {
         daily_note_streak: 0,

@@ -27,7 +27,11 @@ program
   .option("--api-key <key>", "api key for the chosen provider")
   .action(runInitCommand);
 
-program.command("harvest").description("harvest local sources into twin.md").action(runHarvestCommand);
+program
+  .command("harvest")
+  .description("harvest local sources into twin.md")
+  .option("-w, --watch", "re-harvest when Claude dir, vault, or export files change")
+  .action(runHarvestCommand);
 program.command("watch").description("render the terminal pet and watch twin files").action(runWatchCommand);
 program
   .command("web")

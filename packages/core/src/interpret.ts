@@ -194,6 +194,7 @@ function buildHeuristicState(document: TwinDocument): PetState {
   const tone = String(claude.tone_7d ?? "").toLowerCase();
   const wins = String(claude.wins ?? "");
   const frictions = String(claude.frictions ?? "");
+  const contextSwitches = numberValue(claude.context_switches_24h);
   const context = String(nowSection.context ?? "");
   const novelty = String(location.novelty_score ?? "").toLowerCase();
 
@@ -201,7 +202,13 @@ function buildHeuristicState(document: TwinDocument): PetState {
     Math.round(sleepHours * 12 + Math.min(steps / 190, 16) + workouts * 8 + 16)
   );
   const stress = clamp(
-    Math.round(density * 58 + todos * 2 + (tone.includes("anxious") ? 18 : 0) + (frictions.includes("deadline") ? 10 : 0))
+    Math.round(
+      density * 58 +
+        todos * 2 +
+        (tone.includes("anxious") ? 18 : 0) +
+        (frictions.includes("deadline") ? 10 : 0) +
+        Math.min(contextSwitches * 2, 14)
+    )
   );
   const glow = clamp(
     Math.round(
@@ -227,7 +234,8 @@ function buildHeuristicState(document: TwinDocument): PetState {
       density * 80 +
         todos * 2 +
         (tone.includes("anxious") ? 16 : 0) +
-        (context.toLowerCase().includes("deadline") ? 8 : 0)
+        (context.toLowerCase().includes("deadline") ? 8 : 0) +
+        Math.min(contextSwitches * 3, 18)
     )
   );
   const neglectScore = clamp(

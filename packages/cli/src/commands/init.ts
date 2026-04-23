@@ -8,6 +8,7 @@ import {
   interpretTwinDocument,
   readTwinConfigOrDefault,
   registerClaudeDesktopMcp,
+  runTwinHarvest,
   type AiProvider,
   type TwinConfig,
   writePetState,
@@ -95,22 +96,32 @@ export async function runInitCommand(options: InitOptions): Promise<void> {
     aiKeyStorage: apiKey.trim() ? "config" : "env"
   });
 
-  const seed = await ensureSeedTwin(config);
-  const state = await interpretTwinDocument(seed, config);
-  await writePetState(state);
-
   const registration = await registerClaudeDesktopMcp(resolveMcpEntrypoint(), config);
-  await writeTwinConfig({
+  const savedConfig: TwinConfig = {
     ...config,
     mcpCommandId: registration.commandId
-  });
+  };
+  await writeTwinConfig(savedConfig);
+
+  try {
+    const harvest = await runTwinHarvest(savedConfig);
+    console.log(`Initial harvest → ${harvest.twinMdPath}`);
+  } catch (error) {
+    console.warn(
+      "Initial harvest failed; run `twin-md harvest` after fixing paths.",
+      error instanceof Error ? error.message : error
+    );
+    const seed = await ensureSeedTwin(savedConfig);
+    const state = await interpretTwinDocument(seed, savedConfig);
+    await writePetState(state);
+  }
 
   if (apiKey.trim()) {
     await saveCliKey(provider, model, apiKey.trim());
   }
 
-  console.log(`Initialized twin for ${config.owner}.`);
-  console.log(`Species: ${config.species}`);
+  console.log(`Initialized twin for ${savedConfig.owner}.`);
+  console.log(`Species: ${savedConfig.species}`);
   console.log(`Provider: ${provider} (${model})`);
   console.log(`Claude config: ${registration.configPath}`);
   console.log(`MCP command id: ${registration.commandId}`);

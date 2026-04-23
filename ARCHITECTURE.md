@@ -21,8 +21,8 @@ The current implementation expects local exports or local folders instead of OAu
   - example path: `~/twin-sources/calendar.ics`
   - used for meeting load, event density, upcoming deadlines
 - Claude local memory tree
-  - path: `~/.claude/`
-  - scans `CLAUDE.md`, `MEMORY.md`, summaries, and nearby notes
+  - path: `~/.claude/` (or `claudeDir` in config)
+  - scans `CLAUDE.md`, `MEMORY.md`, summaries, and **`projects/*/sessions/*.jsonl`** (last 7 days) into `claude_memory_signals` together with the markdown harvest
 - Obsidian vault
   - configurable path in `twin.config.json`
   - reads recent notes, tags, unfinished todos, and reflection lines
@@ -43,6 +43,8 @@ Each source adapter returns one section of the document:
 - `location.ts`
 
 `runTwinHarvest()` merges those sections into one structured document and writes:
+
+After `twin-md init`, the CLI runs an initial harvest so `twin.md` is populated from real sources when possible. Use `twin-md harvest --watch` to re-run harvest on changes under the Claude dir, Obsidian vault, and export paths.
 
 - `~/.claude/twin.md`
 - `~/.claude/twin-history/<timestamp>.md`
