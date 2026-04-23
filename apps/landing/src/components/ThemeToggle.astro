@@ -1,0 +1,51 @@
+---
+const STORAGE_KEY = 'twin-md-theme';
+---
+
+<button
+  type="button"
+  class="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-ink)]/15 bg-[var(--color-cream)]/40 text-[var(--color-ink)] transition-colors hover:border-[var(--color-ink)]/25 hover:bg-[var(--color-cream)]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ink)]"
+  aria-label="Toggle day and night theme"
+  data-theme-toggle
+>
+  <span class="icon-sun pointer-events-none" aria-hidden="true">
+    <svg class="h-[1.15rem] w-[1.15rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  </span>
+  <span class="icon-moon pointer-events-none hidden" aria-hidden="true">
+    <svg class="h-[1.15rem] w-[1.15rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  </span>
+</button>
+
+<script define:vars={{ STORAGE_KEY }}>
+  const root = document.documentElement;
+
+  function syncToggle(btn) {
+    const dark = root.dataset.theme === 'dark';
+    btn.setAttribute('aria-label', dark ? 'Switch to day mode' : 'Switch to night mode');
+    btn.querySelector('.icon-sun')?.classList.toggle('hidden', dark);
+    btn.querySelector('.icon-moon')?.classList.toggle('hidden', !dark);
+  }
+
+  function init() {
+    const btn = document.querySelector('[data-theme-toggle]');
+    if (!(btn instanceof HTMLButtonElement)) return;
+    syncToggle(btn);
+    btn.addEventListener('click', () => {
+      const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      syncToggle(btn);
+    });
+  }
+
+  init();
+</script>

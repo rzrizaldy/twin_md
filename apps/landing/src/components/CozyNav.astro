@@ -1,4 +1,6 @@
 ---
+import ThemeToggle from './ThemeToggle.astro';
+
 interface Props {
   active: 'home' | 'meet' | 'how' | 'install' | 'context' | 'world';
 }
@@ -17,19 +19,22 @@ const links: { id: Props['active']; href: string; label: string }[] = [
 
 <header class="mx-auto w-full max-w-6xl px-6 pt-6 sm:px-8 sm:pt-8">
   <nav class="flex flex-wrap items-center justify-between gap-4">
-    <a href={base} class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
-      <img
-        src={`${base}pets/axolotl/healthy/breath-a.svg`}
-        alt=""
-        aria-hidden="true"
-        width="32"
-        height="32"
-        class="h-8 w-8 transition-transform duration-300 group-hover:-rotate-6"
-      />
-      <span class="font-display text-[1.05rem] font-medium">
-        twin<span class="text-[var(--color-axolotl-accent)]">.</span>md
-      </span>
-    </a>
+    <div class="flex flex-wrap items-center gap-3">
+      <a href={base} class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
+        <img
+          src={`${base}pets/axolotl/healthy/breath-a.png`}
+          alt=""
+          aria-hidden="true"
+          width="32"
+          height="32"
+          class="h-8 w-8 transition-transform duration-300 group-hover:-rotate-6"
+        />
+        <span class="font-display text-[1.05rem] font-medium">
+          twin<span class="text-[var(--color-axolotl-accent)]">.</span>md
+        </span>
+      </a>
+      <ThemeToggle />
+    </div>
     <ul class="flex flex-wrap items-center gap-1 text-sm">
       {
         links.map((link) => (

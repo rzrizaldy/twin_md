@@ -72,20 +72,19 @@
     filter: url(#wobble);
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      color-scheme: dark;
-      --color-paper: #1b1822;
-      --color-ink: #f4e7d8;
-      --color-ink-soft: #b5a597;
-      --color-cream: #3a342a;
-      --color-mint: #27463a;
-      --color-pink: #3b2a36;
-      --color-sand: #3a2f22;
-      --color-storm: #3a2a26;
-      --color-fog: #2d2a26;
-      --color-dusk: #232337;
-    }
+  /* Night palette: toggled via data-theme (see ThemeToggle + inline head script). */
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --color-paper: #1b1822;
+    --color-ink: #f4e7d8;
+    --color-ink-soft: #b5a597;
+    --color-cream: #3a342a;
+    --color-mint: #27463a;
+    --color-pink: #3b2a36;
+    --color-sand: #3a2f22;
+    --color-storm: #3a2a26;
+    --color-fog: #2d2a26;
+    --color-dusk: #232337;
   }
 
   @media (prefers-reduced-motion: reduce) {

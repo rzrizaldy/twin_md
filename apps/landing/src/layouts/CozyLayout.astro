@@ -24,6 +24,21 @@ const fullTitle = active === 'home' ? title : `${title} — twin.md`;
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script is:inline>
+      (function () {
+        try {
+          var k = 'twin-md-theme';
+          var s = localStorage.getItem(k);
+          var t =
+            s === 'light' || s === 'dark'
+              ? s
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
@@ -31,7 +46,7 @@ const fullTitle = active === 'home' ? title : `${title} — twin.md`;
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <link rel="icon" type="image/svg+xml" href={`${baseUrl}pets/axolotl/healthy/breath-a.svg`} />
+    <link rel="icon" type="image/png" href={`${baseUrl}pets/axolotl/healthy/breath-a.png`} />
   </head>
   <body class="min-h-dvh bg-[var(--color-paper)] text-[var(--color-ink)]">
     <!-- SVG filter for hand-drawn wobble on display type -->
