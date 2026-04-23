@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig(async () => ({
+export default defineConfig(() => ({
   root: ".",
   publicDir: "public",
   clearScreen: false,
@@ -21,7 +21,7 @@ export default defineConfig(async () => ({
   },
   build: {
     target: ["es2022", "chrome110", "safari15"],
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    minify: (!process.env.TAURI_DEBUG ? "esbuild" : false) as "esbuild" | false,
     sourcemap: Boolean(process.env.TAURI_DEBUG),
     rollupOptions: {
       input: {
