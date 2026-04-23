@@ -4,18 +4,19 @@ interface Props {
 }
 const { active } = Astro.props;
 
+const base = import.meta.env.BASE_URL;
 const links: { id: Props['active']; href: string; label: string }[] = [
-  { id: 'meet', href: '/meet', label: 'meet' },
-  { id: 'how', href: '/how-it-works', label: 'how it works' },
-  { id: 'install', href: '/install', label: 'install' },
-  { id: 'context', href: '/build-your-context', label: 'feed it' },
-  { id: 'world', href: '/world', label: 'world' },
+  { id: 'meet', href: `${base}meet`, label: 'meet' },
+  { id: 'how', href: `${base}how-it-works`, label: 'how it works' },
+  { id: 'install', href: `${base}install`, label: 'install' },
+  { id: 'context', href: `${base}build-your-context`, label: 'feed it' },
+  { id: 'world', href: `${base}world`, label: 'world' },
 ];
 ---
 
 <header class="mx-auto w-full max-w-6xl px-6 pt-6 sm:px-8 sm:pt-8">
   <nav class="flex flex-wrap items-center justify-between gap-4">
-    <a href="/" class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
+    <a href={base} class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
       <img
         src={import.meta.env.BASE_URL + 'pets/axolotl/healthy/breath-a.svg'}
         alt=""

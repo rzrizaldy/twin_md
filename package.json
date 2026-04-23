@@ -9,12 +9,13 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/mcp && npm run build -w twin-md && npm run build -w @twin-md/web",
+    "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/mcp && npm run build -w @twin-md/web-lite && npm run build -w twin-md && npm run build -w @twin-md/web",
     "build:landing": "npm run build -w @twin-md/landing",
     "build:desktop": "npm run build -w @twin-md/desktop",
     "dev:web": "npm run dev -w @twin-md/web",
     "dev:landing": "npm run dev -w @twin-md/landing",
     "dev:desktop": "npm run dev -w @twin-md/desktop",
+    "dev:web-lite": "npm run start -w @twin-md/web-lite",
     "generate:pet-assets": "node scripts/generate-pet-sprites-v2.mjs",
     "release": "./scripts/release.sh",
     "lint": "npm run lint -ws --if-present",

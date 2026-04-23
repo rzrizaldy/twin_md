@@ -1,14 +1,8 @@
-# twin-md
+# twin.md
 
-A local-first desk sprite that reads your second brain and decides whether to cheer, yawn, pace, or hide.
+**Live site:** [rzrizaldy.github.io/twin_md/](https://rzrizaldy.github.io/twin_md/)
 
-twin-md harvests the data already on your machine — Apple Health exports, a calendar `.ics`, your `~/.claude/` memory tree, your Obsidian vault, and a location export — into a single file at `~/.claude/twin.md`. That file is interpreted into a living pet that shows up in three places: your terminal, the Claude Desktop MCP surface, and a small webapp you can dock beside your work.
-
-The pet has agency. A background daemon scans your local state, fires macOS notifications when you owe yourself sleep or a walk, and surfaces the same reminders through the MCP server so Claude can bring them up without being asked.
-
-Nothing leaves your machine except the optional Anthropic interpretation call. No login, no cloud, no telemetry.
-
-See [DESIGN_BRIEF.md](DESIGN_BRIEF.md) for the full Animal-Crossing-style visual brief handed to the designer.
+A local-first desk creature that reads your second brain and mirrors how you are doing — cheer, yawn, pace, or go quiet. Everything important lives in `~/.claude/twin.md` and `~/.claude/twin-state.json` on your machine.
 
 ## Install
 
@@ -16,7 +10,7 @@ See [DESIGN_BRIEF.md](DESIGN_BRIEF.md) for the full Animal-Crossing-style visual
 npm install -g twin-md
 ```
 
-or run it without installing:
+Or without a global install:
 
 ```bash
 npx twin-md init
@@ -24,112 +18,44 @@ npx twin-md harvest
 npx twin-md watch
 ```
 
-Requires macOS + Node 20+ (notifications use `osascript`).
+Requires **Node 20+**. macOS notifications and some integrations expect macOS; core harvest and CLI work on Linux and Windows too.
 
-## Commands
-
-```bash
-twin-md init       # pick species, seed ~/.claude/twin.md, register the MCP server
-twin-md harvest    # scan your local 2nd brain and rewrite twin.md
-twin-md watch      # terminal pet; reminders appear as speech bubbles
-twin-md web        # docked companion + full-scene webapp, LAN-exposed with a QR code
-twin-md mcp        # stdio MCP server for Claude Desktop
-twin-md daemon start    # background loop: harvest, interpret, fire reminders
-twin-md daemon stop
-twin-md daemon status
-```
-
-`twin-md init` flags (all optional):
+## Everyday commands
 
 ```bash
-twin-md init \
-  --species axolotl \
-  --owner rz \
-  --health-path ~/twin-sources/health.json \
-  --calendar-path ~/twin-sources/calendar.ics \
-  --location-path ~/twin-sources/location.json \
-  --obsidian-vault ~/Documents/MyVault
+twin-md init       # config, twin.md seed, Claude Desktop MCP wiring
+twin-md harvest    # refresh twin.md from your local sources
+twin-md watch      # terminal pet + reminders
+twin-md web        # island mirror at http://127.0.0.1:4730/ (web-lite, no Next.js)
 ```
 
-## Webapp layouts
+Optional: `twin-md web --host 0.0.0.0` for LAN + QR. Legacy Next app: `twin-md web --next`.
 
-The webapp has two layouts. Switch via query string.
+Desktop tray **Open in browser** uses that URL when web-lite is running; otherwise it opens the GitHub Pages site above.
 
-- `http://localhost:3000/` — world mode: the full scene (island, stars-at-noon, storm desk, wilted corner)
-- `http://localhost:3000/?layout=companion` — companion mode: transparent body, sprite docked bottom-right, reminders float above. Designed to be pinned next to Obsidian, VS Code, or a notes window.
+## Web mirror (web-lite)
 
-## Reminders
+` twin-md web` serves a small **Animal Crossing–style island** view: composite scene, pet sprite, caption and line from `twin-state.json`. It does not run chat (replies stay in the desktop pet). No separate `localhost:3000` requirement.
 
-The sprite nudges you when:
+## More
 
-- you slept less than 6 hours and it is still morning
-- your calendar density is high and you have zero deep-work blocks
-- unfinished todos climb past a dozen
-- your 7-day home ratio is above 95 %
-- there are no workouts in the last week
-- no wins have been logged recently
+- [ARCHITECTURE.md](ARCHITECTURE.md) — harvest → interpret → surfaces
+- [DESIGN_BRIEF.md](DESIGN_BRIEF.md) — visual direction
+- `twin-md mcp` — stdio MCP server for Claude Desktop
+- `twin-md daemon` — background harvest + reminders
 
-Reminders surface in three places at once:
+## From source
 
-- macOS notification via `osascript` from the daemon
-- a speech bubble in `twin-md watch` — press `d` to acknowledge the top one, `n` to dismiss
-- a speech bubble in the webapp — click to acknowledge, "nevermind" to dismiss
-- in Claude Desktop via the MCP server (`get_pending_reminders`, `acknowledge_reminder`, `dismiss_reminder` tools)
-
-All reminders share one local file: `~/.claude/twin-reminders.jsonl`.
-
-## Runtime files
-
-- `~/.claude/twin.config.json` — config seeded by `init`
-- `~/.claude/twin.md` — the shared narrative state file
-- `~/.claude/twin-state.json` — the inferred pet scene
-- `~/.claude/twin-history/*.md` — every harvest snapshot
-- `~/.claude/twin-reminders.jsonl` — one line per fired reminder
-- `~/.claude/twin-daemon.pid` + `twin-daemon.log` — daemon metadata
-
-## Architecture
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the harvest → twin.md → twin-state.json → surfaces pipeline.
-
+```bash
+git clone https://github.com/rzrizaldy/twin_md.git
+cd twin_md
+npm ci
+npm run build
 ```
-your local 2nd brain
-  │
-  ▼
-twin-md harvest  →  ~/.claude/twin.md
-                      │
-                      ▼
-                interpret.ts  →  ~/.claude/twin-state.json
-                      │
-                      ▼
-                reminders.ts  →  ~/.claude/twin-reminders.jsonl
-                      │
-      ┌───────────────┼───────────────┬────────────────┐
-      ▼               ▼               ▼                ▼
-  twin-md watch   twin-md web    MCP surface     macOS notifications
-                  (world +        (Claude          (from daemon)
-                   companion)      Desktop)
-```
-
-## Packages
-
-Published as a scoped family under the `@twin-md` org + the root CLI binary.
-
-- `twin-md` — the CLI
-- `@twin-md/core` — schema, harvesters, interpretation, reminder rule engine
-- `@twin-md/mcp` — stdio MCP server
-- `@twin-md/web` — Next.js surface
-
-## Model notes
-
-The default Anthropic model is `claude-opus-4-20250514`, overridable via `TWIN_ANTHROPIC_MODEL`. If `ANTHROPIC_API_KEY` is missing, interpretation and chat fall back to local heuristics.
 
 ## Release
 
-From the monorepo root:
-
 ```bash
 npm run build
-scripts/release.sh            # pack + clean-room verify
-scripts/release.sh --dry-run  # + npm publish --dry-run across workspaces
-scripts/release.sh --publish  # + npm publish --ws --access public
+./scripts/release.sh --dry-run
 ```

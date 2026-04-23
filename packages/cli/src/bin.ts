@@ -31,9 +31,11 @@ program.command("harvest").description("harvest local sources into twin.md").act
 program.command("watch").description("render the terminal pet and watch twin files").action(runWatchCommand);
 program
   .command("web")
-  .description("start the phone web surface")
-  .option("--port <port>", "port to bind", "3000")
-  .option("--dev", "force next dev mode even if a prebuilt .next exists")
+  .description("start the island web mirror (web-lite on loopback by default)")
+  .option("--port <port>", "port to bind", "4730")
+  .option("--host <host>", "bind address (use 0.0.0.0 for LAN + QR)", "127.0.0.1")
+  .option("--next", "legacy: run Next.js app from @twin-md/web instead")
+  .option("--dev", "with --next: force next dev even if .next exists")
   .action(runWebCommand);
 program.command("mcp").description("start the stdio MCP server").action(runMcpCommand);
 

@@ -1,5 +1,7 @@
 ---
 import BreathingSprite from './BreathingSprite.astro';
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <section class="relative mt-10 overflow-hidden rounded-[2.5rem] border border-[var(--color-ink)]/10 bg-gradient-to-b from-[var(--color-cream)] to-[var(--color-mint)] px-6 pt-14 pb-10 sm:px-10 sm:pt-20 sm:pb-14">
@@ -38,13 +40,13 @@ import BreathingSprite from './BreathingSprite.astro';
 
       <div class="mt-7 flex flex-wrap items-center gap-3">
         <a
-          href="/install"
+          href={`${base}install`}
           class="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
         >
           install →
         </a>
         <a
-          href="/how-it-works"
+          href={`${base}how-it-works`}
           class="inline-flex items-center gap-2 rounded-full border border-[var(--color-ink)]/20 px-5 py-2.5 text-sm text-[var(--color-ink)] transition-colors hover:bg-[var(--color-paper)]"
         >
           how it works

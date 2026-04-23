@@ -40,6 +40,7 @@ trap 'rm -rf "$TMP"' EXIT
 PACKAGES=(
   "packages/core"
   "packages/mcp"
+  "packages/web-lite"
   "packages/web"
   "packages/cli"
 )
@@ -54,7 +55,7 @@ echo "==> clean-room install in $TMP"
   mkdir -p probe
   cd probe
   npm init -y >/dev/null
-  npm install --no-fund --no-audit ../twin-md-*.tgz
+  npm install --no-fund --no-audit ../*.tgz
   node -e "require('twin-md/dist/bin.js')" 2>/dev/null || true
   ./node_modules/.bin/twin-md --version
   ./node_modules/.bin/twin-md --help | head -n 20

@@ -35,14 +35,14 @@ import CozyLayout from '../layouts/CozyLayout.astro';
   <section class="mt-12" id="local-dev">
     <h2 class="font-display text-2xl">2. local dev from source</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      For hacking on twin-md itself. The repo is a pnpm monorepo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code> (shared logic), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/web</code> (Next.js companion).
+      For hacking on twin-md itself: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/web-lite</code> (default island mirror). Legacy Next UI: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/web</code>.
     </p>
     <div class="mt-4 flex flex-col gap-3 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       {[
         { cmd: 'git clone https://github.com/rzrizaldy/twin_md', hint: 'clone the monorepo' },
-        { cmd: 'pnpm install', hint: 'install all workspace deps' },
-        { cmd: 'pnpm --filter @twin-md/desktop tauri dev', hint: 'launch the floating pet companion' },
-        { cmd: 'pnpm --filter @twin-md/web dev', hint: 'start the web companion at localhost:3000' },
+        { cmd: 'npm ci', hint: 'install workspace dependencies' },
+        { cmd: 'npm run dev:desktop', hint: 'or: npm run build:desktop — Tauri floating pet' },
+        { cmd: 'npx twin-md web', hint: 'island mirror at http://127.0.0.1:4730/ (run after npm run build)' },
       ].map((s) => (
         <div>
           <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
@@ -160,12 +160,24 @@ import CozyLayout from '../layouts/CozyLayout.astro';
 
 <style>
   .provider-tab {
-    @apply rounded-lg px-3 py-1.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-ink)];
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-ink-soft);
+    transition: color 0.15s ease;
+  }
+  .provider-tab:hover {
+    color: var(--color-ink);
   }
   .provider-tab.is-active {
-    @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-medium;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-weight: 500;
   }
-  .provider-panel.hidden { display: none; }
+  .provider-panel.hidden {
+    display: none;
+  }
 </style>
 
 <script>
