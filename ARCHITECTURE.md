@@ -1,165 +1,193 @@
-# twin.md Backend Architecture
+# twin.md Architecture
+
+## Core Principle (Tolaria-aligned)
+
+> Filesystem wins. Cache and runtime state are derived and disposable. Conventions replace schemas. Git is the timeline. MCP is how AI reads and writes the brain.
+
+twin.md diverges only in what the user *sees*: the floating pet, SOUL, skills, chores, signal detector. Everything else behind the curtain is Tolaria-compatible so users can open the brain in Tolaria itself.
+
+---
+
+## Two Trees
+
+```
+Agent tree  ~/.claude/twin/      ← replaceable code + config
+Brain tree  ~/twin-brain/        ← permanent markdown, GIT REPO
+```
+
+**Agent tree** (`~/.claude/`) — runtime config and state. Replaced by upgrades.
+
+| File | Purpose |
+|---|---|
+| `twin.config.json` | Config including `brainPath`, `species`, AI provider |
+| `twin.md` | Compiled truth + timeline summary (harvested) |
+| `twin-state.json` | Inferred pet state JSON (derived, disposable) |
+| `SOUL.md` | Pet personality (user-editable) |
+| `skills/` | Skill markdown files (loaded by MCP server) |
+| `chores/` | Deterministic cron-style jobs |
+| `twin/cache/` | JSON scan cache for brain vault (disposable, regenerated) |
+
+**Brain tree** (`~/twin-brain/` by default) — permanent human-readable markdown, git repo, owned entirely by the user.
+
+| Folder | Contents |
+|---|---|
+| `diary/` | Daily diary entries (`type: Diary`) |
+| `moods/` | Mood check-ins (`type: Mood`) |
+| `observations/` | Signal-detector observations from Claude sessions |
+| `sessions/` | Summarised chat sessions |
+| `themes/` | Recurring patterns |
+| `people/` | People notes |
+| `type/` | Type definition documents |
+| `AGENTS.md` | Canonical guidance for AI agents |
+| `CLAUDE.md` | Shim → imports AGENTS.md |
+
+---
 
 ## Core Loop
 
-The system is intentionally local-first. Everything important resolves through one file:
+1. Local sources → `twin-md harvest` → `~/.claude/twin.md`
+2. `twin.md` → interpret → `~/.claude/twin-state.json`
+3. Every surface reads `twin-state.json`
+4. Brain notes → AutoGit checkpoint → `~/twin-brain/` (git)
 
-1. Local sources are harvested into `~/.claude/twin.md`
-2. `twin.md` is interpreted into `~/.claude/twin-state.json`
-3. Every surface reads that same local state
-
-That means the pet scene is not hand-managed in the frontend. The frontend is just a renderer for state inferred from your local life signals.
+---
 
 ## Data Sources
 
-The current implementation expects local exports or local folders instead of OAuth-heavy integrations:
+| Source | Path | Used for |
+|---|---|---|
+| Health JSON | `~/twin-sources/health.json` | Sleep, steps, HRV, workouts |
+| Calendar ICS | `~/twin-sources/calendar.ics` | Meeting load, deadlines |
+| Claude local memory | `~/.claude/` (`claudeDir`) | Scans `CLAUDE.md`, `MEMORY.md`, `projects/*/sessions/*.jsonl` (last 7 days) |
+| Obsidian vault | Configurable in `twin.config.json` | Recent notes, tags, todos |
+| Location JSON | `~/twin-sources/location.json` | Home-ratio, novelty |
+| Brain vault | `~/twin-brain/` (`brainPath`) | Diary, moods, themes, observations |
 
-- Health JSON export
-  - example path: `~/twin-sources/health.json`
-  - used for sleep, steps, HRV, workouts
-- Calendar ICS file
-  - example path: `~/twin-sources/calendar.ics`
-  - used for meeting load, event density, upcoming deadlines
-- Claude local memory tree
-  - path: `~/.claude/` (or `claudeDir` in config)
-  - scans `CLAUDE.md`, `MEMORY.md`, summaries, and **`projects/*/sessions/*.jsonl`** (last 7 days) into `claude_memory_signals` together with the markdown harvest
-- Obsidian vault
-  - configurable path in `twin.config.json`
-  - reads recent notes, tags, unfinished todos, and reflection lines
-- Location JSON export
-  - example path: `~/twin-sources/location.json`
-  - used for home-ratio and novelty cues
+---
 
-## Harvest Layer
+## Packages
 
-Implementation lives in [packages/core/src/harvest](/Users/rzrizaldy/CodeFolder/twin_md/packages/core/src/harvest/index.ts).
+| Package | Role |
+|---|---|
+| `@twin-md/core` | Schema, harvesters, interpreter, reminder engine, config |
+| `@twin-md/brain` | Brain vault: `scanBrain`, `scanBrainCached`, `git.*`, `initBrain` |
+| `@twin-md/cli` | CLI (`twin-md init/harvest/brain/pulse/doctor/mcp/web/daemon`) |
+| `@twin-md/mcp` | MCP stdio server (14 tools: 9 Tolaria-parity + 5 wellness) |
+| `@twin-md/web-lite` | Minimal HTTP mirror server (`/state.json`, `/pulse.json`, pet sprites) |
 
-Each source adapter returns one section of the document:
+---
 
-- `health.ts`
-- `calendar.ts`
-- `claude.ts`
-- `obsidian.ts`
-- `location.ts`
+## Brain vault (B1) — JSON cache, not PGLite
 
-`runTwinHarvest()` merges those sections into one structured document and writes:
+The brain uses Tolaria's three-strategy incremental scan:
 
-After `twin-md init`, the CLI runs an initial harvest so `twin.md` is populated from real sources when possible. Use `twin-md harvest --watch` to re-run harvest on changes under the Claude dir, Obsidian vault, and export paths.
+1. **No cache** → full walk, write `~/.claude/twin/cache/<vault-hash>.json`
+2. **Same git HEAD** → `git status --porcelain` → re-parse only dirty files
+3. **Different HEAD** → `git diff old..new --name-only` → selective re-parse
 
-- `~/.claude/twin.md`
-- `~/.claude/twin-history/<timestamp>.md`
+Cache is **disposable** — deleted or corrupted caches trigger a full rescan. No database server. PGLite is explicitly deferred; plain JSON cache + grep-style search is sufficient until proven otherwise.
 
-## Single Source Of Truth
+---
 
-`twin.md` is the shared narrative state file.
+## Convention vocabulary (B2)
 
-It keeps sections like:
+See [`docs/BRAIN_CONVENTIONS.md`](docs/BRAIN_CONVENTIONS.md) for the full field vocabulary. The short version:
 
-- `health`
-- `calendar`
-- `location`
-- `claude_memory_signals`
-- `obsidian_signals`
-- `now`
+- `type:` — entity type (Mood, Diary, Session, Theme, Person, Observation, Type)
+- `status:` — open | resolved | steady | spiky
+- `date:` — ISO date badge
+- `mood:` — tired | wired | quiet | steady | anxious | bright
+- Any field with `[[wikilinks]]` values → relationship
+- `_*` fields → system-internal, excluded from `BrainEntry.properties`
 
-This file is meant to be readable, editable, and portable. If you change it by hand, the pet can re-interpret from that same file.
+No field names are hardcoded in source code. Convention, not configuration.
 
-## Inference Layer
+---
 
-Implementation lives in [packages/core/src/interpret.ts](/Users/rzrizaldy/CodeFolder/twin_md/packages/core/src/interpret.ts).
+## MCP surface (B3) — 14 tools at the ceiling
 
-The interpreter reads `twin.md` and produces a richer pet scene object:
-
-```json
-{
-  "state": "sleep_deprived",
-  "environment": "stars_at_noon",
-  "animation": "yawning",
-  "caption": "Stars At Noon",
-  "scene": "The sky never quite finished waking up...",
-  "message": "I am trying to be brave, but my eyelids are losing the argument."
-}
+Tolaria-parity tools (read + write brain):
+```
+brain_context          open_note              create_note
+append_to_note         edit_note_frontmatter  delete_note
+link_notes             list_notes             search_notes
 ```
 
-The interpreter currently works in two modes:
+Existing twin.md tools (kept):
+```
+get_twin_status        get_pending_reminders  acknowledge_reminder
+dismiss_reminder       refresh_twin           twin_talk
+```
 
-- Heuristic mode
-  - always available
-  - computes energy, stress, glow, then chooses one of four narrative states
-- Anthropic mode
-  - enabled when `ANTHROPIC_API_KEY` is present
-  - refines the same state object but still preserves the local-first flow
+Wellness-specific tools (wellness layer):
+```
+log_mood               compose_diary          query_me (citations mandatory)
+pet_agency
+```
 
-## Frontend Connection
+Transport: stdio only. Registered into `~/.claude/mcp.json` and `~/.cursor/mcp.json`.
 
-The frontend does not calculate the pet scene on its own.
+---
 
-It reads the already-inferred state:
+## AutoGit (B4)
 
-- [packages/web/app/api/state/route.ts](/Users/rzrizaldy/CodeFolder/twin_md/packages/web/app/api/state/route.ts)
-  - reads `twin.md`
-  - loads or regenerates `twin-state.json`
-  - returns `{ document, state }`
-- [packages/web/app/components/TwinPhoneShell.tsx](/Users/rzrizaldy/CodeFolder/twin_md/packages/web/app/components/TwinPhoneShell.tsx)
-  - polls `/api/state`
-  - renders the scene from `state`, `environment`, and `animation`
-  - does not display raw dashboard numbers
+The daemon's tick function calls `autoGitCheckpoint` after each harvest:
+- Checks `git status --porcelain` on the brain vault
+- If any `.md` files are dirty: `git add -A && git commit -m "Updated N note(s)"`
+- No remote push by default
+- `twin-md pulse` prints git activity grouped by day
+- `/pulse.json` in web-lite exposes the same data to the mirror
 
-So the backend-to-frontend contract is:
+---
 
-`sources -> twin.md -> twin-state.json -> scene renderer`
+## CLI agent subprocess (B5)
 
-## Claude / MCP Connection
+Bubble chat priority order:
+1. Detect installed `claude` or `codex` CLI (`ai_agents::detect_cli_agent`)
+2. If found: spawn with `--mcp-config` injecting the twin-md MCP server → no API keys stored in the app
+3. If not found or CLI fails: fall back to direct API-key call via `provider.rs`
 
-Implementation lives in [packages/mcp/src/index.ts](/Users/rzrizaldy/CodeFolder/twin_md/packages/mcp/src/index.ts).
+---
 
-The MCP server exposes three tools:
+## Sprite canonicalization (Track A)
 
-- `get_twin_status`
-- `refresh_twin`
-- `twin_talk`
+Build-time resolver in each app's `stage-assets.mjs`:
+- For every `*.png` in `public/pets/{species}/{mood}/`
+- If `*-reference.png` exists alongside it → overwrite canonical `*.png` with the reference version
+- Runtime code loads a single `/{species}/{mood}/{frame}.png` — zero branches, zero `onerror`
 
-This lets Claude Desktop read the same local pet state and speak from it without duplicating business logic.
+web-lite resolves reference-first at request time in `safePetPath` (reads from `@twin-md/core/assets/`).
 
-## Terminal Connection
-
-Implementation lives in [packages/cli/src/ui/TwinWatchApp.tsx](/Users/rzrizaldy/CodeFolder/twin_md/packages/cli/src/ui/TwinWatchApp.tsx).
-
-`twin watch` watches:
-
-- `~/.claude/twin.md`
-- `~/.claude/twin-state.json`
-
-If `twin.md` changes, it re-interprets the scene and updates the terminal pet.
+---
 
 ## Operational Flow
 
-Typical lifecycle:
+```
+twin-md init          # writes twin.config.json, seeds twin.md, runs initial harvest
+twin-md brain init    # creates ~/twin-brain/ as a git repo, seeds type definitions
+twin-md harvest       # reads local sources → twin.md → twin-state.json
+twin-md harvest -w    # continuous mode (chokidar watcher)
+twin-md brain sync    # rebuild brain cache
+twin-md brain status  # git status + cache freshness
+twin-md brain remote add <url>  # optional remote (system git credentials)
+twin-md pulse         # git activity grouped by day
+twin-md doctor        # health check + exact fix suggestions
+twin-md web           # start web-lite mirror (:4730)
+twin-md mcp           # start stdio MCP server
+twin-md daemon start  # background tick (harvest + reminders + autogit)
+```
 
-1. `twin init`
-   - writes `twin.config.json`
-   - seeds `twin.md`
-   - registers the MCP server in Claude Desktop config
-2. `twin harvest`
-   - reads local sources
-   - rewrites `twin.md`
-   - writes `twin-state.json`
-3. `twin web`
-   - starts the phone-friendly scene renderer
-4. `twin watch`
-   - keeps the terminal pet synchronized
+---
 
 ## Design-State Mapping
 
-The backend currently maps all life signals into these four scene states:
+Four scene states, driven by heuristics on `twin.md` signals:
 
-- `healthy`
-  - dancing pet, sun, flowers, lush island
-- `sleep_deprived`
-  - yawning pet, stars still visible in daytime
-- `stressed`
-  - pacing pet, storm room, papers on the floor
-- `neglected`
-  - quiet pet, wilted plants, gray corner
+| State | Pet | Scene |
+|---|---|---|
+| `healthy` | dancing | sunny island |
+| `sleep_deprived` | yawning | stars at noon |
+| `stressed` | pacing | storm room |
+| `neglected` | quiet | gray nook |
 
-That mapping lives in the inference layer, not in the frontend theme code.
+Mapping lives in `packages/core/src/interpret.ts`, not in frontend theme code.

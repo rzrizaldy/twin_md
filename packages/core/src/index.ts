@@ -16,7 +16,6 @@ export * from "./schema.js";
 export type {
   AiKeyStorage,
   AiProvider,
-  PetSpriteVariant,
   TwinConfig,
   TwinSpecies
 } from "./config.js";

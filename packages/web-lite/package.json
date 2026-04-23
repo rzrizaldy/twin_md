@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@twin-md/brain": "^0.1.0",
     "@twin-md/core": "^0.1.0"
   },
   "devDependencies": {

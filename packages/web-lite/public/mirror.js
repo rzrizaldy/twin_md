@@ -1,6 +1,4 @@
-/**
- * Web mirror: clean PNGs by default (matches landing). Cat tries *-reference.png first.
- */
+/** Web mirror — one canonical PNG per (species, mood, frame), resolved server-side. */
 const POLL_MS = 4000;
 const BREATH_MS = 2200;
 const BLINK_MIN = 4000;
@@ -38,46 +36,22 @@ function sceneUrl(environment) {
   return `/scenes/${id}.svg`;
 }
 
-function petCandidates(species, mood, frame) {
+function petUrl(species, mood, frame) {
   const sp = species || "axolotl";
   const m = mood || "healthy";
-  const base = `breath-${frame}`;
-  const clean = `/pets/${sp}/${m}/${base}.png`;
-  if (sp === "cat") {
-    return [`/pets/${sp}/${m}/${base}-reference.png`, clean];
-  }
-  return [clean];
+  return `/pets/${sp}/${m}/breath-${frame}.png`;
 }
 
-function blinkCandidates(species, mood) {
+function blinkUrl(species, mood) {
   const sp = species || "axolotl";
   const m = mood || "healthy";
-  const clean = `/pets/${sp}/${m}/blink.png`;
-  if (sp === "cat") {
-    return [`/pets/${sp}/${m}/blink-reference.png`, clean];
-  }
-  return [clean];
+  return `/pets/${sp}/${m}/blink.png`;
 }
 
-function loadPetFromUrls(urls) {
-  let i = 0;
-  const next = () => {
-    if (i >= urls.length) {
-      petEl.onerror = null;
-      petEl.onload = null;
-      return;
-    }
-    petEl.onerror = () => {
-      i += 1;
-      next();
-    };
-    petEl.onload = () => {
-      petEl.onerror = null;
-      petEl.onload = null;
-    };
-    petEl.src = urls[i];
-  };
-  next();
+function loadPet(url) {
+  petEl.onerror = null;
+  petEl.onload = null;
+  petEl.src = url;
 }
 
 function applyState(data) {
@@ -115,9 +89,7 @@ function applyState(data) {
 
   petEl.dataset.species = data.species || "axolotl";
   petEl.dataset.mood = data.state || "healthy";
-  loadPetFromUrls(
-    petCandidates(petEl.dataset.species, petEl.dataset.mood, breathFrame)
-  );
+  loadPet(petUrl(petEl.dataset.species, petEl.dataset.mood, breathFrame));
 }
 
 async function fetchState() {
@@ -142,7 +114,7 @@ function breathLoop() {
     breathFrame = breathFrame === "a" ? "b" : "a";
     const sp = petEl.dataset.species || "axolotl";
     const mood = petEl.dataset.mood || "healthy";
-    loadPetFromUrls(petCandidates(sp, mood, breathFrame));
+    loadPet(petUrl(sp, mood, breathFrame));
   }, BREATH_MS);
 }
 
@@ -152,9 +124,9 @@ function scheduleBlink() {
   blinkTimer = window.setTimeout(() => {
     const sp = petEl.dataset.species || "axolotl";
     const mood = petEl.dataset.mood || "healthy";
-    loadPetFromUrls(blinkCandidates(sp, mood));
+    loadPet(blinkUrl(sp, mood));
     window.setTimeout(() => {
-      loadPetFromUrls(petCandidates(sp, mood, breathFrame));
+      loadPet(petUrl(sp, mood, breathFrame));
       scheduleBlink();
     }, BLINK_HOLD_MS);
   }, delay);
@@ -164,3 +136,33 @@ void fetchState();
 setInterval(fetchState, POLL_MS);
 breathLoop();
 scheduleBlink();
+
+// ── Pulse strip ─────────────────────────────────────────────────────────────
+const pulseEl = document.getElementById("pulse");
+const PULSE_POLL_MS = 60_000;
+
+async function fetchPulse() {
+  if (!pulseEl) return;
+  try {
+    const res = await fetch("/pulse.json", { cache: "no-store" });
+    const data = await res.json();
+    if (!data.ok || !data.days?.length) {
+      pulseEl.hidden = true;
+      return;
+    }
+    pulseEl.hidden = false;
+    pulseEl.innerHTML = `<h2 class="pulse-heading">recent activity</h2>` +
+      data.days.slice(0, 5).map(day =>
+        `<div class="pulse-day"><span class="pulse-date">${day.date}</span>` +
+        day.entries.slice(0, 3).map(e =>
+          `<span class="pulse-entry" title="${e.files.join(', ')}">${e.sha} ${e.subject}</span>`
+        ).join("") +
+        `</div>`
+      ).join("");
+  } catch {
+    if (pulseEl) pulseEl.hidden = true;
+  }
+}
+
+void fetchPulse();
+setInterval(fetchPulse, PULSE_POLL_MS);

@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.4.2",
+    "@twin-md/brain": "^0.1.0",
     "@twin-md/core": "^0.1.0",
     "@twin-md/mcp": "^0.1.0",
     "@twin-md/web": "^0.1.0",

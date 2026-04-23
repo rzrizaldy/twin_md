@@ -5,6 +5,14 @@ import { runInitCommand } from "./commands/init.js";
 import { runMcpCommand } from "./commands/mcp.js";
 import { runWatchCommand } from "./commands/watch.js";
 import { runWebCommand } from "./commands/web.js";
+import {
+  runBrainInitCommand,
+  runBrainSyncCommand,
+  runBrainStatusCommand,
+  runBrainRemoteAddCommand,
+  runPulseCommand,
+  runDoctorCommand
+} from "./commands/brain.js";
 
 const program = new Command();
 
@@ -25,10 +33,6 @@ program
   .option("--provider <name>", "ai provider (anthropic | openai | gemini)")
   .option("--model <name>", "model id for the chosen provider")
   .option("--api-key <key>", "api key for the chosen provider")
-  .option(
-    "--pet-sprite-variant <variant>",
-    "clean (default, same as website) | reference (sketch frames where available)"
-  )
   .action(runInitCommand);
 
 program
@@ -78,6 +82,53 @@ daemon
   .action((options: { interval?: number; once?: boolean }) =>
     runDaemonCommand("run", options)
   );
+
+// ── Brain vault commands ──────────────────────────────────────────────────────
+
+const brain = program
+  .command("brain")
+  .description("manage the twin-brain git vault");
+
+brain
+  .command("init")
+  .description("create and git-init the brain vault, seed type definitions")
+  .option("--path <path>", "path for the new vault (default: ~/twin-brain)")
+  .option("--from <path>", "use an existing folder as the vault (skips existing files)")
+  .option("--no-git", "skip git init (for testing)")
+  .action((opts: { path?: string; from?: string; noGit?: boolean }) =>
+    runBrainInitCommand(opts)
+  );
+
+brain
+  .command("sync")
+  .description("force full cache rebuild for the brain vault")
+  .action(runBrainSyncCommand);
+
+brain
+  .command("status")
+  .description("show git status and cache freshness for the brain vault")
+  .action(runBrainStatusCommand);
+
+brain
+  .command("remote")
+  .description("manage the brain vault's git remote")
+  .addCommand(
+    new Command("add")
+      .description("add or update the origin remote (provider-agnostic; no OAuth stored)")
+      .argument("<url>", "git remote URL")
+      .action((url: string) => runBrainRemoteAddCommand(url))
+  );
+
+program
+  .command("pulse")
+  .description("show brain vault git activity grouped by day")
+  .option("--limit <n>", "max commits to show", (v) => Number(v), 50)
+  .action((opts: { limit?: number }) => runPulseCommand(opts));
+
+program
+  .command("doctor")
+  .description("check health of all twin.md sources and the brain vault, print fixes")
+  .action(runDoctorCommand);
 
 program.parseAsync().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));

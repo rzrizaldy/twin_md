@@ -567,58 +567,6 @@ body.window {
   background: var(--pink);
 }
 
-.variant-hint {
-  margin: 14px 0 8px;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.variant-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.variant-card {
-  display: grid;
-  gap: 4px;
-  padding: 12px 10px;
-  border: 1.5px solid rgba(71, 54, 67, 0.2);
-  border-radius: 14px;
-  background: #fff;
-  cursor: pointer;
-  transition: transform 180ms, border-color 180ms, background 180ms;
-}
-
-.variant-card:hover {
-  transform: translateY(-1px);
-}
-
-.variant-card input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.variant-card strong {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: lowercase;
-  letter-spacing: 0.08em;
-}
-
-.variant-card span {
-  font-size: 12px;
-  opacity: 0.65;
-  line-height: 1.35;
-}
-
-.variant-card:has(input:checked) {
-  border-color: var(--ink);
-  background: rgba(196, 242, 203, 0.35);
-}
-
 .text-input {
   width: 100%;
   padding: 10px 14px;

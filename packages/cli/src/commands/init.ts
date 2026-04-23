@@ -26,7 +26,6 @@ type InitOptions = {
   provider?: string;
   model?: string;
   apiKey?: string;
-  petSpriteVariant?: string;
 };
 
 export async function runInitCommand(options: InitOptions): Promise<void> {
@@ -84,15 +83,6 @@ export async function runInitCommand(options: InitOptions): Promise<void> {
       ? await input({ message: "Your name", default: current.owner })
       : current.owner);
 
-  let petSpriteVariant: TwinConfig["petSpriteVariant"] = current.petSpriteVariant;
-  if (options.petSpriteVariant === "reference" || options.petSpriteVariant === "clean") {
-    petSpriteVariant = options.petSpriteVariant;
-  } else if (options.petSpriteVariant) {
-    throw new Error(
-      `Invalid --pet-sprite-variant (use clean or reference, got ${options.petSpriteVariant})`
-    );
-  }
-
   const config = createDefaultConfig({
     ...current,
     species: species as TwinConfig["species"],
@@ -103,8 +93,7 @@ export async function runInitCommand(options: InitOptions): Promise<void> {
     locationPath: options.locationPath ?? current.locationPath,
     aiProvider: provider,
     aiModel: model,
-    aiKeyStorage: apiKey.trim() ? "config" : "env",
-    petSpriteVariant
+    aiKeyStorage: apiKey.trim() ? "config" : "env"
   });
 
   const registration = await registerClaudeDesktopMcp(resolveMcpEntrypoint(), config);

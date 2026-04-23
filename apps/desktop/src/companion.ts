@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getState,
@@ -47,8 +46,6 @@ const DEFAULT_STATE: PetState = {
 let current: PetState = DEFAULT_STATE;
 let frame: "breath-a" | "breath-b" = "breath-a";
 let blinkTimer: number | null = null;
-/** `clean` = production PNGs (matches the website). `reference` tries `*-reference.png` first. */
-let spriteVariant: "clean" | "reference" = "clean";
 
 // ── Sprite helpers ───────────────────────────────────────────────────────────
 
@@ -60,40 +57,13 @@ function svgPath(species: TwinSpecies, mood: TwinMood, frameName: string): strin
   return `/pets/${species}/${mood}/${frameName}.svg`;
 }
 
-const missingPngs = new Set<string>();
-
-function basenamesForFrame(frameName: string, species: TwinSpecies): string[] {
-  const referenceFirst =
-    spriteVariant === "reference" || species === "cat";
-  if (referenceFirst) {
-    return [`${frameName}-reference`, frameName];
-  }
-  return [frameName];
-}
-
 function setSpriteFor(species: TwinSpecies, mood: TwinMood, frameName: string) {
-  const bases = basenamesForFrame(frameName, species);
-  const tryBase = (i: number) => {
-    if (i >= bases.length) {
-      sprite.onerror = null;
-      sprite.src = svgPath(species, mood, frameName);
-      return;
-    }
-    const bn = bases[i]!;
-    const pngKey = `${species}/${mood}/${bn}`;
-    if (missingPngs.has(pngKey)) {
-      tryBase(i + 1);
-      return;
-    }
-    const png = pngPath(species, mood, bn);
-    sprite.src = png;
-    sprite.onerror = () => {
-      missingPngs.add(pngKey);
-      sprite.onerror = null;
-      tryBase(i + 1);
-    };
+  const png = pngPath(species, mood, frameName);
+  sprite.src = png;
+  sprite.onerror = () => {
+    sprite.onerror = null;
+    sprite.src = svgPath(species, mood, frameName);
   };
-  tryBase(0);
 }
 
 function render() {
@@ -357,13 +327,6 @@ function attachInteractions() {
 async function init() {
   // Initialize bubble as hidden
   setBubbleState("hidden");
-
-  try {
-    const v = await invoke<string>("get_pet_sprite_variant");
-    spriteVariant = v === "reference" ? "reference" : "clean";
-  } catch {
-    spriteVariant = "clean";
-  }
 
   // Paint the default sprite immediately so the window never looks empty.
   render();

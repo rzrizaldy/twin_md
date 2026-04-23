@@ -21,13 +21,9 @@ const {
 const rawBase = import.meta.env.BASE_URL;
 const basePrefix = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 const base = `${basePrefix}pets/${species}/${mood}`;
-// Match desktop companion: raster sprites (clean exports), not vector previews.
+// Stage-assets resolver picks reference-first at build time; runtime loads one canonical file.
 const a = `${base}/breath-a.png`;
 const b = `${base}/breath-b.png`;
-const aRef = `${base}/breath-a-reference.png`;
-const bRef = `${base}/breath-b-reference.png`;
-const catFallbackA = `this.onerror=null;this.src='${a}'`;
-const catFallbackB = `this.onerror=null;this.src='${b}'`;
 ---
 
 <div
@@ -40,7 +36,7 @@ const catFallbackB = `this.onerror=null;this.src='${b}'`;
     breath ? (
       <>
         <img
-          src={species === 'cat' ? aRef : a}
+          src={a}
           alt=""
           aria-hidden="true"
           width={size}
@@ -49,10 +45,9 @@ const catFallbackB = `this.onerror=null;this.src='${b}'`;
           style="animation: breath-a 2200ms var(--ease-breath) infinite;"
           loading="eager"
           decoding="async"
-          {...species === 'cat' ? { onerror: catFallbackA } : {}}
         />
         <img
-          src={species === 'cat' ? bRef : b}
+          src={b}
           alt=""
           aria-hidden="true"
           width={size}
@@ -61,12 +56,11 @@ const catFallbackB = `this.onerror=null;this.src='${b}'`;
           style="animation: breath-b 2200ms var(--ease-breath) infinite;"
           loading="eager"
           decoding="async"
-          {...species === 'cat' ? { onerror: catFallbackB } : {}}
         />
       </>
     ) : (
       <img
-        src={species === 'cat' ? aRef : a}
+        src={a}
         alt=""
         aria-hidden="true"
         width={size}
@@ -74,7 +68,6 @@ const catFallbackB = `this.onerror=null;this.src='${b}'`;
         class="block h-full w-full"
         loading="eager"
         decoding="async"
-        {...species === 'cat' ? { onerror: catFallbackA } : {}}
       />
     )
   }

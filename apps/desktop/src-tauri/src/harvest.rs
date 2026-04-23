@@ -100,16 +100,11 @@ pub async fn init(
     species: &str,
     owner: &str,
     obsidian_vault: Option<&str>,
-    pet_sprite_variant: Option<&str>,
 ) -> Result<()> {
     let mut args: Vec<&str> = vec!["init", "--species", species, "--owner", owner];
     if let Some(path) = obsidian_vault {
         args.push("--obsidian-vault");
         args.push(path);
-    }
-    if let Some("reference") = pet_sprite_variant {
-        args.push("--pet-sprite-variant");
-        args.push("reference");
     }
     spawn_cli(&args).await.context("twin-md init")?;
     Ok(())

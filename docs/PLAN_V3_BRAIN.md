@@ -1,8 +1,11 @@
 # twin.md V3 — Wellness Brain & Harness
 
-> **Status:** Plan board — principal review, not yet green-lit for implementation.
-> **Inspiration:** [`garrytan/gbrain`](https://github.com/garrytan/gbrain) architecture, bent for *chill / wellness / self-agency* instead of CEO productivity.
+> **Status:** ✅ Implemented (Track B1–B5 shipped). See ARCHITECTURE.md for the current state.
+> **Inspiration:** [`garrytan/gbrain`](https://github.com/garrytan/gbrain) + [`refactoringhq/tolaria`](https://github.com/refactoringhq/tolaria), bent for *chill / wellness / self-agency* instead of CEO productivity.
+> **Tolaria alignment:** Filesystem-as-truth, git-first brain vault, JSON cache (not PGLite in P1), convention vocabulary, MCP surface parity, AGENTS.md, no-API-keys-in-app.
 > **One-line:** twin.md becomes a tiny, local-first, human-readable **second-brain companion** — the pet is the face, markdown skills are the voice, your own words are the content.
+
+> **PGLite note:** Earlier versions of this plan mentioned PGLite as Phase 1 storage. After adopting Tolaria's architecture, **PGLite is deferred**. Phase 1 ships with Tolaria's plain JSON cache + git strategy. PGLite appears only as an optional Phase B6 upgrade if and when keyword search proves too slow at scale.
 
 ---
 

@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { readFile, writeFile, unlink, appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
+import { existsSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
   appendReminderLedger,
@@ -17,6 +19,9 @@ import {
   type Reminder,
   type TwinConfig
 } from "@twin-md/core/server";
+import { gitDirtyFiles, gitCommit } from "@twin-md/brain";
+
+const AUTOGIT_IDLE_TICKS = 1;
 
 const DEFAULT_INTERVAL_MINUTES = 15;
 
@@ -205,6 +210,20 @@ type TickResult = {
   pendingCount: number;
 };
 
+async function autoGitCheckpoint(config: TwinConfig): Promise<void> {
+  const brainPath = config.brainPath ?? path.join(os.homedir(), "twin-brain");
+  if (!existsSync(brainPath) || !existsSync(path.join(brainPath, ".git"))) return;
+  try {
+    const dirty = await gitDirtyFiles(brainPath);
+    const mdDirty = dirty.filter((f) => f.endsWith(".md"));
+    if (mdDirty.length === 0) return;
+    await gitCommit(brainPath, `Updated ${mdDirty.length} note(s)`);
+    await logLine(`autogit: committed ${mdDirty.length} note(s)`);
+  } catch (err) {
+    await logLine(`autogit skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 async function tick(config: TwinConfig): Promise<TickResult> {
   // Harvest fresh state.
   let document;
@@ -221,6 +240,9 @@ async function tick(config: TwinConfig): Promise<TickResult> {
     state = await interpretTwinDocument(document, config);
     await writePetState(state);
   }
+
+  // AutoGit checkpoint — commit pending brain notes; never remote-pushes.
+  await autoGitCheckpoint(config).catch(() => {});
 
   const existing = await readReminderLedger();
   const fresh = evaluateReminders({

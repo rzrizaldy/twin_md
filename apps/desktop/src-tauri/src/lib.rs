@@ -1,3 +1,4 @@
+mod ai_agents;
 mod chat;
 mod commands;
 mod context;
@@ -52,7 +53,6 @@ pub fn run() {
             ipc::validate_provider_key,
             ipc::set_vault_path,
             ipc::run_onboarding,
-            ipc::get_pet_sprite_variant,
             ipc::ensure_claude_dir,
             ipc::create_starter_vault,
             ipc::save_provider_credentials,

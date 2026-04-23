@@ -94,13 +94,10 @@ export async function triggerHarvest(): Promise<void> {
   await invoke("trigger_harvest");
 }
 
-export type PetSpriteVariant = "clean" | "reference";
-
 export interface OnboardingPayload {
   species: "axolotl" | "cat" | "slime";
   owner: string;
   obsidianVault: string | null;
-  petSpriteVariant: PetSpriteVariant;
 }
 
 export async function runOnboarding(

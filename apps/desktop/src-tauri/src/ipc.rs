@@ -18,25 +18,6 @@ pub fn get_state(shared: State<'_, SharedState>) -> Option<PetState> {
     shared.get()
 }
 
-/// `clean` (default, same art as the website) or `reference` (`*-reference.png` where available).
-#[tauri::command]
-pub fn get_pet_sprite_variant() -> String {
-    let cfg_path = crate::paths::twin_config_path();
-    let Ok(raw) = fs::read_to_string(&cfg_path) else {
-        return "clean".into();
-    };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
-        return "clean".into();
-    };
-    match value
-        .get("petSpriteVariant")
-        .and_then(|v| v.as_str())
-    {
-        Some("reference") => "reference".into(),
-        _ => "clean".into(),
-    }
-}
-
 #[derive(serde::Serialize)]
 pub struct ChatStatus {
     pub has_api_key: bool,
@@ -228,8 +209,6 @@ pub struct OnboardingPayload {
     pub species: String,
     pub owner: String,
     pub obsidian_vault: Option<String>,
-    #[serde(default)]
-    pub pet_sprite_variant: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -249,7 +228,6 @@ pub async fn run_onboarding(
         &payload.species,
         &payload.owner,
         vault,
-        payload.pet_sprite_variant.as_deref(),
     )
     .await
     {

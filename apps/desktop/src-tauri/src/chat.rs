@@ -1,10 +1,14 @@
-//! Streaming chat. Routes through provider.rs so Anthropic / OpenAI / Gemini
-//! all surface the same `twin://chat-token` events.
+//! Streaming chat.
+//!
+//! Priority order (Tolaria B5 pattern):
+//!   1. User's installed `claude` or `codex` CLI with twin-md MCP injected.
+//!   2. Direct API-key call via provider.rs (fallback when no CLI detected).
 
 use anyhow::Result;
 use futures::StreamExt;
 use tauri::{AppHandle, Emitter};
 
+use crate::ai_agents;
 use crate::context;
 use crate::credentials::{active_provider_and_model, resolve_api_key};
 use crate::model::PetState;
@@ -27,6 +31,27 @@ pub async fn stream_with_system(
     state: Option<PetState>,
     system_override: Option<String>,
 ) -> Result<()> {
+    // ── B5: try installed CLI agent first ────────────────────────────────────
+    if let Some(agent) = ai_agents::detect_cli_agent() {
+        let app_clone = app.clone();
+        let result = ai_agents::stream_via_cli(&agent, &message, move |token| {
+            let _ = app_clone.emit("twin://chat-token", token);
+        })
+        .await;
+
+        match result {
+            Ok(()) => {
+                let _ = app.emit("twin://chat-done", ());
+                return Ok(());
+            }
+            Err(err) => {
+                eprintln!("[twin] {} CLI failed, falling back to API: {err:?}", agent.name());
+                // Fall through to API-key path
+            }
+        }
+    }
+
+    // ── Fallback: direct API-key chat ────────────────────────────────────────
     let (provider_kind, model) = active_provider_and_model();
     let Some(api_key) = resolve_api_key(provider_kind) else {
         fallback(&app, provider_kind);

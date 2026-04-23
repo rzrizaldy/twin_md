@@ -1,10 +1,12 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { getTwinStatePath } from "@twin-md/core/server";
+import { gitPulse } from "@twin-md/brain";
 
 const require = createRequire(import.meta.url);
 
@@ -35,6 +37,11 @@ function safePetPath(urlPath: string): string | null {
   const full = path.join(coreRoot(), "assets", "pets", normalized);
   const petsRoot = path.join(coreRoot(), "assets", "pets");
   if (!full.startsWith(petsRoot)) return null;
+  // Reference-first: serve *-reference.png when it exists alongside the canonical.
+  if (full.endsWith(".png") && !full.endsWith("-reference.png")) {
+    const refPath = full.replace(/\.png$/, "-reference.png");
+    if (existsSync(refPath)) return refPath;
+  }
   return full;
 }
 
@@ -148,6 +155,18 @@ async function handleRequest(
       "Cache-Control": "public, max-age=300"
     });
     createReadStream(full).pipe(res);
+    return;
+  }
+
+  if (req.method === "GET" && p === "/pulse.json") {
+    const brainPath =
+      process.env.TWIN_BRAIN_PATH ?? path.join(os.homedir(), "twin-brain");
+    const days = await gitPulse(brainPath, 30).catch(() => []);
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(JSON.stringify({ ok: true, brainPath, days }, null, 2));
     return;
   }
 

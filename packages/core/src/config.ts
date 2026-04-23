@@ -1,5 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import os from "node:os";
+import path from "node:path";
 import { z } from "zod";
 import {
   DEFAULT_SOURCE_DIR,
@@ -13,10 +15,6 @@ import {
 
 export const TWIN_SPECIES = ["axolotl", "cat", "slime"] as const;
 export type TwinSpecies = (typeof TWIN_SPECIES)[number];
-
-/** `clean` = production PNGs (same art as the public site). `reference` = `*-reference.png` frames where shipped. */
-export const PET_SPRITE_VARIANTS = ["clean", "reference"] as const;
-export type PetSpriteVariant = (typeof PET_SPRITE_VARIANTS)[number];
 
 export const AI_PROVIDERS = ["anthropic", "openai", "gemini"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
@@ -50,7 +48,8 @@ export const TwinConfigSchema = z.object({
   aiModel: z.string().min(1).default("claude-sonnet-4-6"),
   aiKeyStorage: z.enum(AI_KEY_STORAGE).default("env"),
   mcpCommandId: z.string().min(1).optional(),
-  petSpriteVariant: z.enum(PET_SPRITE_VARIANTS).default("clean")
+  /** Absolute path to the brain vault (git repo). Defaults to ~/twin-brain. */
+  brainPath: z.string().min(1).optional()
 });
 
 export type TwinConfig = z.infer<typeof TwinConfigSchema>;
@@ -74,7 +73,7 @@ export function createDefaultConfig(
     aiProvider: "anthropic",
     aiModel: DEFAULT_ANTHROPIC_MODEL,
     aiKeyStorage: "env",
-    petSpriteVariant: "clean",
+    brainPath: path.join(os.homedir(), "twin-brain"),
     ...overrides
   });
 }
