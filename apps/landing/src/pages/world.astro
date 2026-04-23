@@ -48,39 +48,33 @@ const scenes = [
       class="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-[var(--color-axolotl-accent)]/15 blur-3xl"
     >
     </div>
-    <div class="relative grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+    <div class="relative grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center">
       <div>
         <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">phase three</p>
         <h1 class="mt-2 font-display text-4xl sm:text-5xl">an ambient world — later, but already painted</h1>
         <p class="mt-4 max-w-xl text-[var(--color-ink-soft)]">
-          The desktop creature ships first. These are the real scene composites from the game — the weather your twin reads from <code class="rounded bg-[var(--color-cream)]/80 px-1.5 py-0.5 font-mono text-[0.8em]">twin-state.json</code>.
+          The desktop creature ships first. These are the same four environments the companion maps to when it reads your state — bloom, low charge, overload, quiet corner.
         </p>
         <p class="mt-3 max-w-xl text-[var(--color-ink-soft)]">
-          Someday: shared browser meadows where twins meet. For now, wander the four rooms below.
+          Someday: shared browser meadows where twins meet. For now, wander the rooms below.
         </p>
-        <div class="mt-8 flex flex-wrap gap-4">
-          <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/90 px-4 py-3 shadow-sm backdrop-blur-sm">
-            <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">live art</p>
-            <p class="mt-1 text-sm text-[var(--color-ink)]">SVG composites + PNG refs ship with core assets.</p>
-          </div>
-        </div>
       </div>
       <div class="relative">
         <div
           class="relative overflow-hidden rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] shadow-[0_28px_80px_-32px_rgba(71,54,67,0.45)]"
         >
-          <div class="aspect-[4/3] w-full bg-[var(--color-fog)]/40">
+          <div class="aspect-[4/3] w-full min-h-[220px] bg-[var(--color-fog)]/40 sm:min-h-[280px]">
             <img
-              src={`${base}scenes/sunny_island/composite.svg`}
-              alt="Sunny island scene — bloom mode environment"
+              src={`${base}scenes/sunny_island/reference.png`}
+              alt="Bloom mode — bright island scene concept"
               class="h-full w-full object-cover object-center"
-              width="800"
-              height="600"
+              width="1536"
+              height="1024"
               loading="eager"
             />
           </div>
           <div class="flex items-center justify-between gap-4 border-t border-[var(--color-ink)]/10 bg-[var(--color-cream)]/30 px-5 py-4">
-            <p class="text-sm font-medium text-[var(--color-ink)]">Hero preview · sunny island</p>
+            <p class="text-sm font-medium text-[var(--color-ink)]">Bloom mode preview</p>
             <BreathingSprite species="slime" mood="healthy" size={72} />
           </div>
         </div>
@@ -88,11 +82,42 @@ const scenes = [
     </div>
   </header>
 
+  <section class="mt-14">
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">mood board</p>
+    <h2 class="mt-2 font-display text-3xl sm:text-4xl">four environments, full width</h2>
+    <p class="mt-3 max-w-2xl text-[var(--color-ink-soft)]">
+      Raster boards straight from production — same palette and lighting the pet scenes use.
+    </p>
+
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {
+        scenes.map((s) => (
+          <figure class="overflow-hidden rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] shadow-md">
+            <div class="aspect-[3/2] w-full sm:aspect-[4/3]">
+              <img
+                src={`${base}scenes/${s.slug}/reference.png`}
+                alt={`${s.title} environment`}
+                width="800"
+                height="533"
+                class="h-full w-full object-cover object-center"
+                loading="lazy"
+              />
+            </div>
+            <figcaption class="border-t border-[var(--color-ink)]/10 px-4 py-3">
+              <p class="text-xs uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">{s.kicker}</p>
+              <p class="mt-0.5 font-display text-lg">{s.title}</p>
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+  </section>
+
   <section class="mt-16">
-    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">four environments</p>
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">with the cast</p>
     <h2 class="mt-2 font-display text-3xl sm:text-4xl">same creature, different weather</h2>
     <p class="mt-3 max-w-2xl text-[var(--color-ink-soft)]">
-      Each card pairs the shipped scene file with a species pose that matches the mood lane — so the page feels like a light art pass, not a grey placeholder.
+      Each card pairs a scene with a species pose on the matching mood lane.
     </p>
 
     <div class="mt-10 grid gap-8 lg:grid-cols-2">
@@ -102,25 +127,22 @@ const scenes = [
             class={`group relative overflow-hidden rounded-[2rem] border border-[var(--color-ink)]/10 bg-gradient-to-br ${s.frame} p-[1px] shadow-[0_24px_70px_-28px_rgba(71,54,67,0.4)]`}
           >
             <div class="relative h-full overflow-hidden rounded-[1.96rem] bg-[var(--color-paper)]/92 backdrop-blur-md dark:bg-[var(--color-paper)]/80">
-              <div class="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-fog)]/35">
+              <div class="relative aspect-[16/11] w-full min-h-[200px] overflow-hidden bg-[var(--color-fog)]/35 sm:min-h-[260px]">
                 <img
-                  src={`${base}scenes/${s.slug}/composite.svg`}
+                  src={`${base}scenes/${s.slug}/reference.png`}
                   alt=""
                   width="960"
-                  height="600"
-                  class="h-full w-full object-cover object-center transition duration-[1.2s] ease-out group-hover:scale-[1.04]"
+                  height="640"
+                  class="h-full w-full object-cover object-center transition duration-[1.2s] ease-out group-hover:scale-[1.03]"
                   loading="lazy"
                 />
-                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--color-paper)]/50 via-transparent to-transparent opacity-80" />
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--color-paper)]/45 via-transparent to-transparent opacity-90" />
               </div>
               <div class="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between">
                 <div class="max-w-lg">
                   <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{s.kicker}</p>
                   <h3 class="mt-1 font-display text-2xl">{s.title}</h3>
                   <p class="mt-2 text-sm leading-relaxed text-[var(--color-ink-soft)]">{s.blurb}</p>
-                  <p class="mt-3 font-mono text-[10px] text-[var(--color-ink-soft)]/80">
-                    scenes/{s.slug}/composite.svg
-                  </p>
                 </div>
                 <div class="flex shrink-0 justify-center sm:justify-end">
                   <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-cream)]/40 p-3">
@@ -135,34 +157,7 @@ const scenes = [
     </div>
   </section>
 
-  <section class="mt-20 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)]/35 p-6 sm:p-10">
-    <div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">reference frames</p>
-        <h2 class="mt-2 font-display text-2xl">PNG mood boards</h2>
-        <p class="mt-2 max-w-xl text-sm text-[var(--color-ink-soft)]">
-          Flat lighting references live next to composites in the repo — useful for artists, and a softer strip on the page.
-        </p>
-      </div>
-      <div class="flex flex-wrap justify-center gap-3 sm:justify-end">
-        {
-          scenes.map((s) => (
-            <div class="overflow-hidden rounded-xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] shadow-sm">
-              <img
-                src={`${base}scenes/${s.slug}/reference.png`}
-                alt={`${s.title} reference still`}
-                width="160"
-                height="100"
-                class="h-24 w-36 object-cover object-center"
-                loading="lazy"
-              />
-            </div>
-          ))
-        }
-      </div>
-    </div>
-    <p class="mt-8 text-center text-sm text-[var(--color-ink-soft)]">
-      No mailing list — when the shared world ships, your running twin will be the first to grumble about it.
-    </p>
-  </section>
+  <p class="mx-auto mt-16 max-w-2xl text-center text-sm text-[var(--color-ink-soft)]">
+    No mailing list — when the shared world ships, your running twin will be the first to grumble about it.
+  </p>
 </CozyLayout>
