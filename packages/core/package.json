@@ -26,7 +26,8 @@
       "types": "./dist/chat-commands.d.ts",
       "import": "./dist/chat-commands.js",
       "default": "./dist/chat-commands.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

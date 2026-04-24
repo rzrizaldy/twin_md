@@ -5,11 +5,15 @@
   --cream: #fff8d2;
   --mint: #c4f2cb;
   --pink: #ffd6e5;
+  --sand: #ffe4b8;
+  --paper: #fffaea;
   --ink: #473643;
+  --ink-soft: #6b5660;
   --night: #1b1a2e;
   --quiet: #e6e2d4;
   --clipped: #ffe1d4;
   --groggy: #d5d8ff;
+  --line: rgba(71, 54, 67, 0.18);
   --radius: 18px;
   --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
   --font-body: "Inter Tight Variable", "Inter Tight", -apple-system, system-ui, sans-serif;
@@ -58,13 +62,13 @@ body.window {
 
 .pet {
   position: relative;
-  width: 94%;
+  width: min(86vw, 86vh);
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
   transform-origin: center 90%;
   transition: transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  filter: drop-shadow(0 18px 16px rgba(71, 54, 67, 0.35));
+  filter: drop-shadow(0 18px 0 rgba(71, 54, 67, 0.1));
   animation: float 4200ms ease-in-out infinite;
   pointer-events: auto;
 }
@@ -99,18 +103,53 @@ body.window {
 .sprite {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   pointer-events: none;
   image-rendering: -webkit-optimize-contrast;
 }
 
+.ambient-bubble {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: 66px;
+  width: min(320px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 12px 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 7px 7px 0 rgba(71, 54, 67, 0.1);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  pointer-events: none;
+}
+
+.ambient-bubble::after {
+  content: "";
+  position: absolute;
+  right: 52px;
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  background: var(--paper);
+  border-right: 1.5px solid var(--ink);
+  border-bottom: 1.5px solid var(--ink);
+  transform: rotate(45deg);
+}
+
 .caption {
   position: absolute;
-  bottom: 34px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  bottom: 42px;
+  font-family: var(--font-body);
+  font-size: 11px;
   color: var(--ink);
-  opacity: 0.7;
-  letter-spacing: 0.06em;
+  opacity: 0.68;
+  letter-spacing: 0.02em;
   text-transform: lowercase;
   pointer-events: none;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -118,36 +157,37 @@ body.window {
 
 .companion-actions {
   position: absolute;
-  bottom: 18px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 8px;
-  pointer-events: none;
+  gap: 6px;
+  pointer-events: auto;
   z-index: 3;
 }
 
 .chat-button {
-  background: var(--ink);
-  color: var(--cream);
-  border: none;
-  padding: 6px 14px;
+  min-width: 44px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  padding: 6px 12px;
   border-radius: 999px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: lowercase;
   cursor: pointer;
-  box-shadow: 0 6px 12px rgba(71, 54, 67, 0.35);
-  opacity: 0;
+  box-shadow: 4px 4px 0 rgba(71, 54, 67, 0.1);
+  opacity: 0.92;
   transition: opacity 220ms ease, transform 220ms ease, background 160ms ease;
   pointer-events: auto;
 }
 
 .chat-button.web-button {
-  background: var(--cream);
+  background: var(--sand);
   color: var(--ink);
-  border: 1px solid rgba(71, 54, 67, 0.25);
+  border: 1.5px solid var(--ink);
 }
 
 .stage:hover .chat-button,
@@ -157,7 +197,8 @@ body.window {
 }
 
 .chat-button:hover {
-  background: #2f2330;
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .chat-button.web-button:hover {
@@ -941,22 +982,22 @@ body.window {
 /* ── Speech bubble ────────────────────────── */
 .speech-bubble {
   position: absolute;
-  bottom: 56px;         /* sit above the chat/web buttons */
-  left: 8px;
-  right: 8px;
-  width: auto;
+  bottom: 56px;
+  left: 50%;
+  right: auto;
+  width: min(340px, calc(100vw - 24px));
   max-height: 240px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(0 0 0 / 0.1);
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
   border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(0 0 0 / 0.18);
+  box-shadow: 8px 8px 0 rgba(71, 54, 67, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: "Inter Tight", system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
+  color: var(--ink);
   z-index: 10;
 }
 
@@ -967,7 +1008,7 @@ body.window {
   left: 50%;
   transform: translateX(-50%);
   border: 7px solid transparent;
-  border-top-color: rgba(0 0 0 / 0.08);
+  border-top-color: var(--ink);
   border-bottom: none;
 }
 
@@ -990,7 +1031,7 @@ body.window {
 }
 
 .bubble-message--user {
-  background: rgba(0 0 0 / 0.06);
+  background: var(--sand);
   text-align: right;
   margin-left: auto;
   max-width: 85%;
@@ -1003,7 +1044,7 @@ body.window {
 
 .bubble-footer {
   padding: 8px 10px;
-  border-top: 1px solid rgba(0 0 0 / 0.07);
+  border-top: 1.5px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1018,28 +1059,29 @@ body.window {
 .bubble-input {
   flex: 1;
   resize: none;
-  border: 1.5px solid rgba(0 0 0 / 0.1);
+  border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 6px 10px;
   font-size: 12px;
   font-family: inherit;
   line-height: 1.4;
-  background: rgba(0 0 0 / 0.03);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
   outline: none;
   max-height: 80px;
   overflow-y: auto;
 }
 
 .bubble-input:focus {
-  border-color: rgba(0 0 0 / 0.2);
+  border-color: var(--ink);
 }
 
 .bubble-send {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #1a1a1a;
-  color: white;
+  background: var(--ink);
+  color: var(--paper);
   border: none;
   cursor: pointer;
   font-size: 14px;
@@ -1054,7 +1096,7 @@ body.window {
 
 .bubble-expand {
   font-size: 11px;
-  color: rgba(0 0 0 / 0.4);
+  color: var(--ink-soft);
   background: none;
   border: none;
   cursor: pointer;
@@ -1062,4 +1104,4 @@ body.window {
   padding: 0;
   transition: color 0.15s;
 }
-.bubble-expand:hover { color: rgba(0 0 0 / 0.8); }
+.bubble-expand:hover { color: var(--ink); }

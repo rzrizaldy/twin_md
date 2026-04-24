@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   createStarterVault,
   ensureClaudeDir,
+  getChatStatus,
   listModels,
   openWebCompanion,
   runOnboarding,
@@ -10,6 +11,7 @@ import {
   setVaultPath,
   validateProviderKey,
   type AiProvider,
+  type ChatStatus,
   type ClaudeDirStatus
 } from "./ipc.ts";
 import type { TwinSpecies } from "./types.ts";
@@ -42,6 +44,7 @@ interface WizardState {
   apiKey: string;
   storeInKeychain: boolean;
   skipAi: boolean;
+  chatStatus: ChatStatus | null;
 }
 
 const state: WizardState = {
@@ -55,7 +58,8 @@ const state: WizardState = {
   model: "claude-haiku-4-5",
   apiKey: "",
   storeInKeychain: true,
-  skipAi: false
+  skipAi: false,
+  chatStatus: null
 };
 
 const $ = <T extends HTMLElement>(sel: string): T =>
@@ -86,6 +90,7 @@ function setStep(step: number) {
   nextBtn.textContent = state.step === TOTAL_STEPS - 1 ? "summon my twin" : "next";
   statusEl.textContent = "";
   if (state.step === 2) runClaudeDirCheck();
+  if (state.step === 4) runLocalAgentCheck();
 }
 
 function validateStep(step: number): string | null {
@@ -102,9 +107,10 @@ function validateStep(step: number): string | null {
         return "pick a folder or choose another option.";
       return null;
     case 4:
+      if (hasLocalClaudeChat()) return null;
       if (state.skipAi) return null;
       if (!state.apiKey.trim())
-        return "drop in an api key, or hit 'skip for now'.";
+        return "drop in a fallback api key, or skip the key and continue without provider chat.";
       return null;
     default:
       return null;
@@ -118,7 +124,7 @@ nextBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (state.step === 4 && !state.skipAi) {
+  if (state.step === 4 && state.apiKey.trim()) {
     nextBtn.disabled = true;
     statusEl.textContent = "checking your key…";
     try {
@@ -149,6 +155,8 @@ nextBtn.addEventListener("click", async () => {
     }
     statusEl.textContent = "key works.";
     nextBtn.disabled = false;
+  } else if (state.step === 4 && hasLocalClaudeChat()) {
+    statusEl.textContent = "using local claude MCP. api key skipped.";
   }
 
   if (state.step === TOTAL_STEPS - 1) {
@@ -260,6 +268,57 @@ const whereLink = $<HTMLAnchorElement>("#where-link");
 const storeKeychain = $<HTMLInputElement>("#store-keychain");
 const skipAiBtn = $<HTMLButtonElement>("#skip-ai");
 
+function hasLocalClaudeChat(): boolean {
+  return Boolean(state.chatStatus?.local_agent && state.chatStatus.local_mcp_ready);
+}
+
+async function runLocalAgentCheck() {
+  const card = $<HTMLElement>('[data-detection="local-agent"]');
+  card.querySelector(".detection-body")!.textContent = "checking local claude connection…";
+  card.classList.remove("ok", "warn");
+  try {
+    const status = await getChatStatus();
+    if (!status) {
+      state.chatStatus = null;
+      card.classList.add("warn");
+      card.querySelector(".detection-icon")!.textContent = "!";
+      card.querySelector(".detection-body")!.textContent =
+        "couldn't read local ai status. add a fallback key for chat, or skip for mirror-only mode.";
+      return;
+    }
+
+    state.chatStatus = status;
+    if (status.local_agent && status.local_mcp_ready) {
+      card.classList.add("ok");
+      card.querySelector(".detection-icon")!.textContent = "✓";
+      card.querySelector(".detection-body")!.textContent =
+        `already connected to ${status.local_agent} via twin-md MCP. api key is optional.`;
+      skipAiBtn.textContent = `skip key — use local ${status.local_agent}`;
+    } else if (status.local_agent) {
+      card.classList.add("warn");
+      card.querySelector(".detection-icon")!.textContent = "!";
+      card.querySelector(".detection-body")!.textContent =
+        `found ${status.local_agent}, but twin-md MCP dist is not ready yet. run the desktop build or add a fallback key.`;
+      skipAiBtn.textContent = "skip key — run without provider chat";
+    } else if (status.has_api_key) {
+      card.classList.add("ok");
+      card.querySelector(".detection-icon")!.textContent = "✓";
+      card.querySelector(".detection-body")!.textContent =
+        `${status.provider} key already saved. you can keep using that fallback.`;
+    } else {
+      card.classList.add("warn");
+      card.querySelector(".detection-icon")!.textContent = "!";
+      card.querySelector(".detection-body")!.textContent =
+        "no local claude/codex MCP path detected. add a fallback key for chat, or skip for mirror-only mode.";
+    }
+  } catch (err) {
+    card.classList.add("warn");
+    card.querySelector(".detection-icon")!.textContent = "!";
+    card.querySelector(".detection-body")!.textContent =
+      `couldn't check local ai status: ${String(err)}`;
+  }
+}
+
 async function loadModels(provider: AiProvider) {
   state.provider = provider;
   whereLink.href = PROVIDER_KEY_URLS[provider];
@@ -324,7 +383,9 @@ skipAiBtn.addEventListener("click", () => {
   state.skipAi = true;
   state.apiKey = "";
   apiKeyInput.value = "";
-  statusEl.textContent = "chat disabled — mirror still runs. jumping ahead.";
+  statusEl.textContent = hasLocalClaudeChat()
+    ? "using local claude MCP — no api key needed."
+    : "provider key skipped — mirror still runs.";
   setStep(state.step + 1);
 });
 

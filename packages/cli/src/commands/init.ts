@@ -1,4 +1,6 @@
 import { input, password, select } from "@inquirer/prompts";
+import os from "node:os";
+import path from "node:path";
 import {
   AI_DEFAULT_MODEL,
   AI_MODELS,
@@ -14,6 +16,7 @@ import {
   writePetState,
   writeTwinConfig
 } from "@twin-md/core/server";
+import { initBrain } from "@twin-md/brain";
 import { resolveMcpEntrypoint } from "../support.js";
 
 type InitOptions = {
@@ -103,6 +106,11 @@ export async function runInitCommand(options: InitOptions): Promise<void> {
   };
   await writeTwinConfig(savedConfig);
 
+  const brain = await initBrain({
+    brainPath: savedConfig.brainPath ?? path.join(os.homedir(), "twin-brain"),
+    skipExisting: true
+  });
+
   try {
     const harvest = await runTwinHarvest(savedConfig);
     console.log(`Initial harvest → ${harvest.twinMdPath}`);
@@ -123,6 +131,7 @@ export async function runInitCommand(options: InitOptions): Promise<void> {
   console.log(`Initialized twin for ${savedConfig.owner}.`);
   console.log(`Species: ${savedConfig.species}`);
   console.log(`Provider: ${provider} (${model})`);
+  console.log(`Brain vault: ${brain.brainPath}`);
   console.log(`Claude config: ${registration.configPath}`);
   console.log(`MCP command id: ${registration.commandId}`);
 }

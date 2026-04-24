@@ -6,6 +6,7 @@ const cast = [
   {
     species: 'axolotl' as const,
     title: 'Axolotl',
+    showcaseMood: 'healthy' as const,
     kicker: 'the default · soft · curious · a little dramatic',
     body: 'Frilled head reads from across the room. Best for people whose inner voice is mostly "oh no, oh wow, oh no".',
     bg: 'var(--color-pink)',
@@ -14,6 +15,7 @@ const cast = [
   {
     species: 'cat' as const,
     title: 'Cat',
+    showcaseMood: 'neglected' as const,
     kicker: 'self-contained · judgmental · secretly loyal',
     body: 'Triangle ears. Low-key eye contact. Shows up when you do, pretends it was doing something else when you leave.',
     bg: 'var(--color-sand)',
@@ -22,6 +24,7 @@ const cast = [
   {
     species: 'slime' as const,
     title: 'Slime',
+    showcaseMood: 'healthy' as const,
     kicker: 'chaotic · bouncy · goofy · lowest ego',
     body: 'Rounded dome, little droop. Will celebrate you finishing a sentence. Possibly a problem. Possibly a friend.',
     bg: 'var(--color-mint)',
@@ -54,7 +57,7 @@ const moods = [
             class="flex aspect-square items-center justify-center rounded-[2rem] border border-[var(--color-ink)]/10"
             style={`background:${c.bg}`}
           >
-            <BreathingSprite species={c.species} mood="healthy" size={200} />
+            <BreathingSprite species={c.species} mood={c.showcaseMood} size={200} />
           </div>
           <div>
             <p

@@ -15,7 +15,6 @@ import {
   type TwinDocument
 } from "@twin-md/core";
 import { motion, AnimatePresence } from "framer-motion";
-import { SimsStatusRail } from "./SimsStatusRail";
 
 type TwinPhoneShellProps = {
   initialDocument: TwinDocument;
@@ -194,8 +193,6 @@ export function TwinPhoneShell({
               state={deferredState.state}
             />
           </motion.div>
-
-          <SimsStatusRail state={deferredState} document={document} />
 
           <div className="dialogue-bubble">
             <p className="lede">{deferredState.message}</p>

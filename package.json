@@ -18,6 +18,7 @@
     "dev:web-lite": "npm run start -w @twin-md/web-lite",
     "generate:pet-assets": "node scripts/generate-pet-sprites-v2.mjs",
     "release": "./scripts/release.sh",
+    "validate:pet-assets": "node scripts/validate-pet-assets.mjs",
     "lint": "npm run lint -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present"
   },

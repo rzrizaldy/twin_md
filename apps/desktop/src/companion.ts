@@ -14,6 +14,7 @@ import type { PetState, Reminder, TwinMood, TwinSpecies } from "./types.ts";
 
 const sprite = document.getElementById("sprite") as HTMLImageElement;
 const pet = document.getElementById("pet") as HTMLDivElement;
+const ambientBubble = document.getElementById("ambient-bubble") as HTMLDivElement;
 const caption = document.getElementById("caption") as HTMLDivElement;
 
 // ── Speech bubble elements ───────────────────────────────────────────────────
@@ -53,23 +54,16 @@ function pngPath(species: TwinSpecies, mood: TwinMood, frameName: string): strin
   return `/pets/${species}/${mood}/${frameName}.png`;
 }
 
-function svgPath(species: TwinSpecies, mood: TwinMood, frameName: string): string {
-  return `/pets/${species}/${mood}/${frameName}.svg`;
-}
-
 function setSpriteFor(species: TwinSpecies, mood: TwinMood, frameName: string) {
-  const png = pngPath(species, mood, frameName);
-  sprite.src = png;
-  sprite.onerror = () => {
-    sprite.onerror = null;
-    sprite.src = svgPath(species, mood, frameName);
-  };
+  sprite.src = pngPath(species, mood, frameName);
 }
 
 function render() {
   setSpriteFor(current.species, current.state, frame);
   caption.textContent = current.caption.toLowerCase();
   caption.hidden = false;
+  ambientBubble.textContent = current.message || current.caption;
+  ambientBubble.hidden = bubble.dataset.state !== "hidden";
 }
 
 function breathLoop() {
@@ -105,8 +99,10 @@ function setBubbleState(state: BubbleState) {
   bubble.dataset.state = state;
   if (state === "hidden") {
     bubble.style.display = "none";
+    ambientBubble.hidden = false;
   } else {
     bubble.style.display = "flex";
+    ambientBubble.hidden = true;
   }
 }
 

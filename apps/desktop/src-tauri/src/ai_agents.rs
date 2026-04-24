@@ -86,7 +86,7 @@ fn resolve_bin(name: &str) -> Option<PathBuf> {
 fn mcp_entrypoint() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let mut cursor = exe.as_path();
-    for _ in 0..8 {
+    for _ in 0..14 {
         cursor = cursor.parent()?;
         let candidate = cursor
             .join("packages")
@@ -98,6 +98,14 @@ fn mcp_entrypoint() -> Option<PathBuf> {
         }
     }
     None
+}
+
+/// Human-readable readiness for UI surfaces. A CLI alone is not enough; the
+/// chat path also needs the bundled twin-md MCP server entrypoint.
+pub fn cli_agent_status() -> Option<(String, PathBuf, bool)> {
+    let agent = detect_cli_agent()?;
+    let mcp_ready = mcp_entrypoint().is_some();
+    Some((agent.name().to_string(), agent.path().clone(), mcp_ready))
 }
 
 /// Spawn the CLI agent with the twin-md MCP server wired in via `--mcp-config`.

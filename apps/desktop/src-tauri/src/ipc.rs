@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use crate::chat;
+use crate::ai_agents;
 use crate::commands as slash_commands;
 use crate::credentials;
 use crate::harvest;
@@ -21,6 +22,10 @@ pub fn get_state(shared: State<'_, SharedState>) -> Option<PetState> {
 #[derive(serde::Serialize)]
 pub struct ChatStatus {
     pub has_api_key: bool,
+    pub local_agent: Option<String>,
+    pub local_agent_path: Option<String>,
+    pub local_mcp_ready: bool,
+    pub chat_available: bool,
     pub vault_path: Option<String>,
     pub notes_available: usize,
     pub provider: String,
@@ -31,8 +36,18 @@ pub struct ChatStatus {
 pub fn get_chat_status() -> ChatStatus {
     let ctx = crate::context::gather();
     let (provider, model) = credentials::active_provider_and_model();
+    let local = ai_agents::cli_agent_status();
+    let has_api_key = chat::has_api_key();
+    let local_mcp_ready = local
+        .as_ref()
+        .map(|(_, _, ready)| *ready)
+        .unwrap_or(false);
     ChatStatus {
-        has_api_key: chat::has_api_key(),
+        has_api_key,
+        local_agent: local.as_ref().map(|(name, _, _)| name.clone()),
+        local_agent_path: local.as_ref().map(|(_, path, _)| path.display().to_string()),
+        local_mcp_ready,
+        chat_available: has_api_key || local_mcp_ready,
         vault_path: ctx.vault_path.map(|p| p.display().to_string()),
         notes_available: ctx.notes.len(),
         provider: provider.slug().to_string(),

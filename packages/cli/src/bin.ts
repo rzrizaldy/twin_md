@@ -2,7 +2,6 @@ import { Command } from "commander";
 import { runDaemonCommand } from "./commands/daemon.js";
 import { runHarvestCommand } from "./commands/harvest.js";
 import { runInitCommand } from "./commands/init.js";
-import { runMcpCommand } from "./commands/mcp.js";
 import { runWatchCommand } from "./commands/watch.js";
 import { runWebCommand } from "./commands/web.js";
 import {
@@ -49,7 +48,13 @@ program
   .option("--next", "legacy: run Next.js app from @twin-md/web instead")
   .option("--dev", "with --next: force next dev even if .next exists")
   .action(runWebCommand);
-program.command("mcp").description("start the stdio MCP server").action(runMcpCommand);
+program
+  .command("mcp")
+  .description("start the stdio MCP server")
+  .action(async () => {
+    const { runMcpCommand } = await import("./commands/mcp.js");
+    await runMcpCommand();
+  });
 
 const daemon = program
   .command("daemon")

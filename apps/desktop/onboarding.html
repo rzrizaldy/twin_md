@@ -106,8 +106,13 @@
       <section class="wizard-step" data-step="4">
         <h2>ai provider</h2>
         <p class="muted model-tier-hint">
-          we recommend a flash / mini model — the pet doesn't need heavy reasoning, just warmth.
+          api key is optional when your local claude/codex cli is already connected.
+          twin.md will try that local MCP path first, then use a provider key only as fallback.
         </p>
+        <div class="detection-card" data-detection="local-agent">
+          <span class="detection-icon" aria-hidden="true">·</span>
+          <span class="detection-body">checking local claude connection…</span>
+        </div>
         <div class="provider-row" role="radiogroup" aria-label="provider">
           <label class="provider-card">
             <input type="radio" name="provider" value="anthropic" checked />
@@ -133,7 +138,7 @@
 
         <label class="field">
           <span>
-            api key
+            fallback api key <small>(optional)</small>
             <a href="#" class="where-link" id="where-link" target="_blank" rel="noreferrer">
               where do i get this?
             </a>
@@ -154,7 +159,7 @@
         </label>
 
         <button class="text-button" type="button" id="skip-ai">
-          skip for now — run without chat
+          skip key — use local claude if available
         </button>
       </section>
 

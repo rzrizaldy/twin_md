@@ -37,8 +37,12 @@ function safePetPath(urlPath: string): string | null {
   const full = path.join(coreRoot(), "assets", "pets", normalized);
   const petsRoot = path.join(coreRoot(), "assets", "pets");
   if (!full.startsWith(petsRoot)) return null;
-  // Reference-first: serve *-reference.png when it exists alongside the canonical.
-  if (full.endsWith(".png") && !full.endsWith("-reference.png")) {
+  const parts = normalized.split(/[\\/]/u);
+  const species = parts[0];
+  // Reference-first: serve *-reference.png when it exists alongside the
+  // canonical. Cat is excluded because its canonical chibi PNG set is already
+  // the desired runtime source.
+  if (species !== "cat" && full.endsWith(".png") && !full.endsWith("-reference.png")) {
     const refPath = full.replace(/\.png$/, "-reference.png");
     if (existsSync(refPath)) return refPath;
   }

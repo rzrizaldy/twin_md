@@ -215,7 +215,7 @@ async function autoGitCheckpoint(config: TwinConfig): Promise<void> {
   if (!existsSync(brainPath) || !existsSync(path.join(brainPath, ".git"))) return;
   try {
     const dirty = await gitDirtyFiles(brainPath);
-    const mdDirty = dirty.filter((f) => f.endsWith(".md"));
+    const mdDirty = dirty.filter((f: string) => f.endsWith(".md"));
     if (mdDirty.length === 0) return;
     await gitCommit(brainPath, `Updated ${mdDirty.length} note(s)`);
     await logLine(`autogit: committed ${mdDirty.length} note(s)`);

@@ -12,6 +12,10 @@ export async function getState(): Promise<PetState | null> {
 
 export interface ChatStatus {
   has_api_key: boolean;
+  local_agent: string | null;
+  local_agent_path: string | null;
+  local_mcp_ready: boolean;
+  chat_available: boolean;
   vault_path: string | null;
   notes_available: number;
   provider: string;
