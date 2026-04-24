@@ -37,6 +37,7 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "linux-
 async-stream = "0.3"
 pin-project-lite = "0.2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Shell-out to ioreg + osascript keeps us off objc2 for v1 (see PLAN_V2 §8.2).

@@ -177,3 +177,66 @@ export async function validateProviderKey(
     payload: { provider, apiKey }
   });
 }
+
+// ── Chat window ──────────────────────────────────────────────────────────────
+
+export interface CwMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatTurn extends CwMessage {
+  ts: string;
+}
+
+export interface WriteNoteResult {
+  path: string;
+}
+
+export interface ImageGenResult {
+  ok: boolean;
+  savedPath: string | null;
+  providerUsed: string | null;
+  error: string | null;
+  prompt: string;
+}
+
+export async function openChatWindow(seed?: string | null): Promise<void> {
+  await invoke("open_chat_window", { seed: seed ?? null });
+}
+
+export async function sendChatWindow(messages: CwMessage[]): Promise<void> {
+  await invoke("send_chat_window", { messages });
+}
+
+export async function saveChatSession(sessionId: string, turns: ChatTurn[]): Promise<void> {
+  await invoke("save_chat_session", { sessionId, turns });
+}
+
+export async function writeVaultNote(
+  title: string,
+  body: string,
+  folder?: string | null
+): Promise<WriteNoteResult> {
+  return invoke<WriteNoteResult>("write_vault_note", { title, body, folder: folder ?? null });
+}
+
+export async function logMoodEntry(mood: string, note?: string | null): Promise<void> {
+  await invoke("log_mood_entry", { mood, note: note ?? null });
+}
+
+export async function generateImage(prompt: string): Promise<ImageGenResult> {
+  return invoke<ImageGenResult>("generate_image", { prompt });
+}
+
+export function onCwToken(cb: (chunk: string) => void): Promise<UnlistenFn> {
+  return listen<string>("twin://cw-token", (event) => cb(event.payload));
+}
+
+export function onCwDone(cb: () => void): Promise<UnlistenFn> {
+  return listen<null>("twin://cw-done", () => cb());
+}
+
+export function onCwSeed(cb: (msg: string) => void): Promise<UnlistenFn> {
+  return listen<string>("twin://cw-seed", (event) => cb(event.payload));
+}

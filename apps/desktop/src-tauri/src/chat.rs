@@ -1,8 +1,10 @@
 //! Streaming chat.
 //!
-//! Priority order (Tolaria B5 pattern):
-//!   1. User's installed `claude` or `codex` CLI with twin-md MCP injected.
-//!   2. Direct API-key call via provider.rs (fallback when no CLI detected).
+//! Two streaming surfaces:
+//!   - `stream()` / `stream_with_system()` — companion bubble (single-turn).
+//!     Priority: installed CLI agent (B5) → direct API key fallback.
+//!   - `stream_chat_window()` — dedicated persistent chat window (multi-turn).
+//!     Always uses direct API key; CLI path stays in the companion bubble.
 
 use anyhow::Result;
 use futures::StreamExt;
@@ -11,7 +13,7 @@ use tauri::{AppHandle, Emitter};
 use crate::ai_agents;
 use crate::context;
 use crate::credentials::{active_provider_and_model, resolve_api_key};
-use crate::model::PetState;
+use crate::model::{ChatWindowMessage, PetState};
 use crate::provider;
 
 pub fn has_api_key() -> bool {
@@ -121,4 +123,84 @@ fn fallback(app: &AppHandle, provider: provider::Provider) {
         provider.env_key(),
     );
     let _ = app.emit("twin://chat-token", line);
+}
+
+// ── Dedicated chat window (multi-turn) ──────────────────────────────────────
+//
+// Emits `twin://cw-token` and `twin://cw-done` so the chat window can listen
+// independently from the companion bubble.
+
+/// Stream a full conversation history for the dedicated chat window.
+/// Never uses the CLI agent — always goes direct API for multi-turn fidelity.
+pub async fn stream_chat_window(
+    app: AppHandle,
+    messages: Vec<ChatWindowMessage>,
+    state: Option<PetState>,
+) -> Result<()> {
+    let (provider_kind, model) = active_provider_and_model();
+    let Some(api_key) = resolve_api_key(provider_kind) else {
+        let _ = app.emit(
+            "twin://cw-token",
+            format!(
+                "no api key for {} — open settings (⚙) to add one, or set {} in your shell",
+                provider_kind.slug(),
+                provider_kind.env_key()
+            ),
+        );
+        let _ = app.emit("twin://cw-done", ());
+        return Ok(());
+    };
+
+    let ctx = context::gather();
+    let system = build_cw_system(state.as_ref(), &ctx);
+
+    match provider::stream_history(provider_kind, &model, &api_key, &system, &messages).await {
+        Ok(mut s) => {
+            while let Some(chunk) = s.next().await {
+                match chunk {
+                    Ok(delta) if !delta.is_empty() => {
+                        let _ = app.emit("twin://cw-token", delta);
+                    }
+                    Ok(_) => {}
+                    Err(err) => {
+                        eprintln!("[twin] cw stream error: {err:?}");
+                        let _ = app.emit(
+                            "twin://cw-token",
+                            format!("\n\n_(stream error: {err})_"),
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("[twin] cw request failed: {err:?}");
+            let _ = app.emit(
+                "twin://cw-token",
+                format!("couldn't reach {}: {err}", provider_kind.slug()),
+            );
+        }
+    }
+
+    let _ = app.emit("twin://cw-done", ());
+    Ok(())
+}
+
+fn build_cw_system(state: Option<&PetState>, ctx: &context::ChatContext) -> String {
+    let mut buf = context::render_prompt(ctx);
+    if let Some(state) = state {
+        buf.push_str(&format!(
+            "== current scene ==\nMood: {mood:?}\nCaption: {caption}\nScene: {scene}\n",
+            mood = state.state,
+            caption = state.caption,
+            scene = state.scene,
+        ));
+    }
+    buf.push_str(
+        "\n== chat window mode ==\n\
+         You are now in a persistent chat panel — feel free to give longer, more \
+         detailed responses when helpful. You can reference vault notes and suggest \
+         using /note to save insights or /mood to log how they're feeling.\n"
+    );
+    buf
 }

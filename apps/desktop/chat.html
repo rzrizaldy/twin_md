@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>twin · chat</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body class="window window-chat" data-window="chat">
+
+    <!-- ── Settings overlay ─────────────────────────────────────────── -->
+    <div id="settings-overlay" class="settings-overlay" hidden aria-modal="true" role="dialog">
+      <div class="settings-panel">
+        <div class="settings-header">
+          <span class="settings-title">settings</span>
+          <button id="settings-close" class="settings-close" type="button" aria-label="close">✕</button>
+        </div>
+
+        <div class="settings-section">
+          <div class="provider-tabs" role="tablist" aria-label="provider">
+            <button class="ptab is-active" data-provider="anthropic" role="tab">anthropic</button>
+            <button class="ptab" data-provider="openai" role="tab">openai</button>
+            <button class="ptab" data-provider="gemini" role="tab">gemini</button>
+          </div>
+
+          <label class="settings-field">
+            <span>model</span>
+            <select id="settings-model" class="text-input"></select>
+          </label>
+
+          <label class="settings-field">
+            <span>api key <small class="muted">(saved to keychain)</small></span>
+            <input
+              id="settings-key"
+              class="text-input"
+              type="password"
+              placeholder="sk-ant-… / sk-… / AIza…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+
+          <div class="settings-actions">
+            <button id="settings-test" class="secondary-button" type="button">test connection</button>
+            <button id="settings-save" class="primary-button" type="button">save</button>
+          </div>
+          <div id="settings-status" class="settings-status" hidden></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Main layout ─────────────────────────────────────────────── -->
+    <div class="cw-layout">
+
+      <!-- Header -->
+      <header class="cw-header">
+        <img id="cw-sprite" class="cw-sprite" src="/pets/cat/healthy/breath-a.png" alt="" draggable="false" />
+        <div class="cw-heading">
+          <h1>twin</h1>
+          <p id="cw-subtitle" class="cw-subtitle">your desk creature</p>
+        </div>
+        <div class="cw-header-actions">
+          <button id="cw-new" class="icon-button" type="button" title="new conversation">✦</button>
+          <button id="cw-settings" class="icon-button" type="button" title="settings (provider · model · key)">⚙</button>
+        </div>
+      </header>
+
+      <!-- Provider pill (shows current provider:model, clickable → settings) -->
+      <div id="cw-provider-bar" class="cw-provider-bar">
+        <button id="cw-provider-pill" class="provider-pill" type="button" title="change provider / model">
+          <span id="pill-provider">anthropic</span>
+          <span class="pill-sep">·</span>
+          <span id="pill-model">loading…</span>
+        </button>
+      </div>
+
+      <!-- Message log -->
+      <div id="cw-log" class="cw-log" aria-live="polite" aria-label="conversation"></div>
+
+      <!-- Slash command autocomplete -->
+      <div id="cw-autocomplete" class="chat-autocomplete" hidden role="listbox"></div>
+
+      <!-- Input footer -->
+      <footer class="cw-footer">
+        <form id="cw-form" class="chat-form">
+          <textarea
+            id="cw-input"
+            class="chat-input"
+            placeholder="message twin… (/ for commands)"
+            rows="1"
+            autocomplete="off"
+          ></textarea>
+          <button id="cw-send" class="chat-send" type="submit" disabled>↑</button>
+        </form>
+      </footer>
+
+    </div>
+
+    <script type="module" src="/src/chat-window.ts"></script>
+  </body>
+</html>

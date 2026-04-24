@@ -105,3 +105,20 @@ pub struct CompanionPrefs {
     pub position: Option<(i32, i32)>,
     pub launch_at_login: bool,
 }
+
+/// A single message turn for the dedicated chat window (multi-turn history).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatWindowMessage {
+    pub role: String,    // "user" | "assistant"
+    pub content: String,
+}
+
+/// A chat turn with timestamp — persisted to the session JSONL file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatTurn {
+    pub role: String,
+    pub content: String,
+    pub ts: String,
+}

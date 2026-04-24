@@ -147,6 +147,22 @@ pub async fn stream(
     }
 }
 
+/// Multi-turn streaming for the dedicated chat window. Accepts a full
+/// conversation history; the last message MUST have role "user".
+pub async fn stream_history(
+    provider: Provider,
+    model: &str,
+    api_key: &str,
+    system: &str,
+    messages: &[crate::model::ChatWindowMessage],
+) -> Result<TextStream> {
+    match provider {
+        Provider::Anthropic => stream_anthropic_history(model, api_key, system, messages).await,
+        Provider::Openai => stream_openai_history(model, api_key, system, messages).await,
+        Provider::Gemini => stream_gemini_history(model, api_key, system, messages).await,
+    }
+}
+
 async fn stream_anthropic(
     model: &str,
     api_key: &str,
@@ -242,6 +258,102 @@ async fn stream_gemini(
         return Err(anyhow!("gemini {status}: {text}"));
     }
 
+    Ok(sse_stream(response, parse_gemini_event))
+}
+
+async fn stream_anthropic_history(
+    model: &str,
+    api_key: &str,
+    system: &str,
+    messages: &[crate::model::ChatWindowMessage],
+) -> Result<TextStream> {
+    let msgs: Vec<Value> = messages
+        .iter()
+        .map(|m| json!({ "role": m.role, "content": m.content }))
+        .collect();
+    let body = json!({
+        "model": model,
+        "max_tokens": 2000,
+        "stream": true,
+        "system": system,
+        "messages": msgs,
+    });
+    let client = reqwest::Client::new();
+    let response = client
+        .post(ANTHROPIC_URL)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", ANTHROPIC_VERSION)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(anyhow!("anthropic {status}: {text}"));
+    }
+    Ok(sse_stream(response, parse_anthropic_event))
+}
+
+async fn stream_openai_history(
+    model: &str,
+    api_key: &str,
+    system: &str,
+    messages: &[crate::model::ChatWindowMessage],
+) -> Result<TextStream> {
+    let mut msgs = vec![json!({ "role": "system", "content": system })];
+    for m in messages {
+        msgs.push(json!({ "role": m.role, "content": m.content }));
+    }
+    let body = json!({ "model": model, "stream": true, "messages": msgs });
+    let client = reqwest::Client::new();
+    let response = client
+        .post(OPENAI_URL)
+        .bearer_auth(api_key)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(anyhow!("openai {status}: {text}"));
+    }
+    Ok(sse_stream(response, parse_openai_event))
+}
+
+async fn stream_gemini_history(
+    model: &str,
+    api_key: &str,
+    system: &str,
+    messages: &[crate::model::ChatWindowMessage],
+) -> Result<TextStream> {
+    let url = GEMINI_URL_TEMPLATE
+        .replace("{MODEL}", &urlencoding::encode(model))
+        .replace("{KEY}", &urlencoding::encode(api_key));
+    let contents: Vec<Value> = messages
+        .iter()
+        .map(|m| {
+            let role = if m.role == "assistant" { "model" } else { m.role.as_str() };
+            json!({ "role": role, "parts": [{ "text": m.content }] })
+        })
+        .collect();
+    let body = json!({
+        "system_instruction": { "parts": [{ "text": system }] },
+        "contents": contents,
+    });
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(anyhow!("gemini {status}: {text}"));
+    }
     Ok(sse_stream(response, parse_gemini_event))
 }
 

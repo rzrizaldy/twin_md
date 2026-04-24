@@ -27,7 +27,8 @@ export default defineConfig(() => ({
       input: {
         companion: resolve(__dirname, "index.html"),
         bubble: resolve(__dirname, "bubble.html"),
-        onboarding: resolve(__dirname, "onboarding.html")
+        onboarding: resolve(__dirname, "onboarding.html"),
+        chat: resolve(__dirname, "chat.html"),
       }
     }
   }

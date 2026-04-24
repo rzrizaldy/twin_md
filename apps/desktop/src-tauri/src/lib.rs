@@ -4,6 +4,7 @@ mod commands;
 mod context;
 mod credentials;
 mod harvest;
+mod image_gen;
 mod ipc;
 mod model;
 mod paths;
@@ -57,6 +58,15 @@ pub fn run() {
             ipc::create_starter_vault,
             ipc::save_provider_credentials,
             ipc::list_models,
+            // Chat window (Dinoki-style panel)
+            ipc::open_chat_window,
+            ipc::send_chat_window,
+            ipc::save_chat_session,
+            // Brain vault writes
+            ipc::write_vault_note,
+            ipc::log_mood_entry,
+            // Image generation
+            ipc::generate_image,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -112,6 +122,12 @@ fn register_reminder_listener(handle: AppHandle) {
         if let Ok(reminder) = serde_json::from_str::<Reminder>(payload) {
             let presence = app.state::<Arc<PresenceState>>().inner().clone();
             if presence.can_emit() {
+                // If the dedicated chat window is open, seed it instead of
+                // spawning a separate bubble window (Dinoki-style proactive nudge).
+                if app.get_webview_window("chat").is_some() {
+                    let _ = app.emit("twin://cw-seed", &reminder.body);
+                }
+                // Always spawn the bubble too (visible on companion window).
                 if let Err(err) = windows::spawn_bubble(&app, &reminder) {
                     eprintln!("[twin] bubble spawn failed: {err:?}");
                 }

@@ -5,6 +5,7 @@ import {
   onChatToken,
   onReminder,
   onStateChanged,
+  openChatWindow,
   openWebCompanion,
   sendChat,
 } from "./ipc.ts";
@@ -227,12 +228,40 @@ function attachInteractions() {
   const win = getCurrentWindow();
   const chatButton = document.getElementById("chat-button") as HTMLButtonElement;
 
-  chatButton.addEventListener("click", (event) => {
+  // Clicking the pet sprite opens the dedicated chat window.
+  // We track mousedown position to distinguish click from drag.
+  let mouseDownX = 0;
+  let mouseDownY = 0;
+  pet.removeAttribute("data-tauri-drag-region");
+  pet.addEventListener("mousedown", (e) => {
+    mouseDownX = e.clientX;
+    mouseDownY = e.clientY;
+  });
+  pet.addEventListener("click", async (e) => {
+    const dx = Math.abs(e.clientX - mouseDownX);
+    const dy = Math.abs(e.clientY - mouseDownY);
+    if (dx < 6 && dy < 6) {
+      e.stopPropagation();
+      try {
+        await openChatWindow();
+      } catch (err) {
+        console.error("openChatWindow failed", err);
+      }
+    }
+  });
+
+  // "chat" button opens the dedicated chat window (Dinoki-style).
+  chatButton.addEventListener("click", async (event) => {
     event.stopPropagation();
-    if (bubble.dataset.state !== "hidden") {
-      closeBubble();
-    } else {
-      openBubble();
+    try {
+      await openChatWindow();
+    } catch (err) {
+      // Fall back to inline bubble if chat window can't open.
+      if (bubble.dataset.state !== "hidden") {
+        closeBubble();
+      } else {
+        openBubble();
+      }
     }
   });
 

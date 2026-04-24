@@ -8,8 +8,9 @@ use crate::ai_agents;
 use crate::commands as slash_commands;
 use crate::credentials;
 use crate::harvest;
-use crate::model::PetState;
-use crate::paths::claude_dir;
+use crate::image_gen;
+use crate::model::{ChatTurn, ChatWindowMessage, PetState};
+use crate::paths::{chat_history_dir, claude_dir};
 use crate::provider::Provider;
 use crate::state::SharedState;
 use crate::windows;
@@ -404,4 +405,177 @@ pub fn list_models(provider: String) -> Result<ModelList, String> {
         models: p.models().iter().map(|s| s.to_string()).collect(),
         default_model: p.default_model().to_string(),
     })
+}
+
+// ──────────────────────────── Chat window ────────────────────────────────────
+
+/// Open (or focus) the dedicated chat window, optionally pre-seeding it with
+/// a message from the daemon / reminder engine.
+#[tauri::command]
+pub fn open_chat_window(app: AppHandle, seed: Option<String>) -> Result<(), String> {
+    match seed {
+        Some(msg) => windows::show_chat_with_seed(&app, &msg).map_err(|e| e.to_string()),
+        None => windows::show_chat(&app).map_err(|e| e.to_string()),
+    }
+}
+
+/// Send a multi-turn conversation to the LLM and stream tokens back via
+/// `twin://cw-token` / `twin://cw-done` events.
+#[tauri::command]
+pub async fn send_chat_window(
+    app: AppHandle,
+    shared: State<'_, SharedState>,
+    messages: Vec<ChatWindowMessage>,
+) -> Result<(), String> {
+    let state = shared.get();
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) = chat::stream_chat_window(app, messages, state).await {
+            eprintln!("[twin] cw stream error: {err:?}");
+        }
+    });
+    Ok(())
+}
+
+/// Persist a completed chat session to `~/.claude/twin/chat/<session_id>.jsonl`.
+#[tauri::command]
+pub fn save_chat_session(session_id: String, turns: Vec<ChatTurn>) -> Result<(), String> {
+    let dir = chat_history_dir();
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let path = dir.join(format!("{session_id}.jsonl"));
+    let mut buf = String::new();
+    for turn in &turns {
+        let line = serde_json::to_string(turn).map_err(|e| e.to_string())?;
+        buf.push_str(&line);
+        buf.push('\n');
+    }
+    fs::write(&path, buf).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ──────────────────────────── Brain vault writes ──────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteNoteResult {
+    pub path: String,
+}
+
+/// Write a markdown note to the configured brain/Obsidian vault.
+/// Saved to `<vault>/from-twin/YYYY-MM-DD/<slug>.md`.
+#[tauri::command]
+pub fn write_vault_note(
+    title: String,
+    body: String,
+    folder: Option<String>,
+) -> Result<WriteNoteResult, String> {
+    use chrono::Local;
+
+    let vault_root = resolve_vault_root().ok_or("no vault configured — set a vault path in onboarding".to_string())?;
+
+    let subfolder = folder.as_deref().unwrap_or("from-twin");
+    let date_str = Local::now().format("%Y-%m-%d").to_string();
+    let dir = vault_root.join(subfolder).join(&date_str);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let slug: String = title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    let slug = if slug.is_empty() { "note".to_string() } else { slug };
+    let filename = format!("{slug}.md");
+    let path = dir.join(&filename);
+
+    let content = format!(
+        "---\ntitle: \"{title}\"\ndate: {date_str}\ntype: Note\nsource: twin-chat\n---\n\n{body}\n"
+    );
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+
+    Ok(WriteNoteResult {
+        path: path.display().to_string(),
+    })
+}
+
+/// Append a mood check-in to `<brainPath>/moods/YYYY-MM-DD-HHmm.md`.
+#[tauri::command]
+pub fn log_mood_entry(mood: String, note: Option<String>) -> Result<(), String> {
+    use chrono::Local;
+
+    let vault_root = resolve_vault_root().ok_or("no vault configured".to_string())?;
+    let dir = vault_root.join("moods");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let ts = Local::now().format("%Y-%m-%d-%H%M").to_string();
+    let path = dir.join(format!("{ts}.md"));
+
+    let note_text = note.as_deref().unwrap_or("");
+    let content = format!(
+        "---\ntype: Mood\ndate: {ts}\nmood: {mood}\n---\n\n{note_text}\n"
+    );
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn resolve_vault_root() -> Option<PathBuf> {
+    let cfg_path = claude_dir().join("twin.config.json");
+    let bytes = fs::read(&cfg_path).ok()?;
+    let cfg: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    for key in &["brainPath", "obsidianVaultPath"] {
+        if let Some(raw) = cfg[key].as_str().filter(|s| !s.is_empty()) {
+            let p = expand_tilde(raw);
+            let pb = PathBuf::from(p);
+            if pb.exists() {
+                return Some(pb);
+            }
+        }
+    }
+    None
+}
+
+fn expand_tilde(input: &str) -> String {
+    if let Some(rest) = input.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return format!("{home}/{rest}");
+        }
+    }
+    input.to_string()
+}
+
+// ──────────────────────────── Image generation ───────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageGenResult {
+    pub ok: bool,
+    pub saved_path: Option<String>,
+    pub provider_used: Option<String>,
+    pub error: Option<String>,
+    pub prompt: String,
+}
+
+/// Generate an image from a text prompt and save it to the media folder.
+/// Returns the path so the frontend can load it via convertFileSrc().
+#[tauri::command]
+pub async fn generate_image(prompt: String) -> Result<ImageGenResult, String> {
+    match image_gen::generate(&prompt).await {
+        Ok(result) => Ok(ImageGenResult {
+            ok: true,
+            saved_path: Some(result.saved_path),
+            provider_used: Some(result.provider_used),
+            error: None,
+            prompt,
+        }),
+        Err(err) => Ok(ImageGenResult {
+            ok: false,
+            saved_path: None,
+            provider_used: None,
+            error: Some(err.to_string()),
+            prompt,
+        }),
+    }
 }

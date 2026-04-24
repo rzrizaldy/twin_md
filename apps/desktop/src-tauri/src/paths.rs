@@ -30,3 +30,7 @@ pub fn twin_config_path() -> PathBuf {
 pub fn twin_companion_path() -> PathBuf {
     claude_dir().join("twin.companion.json")
 }
+
+pub fn chat_history_dir() -> PathBuf {
+    claude_dir().join("twin").join("chat")
+}

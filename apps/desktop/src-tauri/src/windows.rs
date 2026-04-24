@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use crate::model::{BubbleTone, Reminder};
 
@@ -91,6 +91,52 @@ fn sanitize_label(raw: &str) -> String {
     raw.chars()
         .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
         .collect()
+}
+
+// ── Dedicated chat window ──────────────────────────────────────────────────
+
+const CHAT_LABEL: &str = "chat";
+
+/// Open the dedicated chat window, creating it if it doesn't exist yet.
+pub fn show_chat(app: &AppHandle) -> Result<()> {
+    show_chat_inner(app, None)
+}
+
+/// Open the dedicated chat window and pre-seed it with a message.
+/// If the window is already open it is focused and the seed is emitted.
+pub fn show_chat_with_seed(app: &AppHandle, seed: &str) -> Result<()> {
+    show_chat_inner(app, Some(seed.to_string()))
+}
+
+fn show_chat_inner(app: &AppHandle, seed: Option<String>) -> Result<()> {
+    if let Some(win) = app.get_webview_window(CHAT_LABEL) {
+        win.show().ok();
+        win.set_focus().ok();
+        if let Some(msg) = seed {
+            let _ = app.emit("twin://cw-seed", msg);
+        }
+        return Ok(());
+    }
+    WebviewWindowBuilder::new(app, CHAT_LABEL, WebviewUrl::App("chat.html".into()))
+        .title("twin · chat")
+        .inner_size(520.0, 700.0)
+        .min_inner_size(400.0, 480.0)
+        .resizable(true)
+        .decorations(true)
+        .skip_taskbar(false)
+        .center()
+        .visible(true)
+        .build()
+        .context("build chat window")?;
+
+    if let Some(msg) = seed {
+        let app2 = app.clone();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            let _ = app2.emit("twin://cw-seed", msg);
+        });
+    }
+    Ok(())
 }
 
 fn companion_bubble_anchor(app: &AppHandle) -> Option<(f64, f64)> {
