@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "md.twin.companion",
   "build": {
-    "beforeDevCommand": "npm run dev:web",
+    "beforeDevCommand": "npm run dev:vite",
     "beforeBuildCommand": "npm run build:web",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
@@ -31,23 +31,6 @@
         "hiddenTitle": true,
         "visible": false,
         "center": false
-      },
-      {
-        "label": "chat",
-        "title": "twin · chat",
-        "url": "chat.html",
-        "width": 520,
-        "height": 700,
-        "minWidth": 400,
-        "minHeight": 480,
-        "transparent": false,
-        "decorations": true,
-        "alwaysOnTop": false,
-        "skipTaskbar": false,
-        "resizable": true,
-        "hiddenTitle": true,
-        "visible": false,
-        "center": true
       }
     ],
     "security": {

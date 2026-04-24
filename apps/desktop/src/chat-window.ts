@@ -26,6 +26,8 @@ import {
   listModels,
   saveProviderCredentials,
   validateProviderKey,
+  onSpriteUpdated,
+  regenerateSprite,
   type AiProvider,
 } from "./ipc.ts";
 
@@ -70,6 +72,7 @@ const cwInput = document.getElementById("cw-input") as HTMLTextAreaElement;
 const cwSend = document.getElementById("cw-send") as HTMLButtonElement;
 const cwSprite = document.getElementById("cw-sprite") as HTMLImageElement;
 const cwSubtitle = document.getElementById("cw-subtitle") as HTMLParagraphElement;
+const cwRegenBtn = document.getElementById("cw-regen") as HTMLButtonElement;
 const cwNewBtn = document.getElementById("cw-new") as HTMLButtonElement;
 const cwSettingsBtn = document.getElementById("cw-settings") as HTMLButtonElement;
 const cwAutoComplete = document.getElementById("cw-autocomplete") as HTMLDivElement;
@@ -94,6 +97,7 @@ let sessionTurns: ChatTurn[] = [];
 let sessionId = crypto.randomUUID();
 let isStreaming = false;
 let lastAssistantText = "";
+let evolutionSpritePath: string | null = null;
 
 let settingsProvider: AiProvider = "anthropic";
 let currentProvider = "anthropic";
@@ -117,7 +121,9 @@ function renderMarkdown(text: string): string {
 function updateSprite(state: PetState) {
   const species = state.species as TwinSpecies;
   const mood = state.state as TwinMood;
-  cwSprite.src = `/pets/${species}/${mood}/breath-a.png`;
+  if (!evolutionSpritePath) {
+    cwSprite.src = `/pets/${species}/${mood}/breath-a.png`;
+  }
   cwSubtitle.textContent = state.caption.toLowerCase();
 }
 
@@ -481,7 +487,7 @@ settingsSave.addEventListener("click", async () => {
       provider: settingsProvider,
       model,
       apiKey: key || null,
-      storeInKeychain: true,
+      storeInKeychain: false,
     });
     currentProvider = settingsProvider;
     currentModel = model;
@@ -540,6 +546,17 @@ cwInput.addEventListener("input", () => {
   }
 });
 
+cwRegenBtn?.addEventListener("click", async () => {
+  try {
+    const path = await regenerateSprite();
+    evolutionSpritePath = path;
+    cwSprite.src = convertFileSrc(path);
+    appendStatus("new evolution sprite");
+  } catch (e) {
+    appendStatus(`sprite: ${String(e)}`, "error");
+  }
+});
+
 cwNewBtn.addEventListener("click", async () => {
   await persistSession();
   startNewSession();
@@ -588,6 +605,11 @@ async function init() {
   } catch {
     // ignore
   }
+
+  void onSpriteUpdated((payload) => {
+    evolutionSpritePath = payload.path;
+    cwSprite.src = convertFileSrc(payload.path);
+  });
 
   // Listen for proactive seed messages (from reminder engine or companion sprite click)
   await listen<string>("twin://cw-seed", async (event) => {

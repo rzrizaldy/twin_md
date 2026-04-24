@@ -35,14 +35,17 @@ import CozyLayout from '../layouts/CozyLayout.astro';
   <section class="mt-12" id="local-dev">
     <h2 class="font-display text-2xl">2. local dev from source</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      For hacking on twin-md itself: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/web-lite</code> (default island mirror). Legacy Next UI: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/web</code>.
+      Hacking the repo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri companion + chat), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/mcp</code> (Claude Desktop), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/cli</code> (init, harvest, watch).
+    </p>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+      Prebuilt desktop: <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" target="_blank" rel="noreferrer">GitHub Releases</a> (look for <code class="rounded bg-[var(--color-cream)] px-1 text-xs">desktop-v*</code> tags).
     </p>
     <div class="mt-4 flex flex-col gap-3 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       {[
         { cmd: 'git clone https://github.com/rzrizaldy/twin_md', hint: 'clone the monorepo' },
         { cmd: 'npm ci', hint: 'install workspace dependencies' },
-        { cmd: 'npm run dev:desktop', hint: 'or: npm run build:desktop — Tauri floating pet' },
-        { cmd: 'npx twin-md web', hint: 'island mirror at http://127.0.0.1:4730/ (run after npm run build)' },
+        { cmd: 'npm run build', hint: 'build core, MCP, and CLI' },
+        { cmd: 'npm run dev:desktop', hint: 'Tauri dev — floating pet + chat panel' },
       ].map((s) => (
         <div>
           <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
@@ -121,7 +124,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
         ))}
       </ul>
       <div class="mt-6 border-t border-[var(--color-ink)]/10 pt-4">
-        <p class="text-sm font-medium mb-2">run the companion:</p>
+        <p class="text-sm font-medium mb-2">run the pet in the terminal (or use the Tauri app after <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm run dev:desktop</code> / a release build):</p>
         <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
           <span class="text-[var(--color-ink-soft)]">$</span>
           <code>twin-md watch</code>
@@ -132,8 +135,8 @@ import CozyLayout from '../layouts/CozyLayout.astro';
         <summary class="cursor-pointer text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">troubleshooting</summary>
         <div class="mt-3 space-y-3 text-sm text-[var(--color-ink-soft)]">
           <div>
-            <p class="font-medium text-[var(--color-ink)]">localhost connection refused</p>
-            <p>The web companion (Next.js) isn't running. Start it with <code class="rounded bg-[var(--color-cream)] px-1 text-xs">pnpm --filter @twin-md/web dev</code> or set <code class="rounded bg-[var(--color-cream)] px-1 text-xs">TWIN_WEB_URL</code> to point to your instance.</p>
+            <p class="font-medium text-[var(--color-ink)]">desktop app won&rsquo;t start</p>
+            <p>Build from <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> with <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm run dev:desktop</code> (Vite must be on port 1420 in dev) or install a <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline" target="_blank" rel="noreferrer">release</a> bundle. Check the terminal for a Rust or webview error.</p>
           </div>
           <div>
             <p class="font-medium text-[var(--color-ink)]">twin-md command not found</p>

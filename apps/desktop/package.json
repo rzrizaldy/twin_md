@@ -8,7 +8,7 @@
     "stage-assets": "node scripts/stage-assets.mjs",
     "predev": "npm run stage-assets",
     "dev": "tauri dev",
-    "dev:web": "vite",
+    "dev:vite": "vite",
     "prebuild": "npm run stage-assets",
     "build": "tauri build",
     "build:web": "vite build",

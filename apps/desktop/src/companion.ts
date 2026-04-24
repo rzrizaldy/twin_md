@@ -1,3 +1,4 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getState,
@@ -5,8 +6,8 @@ import {
   onChatToken,
   onReminder,
   onStateChanged,
+  onSpriteUpdated,
   openChatWindow,
-  openWebCompanion,
   sendChat,
 } from "./ipc.ts";
 import type { PetState, Reminder, TwinMood, TwinSpecies } from "./types.ts";
@@ -48,6 +49,7 @@ const DEFAULT_STATE: PetState = {
 let current: PetState = DEFAULT_STATE;
 let frame: "breath-a" | "breath-b" = "breath-a";
 let blinkTimer: number | null = null;
+let evolutionSpritePath: string | null = null;
 
 // ── Sprite helpers ───────────────────────────────────────────────────────────
 
@@ -60,7 +62,11 @@ function setSpriteFor(species: TwinSpecies, mood: TwinMood, frameName: string) {
 }
 
 function render() {
-  setSpriteFor(current.species, current.state, frame);
+  if (evolutionSpritePath) {
+    sprite.src = convertFileSrc(evolutionSpritePath);
+  } else {
+    setSpriteFor(current.species, current.state, frame);
+  }
   caption.textContent = current.caption.toLowerCase();
   caption.hidden = false;
   ambientBubble.textContent = current.message || current.caption;
@@ -81,6 +87,10 @@ function scheduleBlink() {
   const delay = 4000 + Math.random() * 3000;
   blinkTimer = window.setTimeout(() => {
     if (!current) {
+      scheduleBlink();
+      return;
+    }
+    if (evolutionSpritePath) {
       scheduleBlink();
       return;
     }
@@ -276,27 +286,13 @@ function attachInteractions() {
     }
   });
 
-  const webButton = document.getElementById("web-button") as HTMLButtonElement | null;
-  if (webButton) {
-    webButton.addEventListener("click", async (event) => {
-      event.stopPropagation();
-      try {
-        await openWebCompanion();
-      } catch (err) {
-        // Show the error inline in the bubble so the user knows what happened
-        openBubble("web companion isn't running — start it with `pnpm --filter @twin-md/web dev` or set TWIN_WEB_URL.");
-        console.error("open_web_companion failed", err);
-      }
-    });
-  }
-
-  // Expand button opens web companion
+  // Expand opens the dedicated chat panel (same as "chat" button).
   bubbleExpand.addEventListener("click", async (event) => {
     event.stopPropagation();
     try {
-      await openWebCompanion();
+      await openChatWindow();
     } catch (err) {
-      console.error("open_web_companion from expand failed", err);
+      console.error("openChatWindow from expand failed", err);
     }
   });
 
@@ -364,6 +360,11 @@ async function init() {
 
   await onStateChanged((next) => {
     current = next;
+    render();
+  });
+
+  void onSpriteUpdated((payload) => {
+    evolutionSpritePath = payload.path;
     render();
   });
 

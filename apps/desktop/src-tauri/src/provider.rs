@@ -82,6 +82,49 @@ impl Provider {
     }
 }
 
+/// One non-streaming message completion (short outputs, e.g. SVG).
+pub async fn complete_anthropic(
+    model: &str,
+    api_key: &str,
+    system: &str,
+    user_message: &str,
+) -> Result<String> {
+    if api_key.trim().is_empty() {
+        return Err(anyhow!("empty api key"));
+    }
+    let body = json!({
+        "model": model,
+        "max_tokens": 16_000,
+        "stream": false,
+        "system": system,
+        "messages": [{ "role": "user", "content": user_message }]
+    });
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()?;
+    let response = client
+        .post(ANTHROPIC_URL)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", ANTHROPIC_VERSION)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(anyhow!("anthropic {status}: {text}"));
+    }
+    let v: Value = response.json().await?;
+    let text = v
+        .get("content")
+        .and_then(|c| c.as_array())
+        .and_then(|a| a.first())
+        .and_then(|b| b.get("text").and_then(|t| t.as_str()))
+        .ok_or_else(|| anyhow!("no text in anthropic response"))?;
+    Ok(text.to_string())
+}
+
 pub type TextStream = Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
 
 /// Lightweight liveness check for an API key. Hits a cheap models-list endpoint

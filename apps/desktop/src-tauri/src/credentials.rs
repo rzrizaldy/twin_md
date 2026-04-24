@@ -1,15 +1,18 @@
 //! Provider credential storage.
 //!
-//! Three storage surfaces, in precedence order when resolving:
-//!   1. environment variable (ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY)
-//!   2. OS keychain (via `keyring` crate, service "twin-md")
-//!   3. `~/.claude/twin-ai.json` (plaintext fallback, 600 perms)
-//!
-//! The onboarding flow writes one of the latter two; chat.rs reads whichever
-//! is present, preferring env → keychain → config.
+//! Resolving an API key:
+//!   1. Environment variable for that provider (override).
+//!   2. `twin-ai.json` — if `storage` is `keychain` | `config` | `env`, only
+//!      that surface is read (avoids spurious keychain unlock prompts).
+//!   3. Legacy fallbacks: keychain → config file key → `~/.claude/.env` etc.
+//! In-process cache: at most one keychain read per key per app launch when
+//! storage is `keychain`.
 
 use anyhow::{anyhow, Context, Result};
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -17,6 +20,13 @@ use crate::paths::claude_dir;
 use crate::provider::Provider;
 
 const KEYRING_SERVICE: &str = "twin-md";
+
+static KEY_CACHE: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Clear in-memory key cache. Call after saving or rotating credentials.
+pub fn clear_credential_cache() {
+    KEY_CACHE.lock().clear();
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -128,29 +138,11 @@ pub fn save_credentials(
         },
     };
     write_ai_config(&cfg)?;
+    clear_credential_cache();
     Ok(storage)
 }
 
-/// Look up an API key across env → keychain → config for the given provider.
-pub fn resolve_api_key(provider: Provider) -> Option<String> {
-    if let Ok(key) = std::env::var(provider.env_key()) {
-        if !key.trim().is_empty() {
-            return Some(key);
-        }
-    }
-    if let Some(key) = read_from_keychain(provider) {
-        if !key.trim().is_empty() {
-            return Some(key);
-        }
-    }
-    if let Some(cfg) = read_ai_config() {
-        if cfg.provider.eq_ignore_ascii_case(provider.slug()) {
-            if let Some(key) = cfg.api_key.filter(|k| !k.trim().is_empty()) {
-                return Some(key);
-            }
-        }
-    }
-    // Legacy fallback: ~/.claude/.env KEY=VALUE file.
+fn read_dot_env_files(provider: Provider) -> Option<String> {
     if let Ok(home) = std::env::var("HOME") {
         for candidate in [
             format!("{home}/.claude/.env"),
@@ -174,6 +166,53 @@ pub fn resolve_api_key(provider: Provider) -> Option<String> {
         }
     }
     None
+}
+
+fn resolve_api_key_uncached(provider: Provider) -> Option<String> {
+    if let Ok(key) = std::env::var(provider.env_key()) {
+        if !key.trim().is_empty() {
+            return Some(key);
+        }
+    }
+    if let Some(cfg) = read_ai_config() {
+        if cfg.provider.eq_ignore_ascii_case(provider.slug()) {
+            return match Storage::parse(&cfg.storage) {
+                Storage::Keychain => read_from_keychain(provider),
+                Storage::Config => cfg.api_key.filter(|k| !k.trim().is_empty()),
+                Storage::Env => read_dot_env_files(provider),
+            };
+        }
+    }
+    if let Some(key) = read_from_keychain(provider) {
+        if !key.trim().is_empty() {
+            return Some(key);
+        }
+    }
+    if let Some(cfg) = read_ai_config() {
+        if cfg.provider.eq_ignore_ascii_case(provider.slug()) {
+            if let Some(key) = cfg.api_key.filter(|k| !k.trim().is_empty()) {
+                return Some(key);
+            }
+        }
+    }
+    read_dot_env_files(provider)
+}
+
+/// Look up the API key for the active provider, respecting storage preference
+/// to avoid repeated keychain prompts. Results are cached in-process.
+pub fn resolve_api_key(provider: Provider) -> Option<String> {
+    let slug = provider.slug();
+    {
+        let cache = KEY_CACHE.lock();
+        if let Some(k) = cache.get(slug) {
+            return Some(k.clone());
+        }
+    }
+    let resolved = resolve_api_key_uncached(provider);
+    if let Some(ref k) = resolved {
+        KEY_CACHE.lock().insert(slug.to_string(), k.clone());
+    }
+    resolved
 }
 
 /// Default-provider resolution for chat.rs. Falls back to Anthropic, matching

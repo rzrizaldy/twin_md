@@ -2,9 +2,9 @@
 
 **Live site:** [rzrizaldy.github.io/twin_md/](https://rzrizaldy.github.io/twin_md/)
 
-A local-first desk creature that reads your second brain and mirrors how you are doing — cheer, yawn, pace, or go quiet. Everything important lives in `~/.claude/twin.md` and `~/.claude/twin-state.json` on your machine.
+A **cute desktop companion** wired to your **Obsidian vault**, able to **retrieve and write** notes, and to **harvest context from your Claude Desktop sessions** via the bundled **MCP** server. State lives in `~/.claude/twin.md` and `~/.claude/twin-state.json` on your machine.
 
-## Install
+## Install (CLI + MCP)
 
 ```bash
 npm install -g twin-md
@@ -20,31 +20,37 @@ npx twin-md watch
 
 Requires **Node 20+**. macOS notifications and some integrations expect macOS; core harvest and CLI work on Linux and Windows too.
 
+## Desktop companion (Tauri)
+
+The floating pet and **chat panel** are in `apps/desktop`. **Prebuilt macOS builds** (when published): [GitHub Releases](https://github.com/rzrizaldy/twin_md/releases) — look for tags like `desktop-v*`.
+
+**From this repo:**
+
+```bash
+cd twin_md
+npm ci
+npm run build
+npm run dev:desktop
+```
+
+That runs Vite on `http://localhost:1420` and the Tauri shell. For chat, add your own API key in the chat settings (BYOK) or use Claude via MCP as configured in onboarding.
+
 ## Everyday commands
 
 ```bash
 twin-md init       # config, twin.md seed, Claude Desktop MCP wiring
-twin-md harvest    # refresh twin.md from your local sources
+twin-md harvest    # refresh twin.md from vault + local sources
 twin-md watch      # terminal pet + reminders
-twin-md web        # island mirror at http://127.0.0.1:4730/ (web-lite, no Next.js)
+twin-md mcp        # stdio MCP server (for Claude Desktop config)
 ```
-
-Optional: `twin-md web --host 0.0.0.0` for LAN + QR. Legacy Next app: `twin-md web --next`.
-
-Desktop tray **Open in browser** uses that URL when web-lite is running; otherwise it opens the GitHub Pages site above.
-
-## Web mirror (web-lite)
-
-` twin-md web` serves a small **Animal Crossing–style island** view: composite scene, pet sprite, caption and line from `twin-state.json`. It does not run chat (replies stay in the desktop pet). No separate `localhost:3000` requirement.
 
 ## More
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — harvest → interpret → surfaces
 - [DESIGN_BRIEF.md](DESIGN_BRIEF.md) — visual direction
-- `twin-md mcp` — stdio MCP server for Claude Desktop
 - `twin-md daemon` — background harvest + reminders
 
-## From source
+## From source (full monorepo)
 
 ```bash
 git clone https://github.com/rzrizaldy/twin_md.git
@@ -59,3 +65,5 @@ npm run build
 npm run build
 ./scripts/release.sh --dry-run
 ```
+
+Tauri app bundles: `./scripts/release.sh --tauri` (creates a GitHub Release when `gh` is installed).

@@ -11,7 +11,6 @@ use crate::windows;
 pub fn install(app: &AppHandle) -> Result<()> {
     let summon = MenuItem::with_id(app, "summon", "summon twin", true, None::<&str>)?;
     let open_chat = MenuItem::with_id(app, "open_chat", "open chat", true, None::<&str>)?;
-    let open_web = MenuItem::with_id(app, "open_web", "open in browser", true, None::<&str>)?;
     let harvest = MenuItem::with_id(app, "harvest", "harvest now", true, None::<&str>)?;
     let autostart_item = CheckMenuItem::with_id(
         app,
@@ -29,7 +28,6 @@ pub fn install(app: &AppHandle) -> Result<()> {
         &[
             &summon,
             &open_chat,
-            &open_web,
             &harvest,
             &separator,
             &autostart_item,
@@ -47,14 +45,6 @@ pub fn install(app: &AppHandle) -> Result<()> {
             }
             "open_chat" => {
                 let _ = windows::show_chat(app);
-            }
-            "open_web" => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(err) = crate::webshell::open_web_companion(app_clone).await {
-                        eprintln!("[twin] open_web failed: {err:?}");
-                    }
-                });
             }
             "harvest" => {
                 let app_clone = app.clone();

@@ -11,9 +11,9 @@ mod paths;
 mod presence;
 mod provider;
 mod screentime;
+mod sprite;
 mod state;
 mod tray;
-mod webshell;
 mod windows;
 
 use std::sync::Arc;
@@ -46,7 +46,6 @@ pub fn run() {
             ipc::get_state,
             ipc::get_chat_status,
             ipc::dismiss_bubble,
-            ipc::open_web_companion,
             ipc::trigger_harvest,
             ipc::send_chat,
             ipc::run_local_command,
@@ -67,6 +66,7 @@ pub fn run() {
             ipc::log_mood_entry,
             // Image generation
             ipc::generate_image,
+            ipc::regenerate_sprite,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -80,6 +80,17 @@ pub fn run() {
 
             // File watchers for state + reminders.
             state::spawn_watchers(handle.clone(), shared.clone());
+            // Evolutionary sprite when mood or environment changes.
+            let h_sprite = handle.clone();
+            let _ = handle.clone().listen("twin://state-changed", move |e| {
+                let h = h_sprite.clone();
+                if let Ok(state) = serde_json::from_str::<crate::model::PetState>(e.payload()) {
+                    tauri::async_runtime::spawn(async move {
+                        let _ = crate::sprite::on_pet_state_changed(&h, state).await;
+                    });
+                }
+            });
+
 
             // Tray + menu.
             if let Err(err) = tray::install(&handle) {

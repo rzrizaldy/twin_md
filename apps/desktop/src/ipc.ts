@@ -90,18 +90,18 @@ export async function dismissBubble(id: string): Promise<void> {
   }
 }
 
-export async function openWebCompanion(): Promise<void> {
-  await invoke("open_web_companion");
-}
-
 export async function triggerHarvest(): Promise<void> {
   await invoke("trigger_harvest");
 }
 
 export interface OnboardingPayload {
-  species: "axolotl" | "cat" | "slime";
+  species: "axolotl";
   owner: string;
   obsidianVault: string | null;
+  spriteEvolution: {
+    kind: "default" | "custom";
+    customPrompt: string | null;
+  };
 }
 
 export async function runOnboarding(
@@ -114,6 +114,25 @@ export function onStateChanged(
   cb: (state: PetState) => void
 ): Promise<UnlistenFn> {
   return listen<PetState>("twin://state-changed", (event) => cb(event.payload));
+}
+
+
+
+export interface SpriteUpdatePayload {
+  path: string;
+  isSvg: boolean;
+}
+
+export function onSpriteUpdated(
+  cb: (payload: SpriteUpdatePayload) => void
+): Promise<UnlistenFn> {
+  return listen<SpriteUpdatePayload>("twin://sprite-updated", (event) =>
+    cb(event.payload)
+  );
+}
+
+export async function regenerateSprite(): Promise<string> {
+  return invoke<string>("regenerate_sprite");
 }
 
 export function onReminder(

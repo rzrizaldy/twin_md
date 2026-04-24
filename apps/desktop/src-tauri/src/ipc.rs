@@ -71,13 +71,6 @@ pub async fn dismiss_bubble(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn open_web_companion(app: AppHandle) -> Result<(), String> {
-    crate::webshell::open_web_companion(app)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub async fn trigger_harvest() -> Result<(), String> {
     harvest::harvest().await.map_err(|e| e.to_string())
 }
@@ -225,6 +218,26 @@ pub struct OnboardingPayload {
     pub species: String,
     pub owner: String,
     pub obsidian_vault: Option<String>,
+    pub sprite_evolution: Option<serde_json::Value>,
+}
+
+
+fn merge_sprite_evolution(v: &serde_json::Value) -> Result<(), String> {
+    let p = claude_dir().join("twin.config.json");
+    let mut value: serde_json::Value = match fs::read(&p) {
+        Ok(bytes) if !bytes.is_empty() => {
+            serde_json::from_slice(&bytes).unwrap_or_else(|_| serde_json::json!({}))
+        }
+        _ => serde_json::json!({}),
+    };
+    if !value.is_object() {
+        value = serde_json::json!({});
+    }
+    let o = value.as_object_mut().expect("object");
+    o.insert("spriteEvolution".into(), v.clone());
+    let json = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
+    fs::write(&p, json).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -251,6 +264,15 @@ pub async fn run_onboarding(
             ok: false,
             message: format!("init failed: {err}"),
         });
+    }
+
+    if let Some(ref ev) = payload.sprite_evolution {
+        if let Err(e) = merge_sprite_evolution(ev) {
+            return Ok(OnboardingResult {
+                ok: false,
+                message: format!("config merge failed: {e}"),
+            });
+        }
     }
 
     if let Err(err) = harvest::harvest().await {
@@ -366,7 +388,7 @@ pub fn save_provider_credentials(
 ) -> Result<ProviderCredentialsResult, String> {
     let provider = Provider::parse(&payload.provider)
         .ok_or_else(|| format!("unknown provider '{}'", payload.provider))?;
-    let store = payload.store_in_keychain.unwrap_or(true);
+    let store = payload.store_in_keychain.unwrap_or(false);
     let api_key = payload
         .api_key
         .as_deref()
@@ -579,3 +601,12 @@ pub async fn generate_image(prompt: String) -> Result<ImageGenResult, String> {
         }),
     }
 }
+
+/// Force one evolutionary sprite pass (same prompt pipeline as state-change).
+#[tauri::command]
+pub async fn regenerate_sprite(app: AppHandle) -> Result<String, String> {
+    crate::sprite::regenerate(&app)
+        .await
+        .map_err(|e| e.to_string())
+}
+

@@ -3,7 +3,6 @@ import { runDaemonCommand } from "./commands/daemon.js";
 import { runHarvestCommand } from "./commands/harvest.js";
 import { runInitCommand } from "./commands/init.js";
 import { runWatchCommand } from "./commands/watch.js";
-import { runWebCommand } from "./commands/web.js";
 import {
   runBrainInitCommand,
   runBrainSyncCommand,
@@ -17,7 +16,7 @@ const program = new Command();
 
 program
   .name("twin-md")
-  .description("Local-first twin.md pet for terminal, MCP, and phone surfaces")
+  .description("Local-first twin.md pet: CLI, MCP, and desktop companion")
   .version("0.1.0");
 
 program
@@ -40,14 +39,6 @@ program
   .option("-w, --watch", "re-harvest when Claude dir, vault, or export files change")
   .action(runHarvestCommand);
 program.command("watch").description("render the terminal pet and watch twin files").action(runWatchCommand);
-program
-  .command("web")
-  .description("start the island web mirror (web-lite on loopback by default)")
-  .option("--port <port>", "port to bind", "4730")
-  .option("--host <host>", "bind address (use 0.0.0.0 for LAN + QR)", "127.0.0.1")
-  .option("--next", "legacy: run Next.js app from @twin-md/web instead")
-  .option("--dev", "with --next: force next dev even if .next exists")
-  .action(runWebCommand);
 program
   .command("mcp")
   .description("start the stdio MCP server")

@@ -3,18 +3,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   createStarterVault,
   ensureClaudeDir,
-  getChatStatus,
   listModels,
-  openWebCompanion,
+  openChatWindow,
   runOnboarding,
   saveProviderCredentials,
   setVaultPath,
   validateProviderKey,
   type AiProvider,
-  type ChatStatus,
   type ClaudeDirStatus
 } from "./ipc.ts";
-import type { TwinSpecies } from "./types.ts";
 
 const TOTAL_STEPS = 6;
 
@@ -31,10 +28,12 @@ const PROVIDER_KEY_HINTS: Record<AiProvider, string> = {
 };
 
 type VaultChoice = "existing" | "create" | "skip";
+type SpriteMode = "default" | "custom";
 
 interface WizardState {
   step: number;
-  species: TwinSpecies;
+  spriteMode: SpriteMode;
+  customSprite: string;
   owner: string;
   vaultChoice: VaultChoice | null;
   vaultPath: string | null;
@@ -43,13 +42,12 @@ interface WizardState {
   model: string;
   apiKey: string;
   storeInKeychain: boolean;
-  skipAi: boolean;
-  chatStatus: ChatStatus | null;
 }
 
 const state: WizardState = {
   step: 0,
-  species: "axolotl",
+  spriteMode: "default",
+  customSprite: "",
   owner: "",
   vaultChoice: null,
   vaultPath: null,
@@ -57,9 +55,7 @@ const state: WizardState = {
   provider: "anthropic",
   model: "claude-haiku-4-5",
   apiKey: "",
-  storeInKeychain: true,
-  skipAi: false,
-  chatStatus: null
+  storeInKeychain: false
 };
 
 const $ = <T extends HTMLElement>(sel: string): T =>
@@ -72,6 +68,12 @@ const dots = $$<HTMLElement>(".wizard-dot");
 const nextBtn = $<HTMLButtonElement>("#wizard-next");
 const backBtn = $<HTMLButtonElement>("#wizard-back");
 const statusEl = $<HTMLElement>("#onboard-status");
+const customWrap = document.getElementById("custom-sprite-wrap") as HTMLDivElement | null;
+const customTa = document.getElementById("custom-sprite") as HTMLTextAreaElement | null;
+function syncCustomVis() {
+  if (customWrap) customWrap.hidden = state.spriteMode !== "custom";
+}
+
 
 function setStep(step: number) {
   state.step = Math.max(0, Math.min(TOTAL_STEPS - 1, step));
@@ -88,16 +90,19 @@ function setStep(step: number) {
   });
   backBtn.hidden = state.step === 0;
   nextBtn.textContent = state.step === TOTAL_STEPS - 1 ? "summon my twin" : "next";
-  statusEl.textContent = "";
+  if (state.step < 4) statusEl.textContent = "";
   if (state.step === 2) runClaudeDirCheck();
-  if (state.step === 4) runLocalAgentCheck();
 }
 
 function validateStep(step: number): string | null {
   switch (step) {
-    case 1:
+    case 1: {
       if (!state.owner.trim()) return "tell your twin who you are.";
+      if (state.spriteMode === "custom" && !state.customSprite.trim()) {
+        return "describe your custom creature, or pick default axolotl.";
+      }
       return null;
+    }
     case 2:
       if (!state.claudeDir) return "still checking ~/.claude/…";
       return null;
@@ -107,10 +112,8 @@ function validateStep(step: number): string | null {
         return "pick a folder or choose another option.";
       return null;
     case 4:
-      if (hasLocalClaudeChat()) return null;
-      if (state.skipAi) return null;
       if (!state.apiKey.trim())
-        return "drop in a fallback api key, or skip the key and continue without provider chat.";
+        return "add an API key for the selected provider.";
       return null;
     default:
       return null;
@@ -124,7 +127,7 @@ nextBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (state.step === 4 && state.apiKey.trim()) {
+  if (state.step === 4) {
     nextBtn.disabled = true;
     statusEl.textContent = "checking your key…";
     try {
@@ -139,7 +142,6 @@ nextBtn.addEventListener("click", async () => {
       nextBtn.disabled = false;
       return;
     }
-
     statusEl.textContent = "saving credentials…";
     try {
       await saveProviderCredentials({
@@ -153,10 +155,8 @@ nextBtn.addEventListener("click", async () => {
       nextBtn.disabled = false;
       return;
     }
-    statusEl.textContent = "key works.";
+    statusEl.textContent = "saved. you're good to go.";
     nextBtn.disabled = false;
-  } else if (state.step === 4 && hasLocalClaudeChat()) {
-    statusEl.textContent = "using local claude MCP. api key skipped.";
   }
 
   if (state.step === TOTAL_STEPS - 1) {
@@ -166,15 +166,21 @@ nextBtn.addEventListener("click", async () => {
 
   setStep(state.step + 1);
 });
-
 backBtn.addEventListener("click", () => setStep(state.step - 1));
 
 // — Step 1 —
-document.querySelectorAll<HTMLInputElement>('input[name="species"]').forEach((el) => {
+if (customTa) {
+  customTa.addEventListener("input", () => {
+    state.customSprite = customTa.value;
+  });
+}
+document.querySelectorAll<HTMLInputElement>('input[name="sprite-mode"]').forEach((el) => {
   el.addEventListener("change", () => {
-    state.species = el.value as TwinSpecies;
+    state.spriteMode = el.value as SpriteMode;
+    syncCustomVis();
   });
 });
+syncCustomVis();
 
 $<HTMLInputElement>("#owner").addEventListener("input", (event) => {
   state.owner = (event.target as HTMLInputElement).value;
@@ -266,59 +272,6 @@ const modelSelect = $<HTMLSelectElement>("#model");
 const apiKeyInput = $<HTMLInputElement>("#api-key");
 const whereLink = $<HTMLAnchorElement>("#where-link");
 const storeKeychain = $<HTMLInputElement>("#store-keychain");
-const skipAiBtn = $<HTMLButtonElement>("#skip-ai");
-
-function hasLocalClaudeChat(): boolean {
-  return Boolean(state.chatStatus?.local_agent && state.chatStatus.local_mcp_ready);
-}
-
-async function runLocalAgentCheck() {
-  const card = $<HTMLElement>('[data-detection="local-agent"]');
-  card.querySelector(".detection-body")!.textContent = "checking local claude connection…";
-  card.classList.remove("ok", "warn");
-  try {
-    const status = await getChatStatus();
-    if (!status) {
-      state.chatStatus = null;
-      card.classList.add("warn");
-      card.querySelector(".detection-icon")!.textContent = "!";
-      card.querySelector(".detection-body")!.textContent =
-        "couldn't read local ai status. add a fallback key for chat, or skip for mirror-only mode.";
-      return;
-    }
-
-    state.chatStatus = status;
-    if (status.local_agent && status.local_mcp_ready) {
-      card.classList.add("ok");
-      card.querySelector(".detection-icon")!.textContent = "✓";
-      card.querySelector(".detection-body")!.textContent =
-        `already connected to ${status.local_agent} via twin-md MCP. api key is optional.`;
-      skipAiBtn.textContent = `skip key — use local ${status.local_agent}`;
-    } else if (status.local_agent) {
-      card.classList.add("warn");
-      card.querySelector(".detection-icon")!.textContent = "!";
-      card.querySelector(".detection-body")!.textContent =
-        `found ${status.local_agent}, but twin-md MCP dist is not ready yet. run the desktop build or add a fallback key.`;
-      skipAiBtn.textContent = "skip key — run without provider chat";
-    } else if (status.has_api_key) {
-      card.classList.add("ok");
-      card.querySelector(".detection-icon")!.textContent = "✓";
-      card.querySelector(".detection-body")!.textContent =
-        `${status.provider} key already saved. you can keep using that fallback.`;
-    } else {
-      card.classList.add("warn");
-      card.querySelector(".detection-icon")!.textContent = "!";
-      card.querySelector(".detection-body")!.textContent =
-        "no local claude/codex MCP path detected. add a fallback key for chat, or skip for mirror-only mode.";
-    }
-  } catch (err) {
-    card.classList.add("warn");
-    card.querySelector(".detection-icon")!.textContent = "!";
-    card.querySelector(".detection-body")!.textContent =
-      `couldn't check local ai status: ${String(err)}`;
-  }
-}
-
 async function loadModels(provider: AiProvider) {
   state.provider = provider;
   whereLink.href = PROVIDER_KEY_URLS[provider];
@@ -372,21 +325,11 @@ modelSelect.addEventListener("change", () => {
 
 apiKeyInput.addEventListener("input", () => {
   state.apiKey = apiKeyInput.value;
-  if (state.apiKey.trim()) state.skipAi = false;
+  
 });
 
 storeKeychain.addEventListener("change", () => {
   state.storeInKeychain = storeKeychain.checked;
-});
-
-skipAiBtn.addEventListener("click", () => {
-  state.skipAi = true;
-  state.apiKey = "";
-  apiKeyInput.value = "";
-  statusEl.textContent = hasLocalClaudeChat()
-    ? "using local claude MCP — no api key needed."
-    : "provider key skipped — mirror still runs.";
-  setStep(state.step + 1);
 });
 
 // — Step 5 —
@@ -395,9 +338,13 @@ async function runSummon() {
   statusEl.textContent = "harvesting your second brain…";
 
   const payload = {
-    species: state.species,
+    species: "axolotl" as const,
     owner: state.owner.trim(),
-    obsidianVault: state.vaultPath
+    obsidianVault: state.vaultPath,
+    spriteEvolution: {
+      kind: state.spriteMode,
+      customPrompt: state.spriteMode === "custom" ? state.customSprite.trim() : null
+    }
   };
 
   try {
@@ -420,13 +367,13 @@ void loadModels(state.provider);
 setStep(0);
 
 // — Step 5 extras —
-const openBrowserBtn = document.getElementById(
-  "open-browser"
+const openChatPreviewBtn = document.getElementById(
+  "open-chat-preview"
 ) as HTMLButtonElement | null;
-if (openBrowserBtn) {
-  openBrowserBtn.addEventListener("click", () => {
-    openWebCompanion().catch((err) => {
-      statusEl.textContent = `couldn't open browser: ${String(err)}`;
+if (openChatPreviewBtn) {
+  openChatPreviewBtn.addEventListener("click", () => {
+    openChatWindow().catch((err) => {
+      statusEl.textContent = `couldn't open chat: ${String(err)}`;
     });
   });
 }

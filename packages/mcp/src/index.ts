@@ -599,7 +599,7 @@ ${prompts.map((p, i) => `## ${i + 1}. ${p}\n\n`).join("")}`;
         action,
         why: why ?? null,
         silent_minutes: action === "silent" ? (silent_minutes ?? 60) : null,
-        note: "Tauri and web-lite honor pet_agency events via the state bus. " +
+        note: "The Tauri desktop companion honors pet_agency events via the state bus. " +
           "If neither surface is running, the action is recorded only."
       };
       return {

@@ -330,7 +330,9 @@ body.window {
 }
 
 .chat-bubble {
-  max-width: min(80%, 360px);
+  max-width: 92%;
+  width: fit-content;
+  min-width: 0;
   padding: 11px 15px;
   border-radius: 14px;
   line-height: 1.55;
@@ -371,7 +373,8 @@ body.window {
 .chat-bubble code {
   max-width: 100%;
   overflow-x: auto;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-word;
   font-family: var(--font-mono);
   font-size: 12.5px;
 }

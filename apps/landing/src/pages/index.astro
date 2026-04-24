@@ -1,7 +1,6 @@
 ---
 import CozyLayout from '../layouts/CozyLayout.astro';
 import IslandHero from '../components/IslandHero.astro';
-import SpeciesCard from '../components/SpeciesCard.astro';
 import KarpathyGist from '../components/KarpathyGist.astro';
 import BreathingSprite from '../components/BreathingSprite.astro';
 
@@ -9,15 +8,15 @@ const rawBase = import.meta.env.BASE_URL;
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 ---
 
-<CozyLayout title="twin.md — a desk creature that reads your second brain" active="home">
+<CozyLayout title="twin.md — desk companion for Obsidian + Claude (MCP)" active="home">
   <IslandHero />
 
-  <!-- Three species -->
+  <!-- Axiotyle -->
   <section class="mt-16">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">character bible</p>
-        <h2 class="mt-1 font-display text-3xl sm:text-4xl">three species, four moods</h2>
+        <h2 class="mt-1 font-display text-3xl sm:text-4xl">one axolotl, four moods</h2>
       </div>
       <a
         href={`${base}meet`}
@@ -27,22 +26,12 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
       </a>
     </div>
 
-    <div class="mt-8 grid gap-4 sm:grid-cols-3">
-      <SpeciesCard
-        species="axolotl"
-        title="Axolotl"
-        vibe="soft, curious, a little dramatic. The default."
-      />
-      <SpeciesCard
-        species="cat"
-        title="Cat"
-        vibe="self-contained, judgmental, secretly loyal."
-      />
-      <SpeciesCard
-        species="slime"
-        title="Slime"
-        vibe="chaotic, bouncy, goofy. Lowest ego."
-      />
+    <div class="mt-8 max-w-2xl rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+      <p class="text-sm text-[var(--color-ink)]">
+        The app ships with a single chibi <strong>axolotl</strong> (Axiotyle). You can optionally
+        describe your own creature at setup; the pet <strong>evolves</strong> on mood and scene
+        changes using your chosen AI provider, with no-background PNG or SVG output.
+      </p>
     </div>
   </section>
 

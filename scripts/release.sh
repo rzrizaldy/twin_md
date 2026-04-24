@@ -46,8 +46,6 @@ trap 'rm -rf "$TMP"' EXIT
 PACKAGES=(
   "packages/core"
   "packages/mcp"
-  "packages/web-lite"
-  "packages/web"
   "packages/cli"
 )
 

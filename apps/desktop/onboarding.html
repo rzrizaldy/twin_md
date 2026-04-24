@@ -10,7 +10,7 @@
     <main class="onboard wizard" data-current-step="0">
       <nav class="wizard-dots" aria-label="onboarding progress">
         <span class="wizard-dot is-active" data-step-dot="0">brief</span>
-        <span class="wizard-dot" data-step-dot="1">species</span>
+        <span class="wizard-dot" data-step-dot="1">look</span>
         <span class="wizard-dot" data-step-dot="2">.claude</span>
         <span class="wizard-dot" data-step-dot="3">vault</span>
         <span class="wizard-dot" data-step-dot="4">ai</span>
@@ -30,26 +30,32 @@
         </p>
       </section>
 
-      <!-- Step 1 — species + name -->
+      <!-- Step 1 — axolotl companion + custom sprite prompt option -->
       <section class="wizard-step" data-step="1">
-        <h2>pick a species, tell it who you are</h2>
-        <div class="species-row" role="radiogroup" aria-label="species">
-          <label class="species-card">
-            <input type="radio" name="species" value="axolotl" checked />
-            <img src="/pets/axolotl/healthy/breath-a.png" alt="" />
-            <span>axolotl</span>
+        <h2>your axolotl twin</h2>
+        <p class="muted">default art is a cute chibi axolotl. you can also describe a custom look for evolution.</p>
+        <div class="choice-grid" style="max-width: 100%;">
+          <label class="choice-card" style="cursor: pointer;">
+            <input type="radio" name="sprite-mode" value="default" checked style="display: none" />
+            <strong>axolotl (default)</strong>
+            <span>classic twin.md axiotyle</span>
           </label>
-          <label class="species-card">
-            <input type="radio" name="species" value="cat" />
-            <img src="/pets/cat/healthy/breath-a.png" alt="" />
-            <span>cat</span>
-          </label>
-          <label class="species-card">
-            <input type="radio" name="species" value="slime" />
-            <img src="/pets/slime/healthy/breath-a.png" alt="" />
-            <span>slime</span>
+          <label class="choice-card" style="cursor: pointer;">
+            <input type="radio" name="sprite-mode" value="custom" style="display: none" />
+            <strong>custom prompt</strong>
+            <span>describe your own creature; PNG/SVG will evolve from this seed</span>
           </label>
         </div>
+        <label class="field" id="custom-sprite-wrap" hidden>
+          <span>custom creature prompt</span>
+          <textarea
+            id="custom-sprite"
+            class="text-input"
+            rows="3"
+            placeholder="e.g. a tiny indigo axolotl with a vinyl jacket and soft glow, chibi, thick outlines"
+            autocomplete="off"
+          ></textarea>
+        </label>
         <label class="field">
           <span>your name</span>
           <input
@@ -106,13 +112,9 @@
       <section class="wizard-step" data-step="4">
         <h2>ai provider</h2>
         <p class="muted model-tier-hint">
-          api key is optional when your local claude/codex cli is already connected.
-          twin.md will try that local MCP path first, then use a provider key only as fallback.
+          an API key is required for chat, sprite evolution, and brain-aware replies.
+          the key is stored on disk under <code>~/.claude/twin-ai.json</code> (permissions 600) by default.
         </p>
-        <div class="detection-card" data-detection="local-agent">
-          <span class="detection-icon" aria-hidden="true">·</span>
-          <span class="detection-body">checking local claude connection…</span>
-        </div>
         <div class="provider-row" role="radiogroup" aria-label="provider">
           <label class="provider-card">
             <input type="radio" name="provider" value="anthropic" checked />
@@ -138,7 +140,7 @@
 
         <label class="field">
           <span>
-            fallback api key <small>(optional)</small>
+            API key
             <a href="#" class="where-link" id="where-link" target="_blank" rel="noreferrer">
               where do i get this?
             </a>
@@ -153,14 +155,13 @@
           />
         </label>
 
+        <p class="muted" style="font-size: 12px; margin: 0 0 8px 0">
+          stored in <code>~/.claude/twin-ai.json</code> (only you can read it). never sent anywhere except the provider you pick.
+        </p>
         <label class="checkbox-row">
-          <input type="checkbox" id="store-keychain" checked />
-          <span>save to macos keychain</span>
+          <input type="checkbox" id="store-keychain" />
+          <span>advanced: use OS keychain / credential manager instead of the file (may prompt to unlock more often on macOS)</span>
         </label>
-
-        <button class="text-button" type="button" id="skip-ai">
-          skip key — use local claude if available
-        </button>
       </section>
 
       <!-- Step 5 — summon -->
@@ -175,12 +176,12 @@
         </p>
         <p id="onboard-status" class="muted"></p>
         <button
-          id="open-browser"
+          id="open-chat-preview"
           class="text-button"
           type="button"
-          title="peek at the web companion before summoning"
+          title="open the chat panel before summoning"
         >
-          open browser companion
+          open chat panel
         </button>
       </section>
 
