@@ -61,7 +61,7 @@ pub async fn stream_with_system(
         return Ok(());
     };
 
-    let ctx = context::gather();
+    let ctx = context::gather_for_user_message(Some(message.as_str()));
     let system = match system_override {
         Some(custom) => {
             let base = context::render_prompt(&ctx);
@@ -151,7 +151,12 @@ pub async fn stream_chat_window(
         return Ok(());
     };
 
-    let ctx = context::gather();
+    let last_user = messages
+        .iter()
+        .rev()
+        .find(|m| m.role == "user")
+        .map(|m| m.content.as_str());
+    let ctx = context::gather_for_user_message(last_user);
     let system = build_cw_system(state.as_ref(), &ctx);
 
     match provider::stream_history(provider_kind, &model, &api_key, &system, &messages).await {
@@ -198,9 +203,8 @@ fn build_cw_system(state: Option<&PetState>, ctx: &context::ChatContext) -> Stri
     }
     buf.push_str(
         "\n== chat window mode ==\n\
-         You are now in a persistent chat panel — feel free to give longer, more \
-         detailed responses when helpful. You can reference vault notes and suggest \
-         using /note to save insights or /mood to log how they're feeling.\n"
+         You are in a persistent chat panel — stay concise. Ground answers in the vault when possible. \
+         Suggest /note to save a takeaway or /mood to log a feeling; avoid unsolicited habit or health checklists.\n"
     );
     buf
 }

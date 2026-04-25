@@ -10,11 +10,12 @@
     <main class="onboard wizard" data-current-step="0">
       <nav class="wizard-dots" aria-label="onboarding progress">
         <span class="wizard-dot is-active" data-step-dot="0">brief</span>
-        <span class="wizard-dot" data-step-dot="1">look</span>
+        <span class="wizard-dot" data-step-dot="1">you</span>
         <span class="wizard-dot" data-step-dot="2">.claude</span>
-        <span class="wizard-dot" data-step-dot="3">vault</span>
+        <span class="wizard-dot" data-step-dot="3">look</span>
         <span class="wizard-dot" data-step-dot="4">ai</span>
-        <span class="wizard-dot" data-step-dot="5">summon</span>
+        <span class="wizard-dot" data-step-dot="5" data-custom-only>craft</span>
+        <span class="wizard-dot" data-step-dot="6">summon</span>
       </nav>
 
       <!-- Step 0 — brief -->
@@ -30,32 +31,10 @@
         </p>
       </section>
 
-      <!-- Step 1 — axolotl companion + custom sprite prompt option -->
+      <!-- Step 1 — owner + obsidian vault -->
       <section class="wizard-step" data-step="1">
-        <h2>your axolotl twin</h2>
-        <p class="muted">default art is a cute chibi axolotl. you can also describe a custom look for evolution.</p>
-        <div class="choice-grid" style="max-width: 100%;">
-          <label class="choice-card" style="cursor: pointer;">
-            <input type="radio" name="sprite-mode" value="default" checked style="display: none" />
-            <strong>axolotl (default)</strong>
-            <span>classic twin.md axiotyle</span>
-          </label>
-          <label class="choice-card" style="cursor: pointer;">
-            <input type="radio" name="sprite-mode" value="custom" style="display: none" />
-            <strong>custom prompt</strong>
-            <span>describe your own creature; PNG/SVG will evolve from this seed</span>
-          </label>
-        </div>
-        <label class="field" id="custom-sprite-wrap" hidden>
-          <span>custom creature prompt</span>
-          <textarea
-            id="custom-sprite"
-            class="text-input"
-            rows="3"
-            placeholder="e.g. a tiny indigo axolotl with a vinyl jacket and soft glow, chibi, thick outlines"
-            autocomplete="off"
-          ></textarea>
-        </label>
+        <h2>you &amp; your vault</h2>
+        <p class="muted">your name, and optionally where to read your obsidian notes.</p>
         <label class="field">
           <span>your name</span>
           <input
@@ -66,6 +45,21 @@
             autocomplete="off"
           />
         </label>
+        <div class="choice-grid" style="max-width: 100%; margin-top: 12px;">
+          <button class="choice-card" type="button" data-vault-choice="existing">
+            <strong>i have a vault</strong>
+            <span>point to an obsidian folder</span>
+          </button>
+          <button class="choice-card" type="button" data-vault-choice="create">
+            <strong>what's obsidian?</strong>
+            <span>we'll start one for you</span>
+          </button>
+          <button class="choice-card" type="button" data-vault-choice="skip">
+            <strong>skip</strong>
+            <span>claude harvest still runs</span>
+          </button>
+        </div>
+        <div class="vault-status" id="vault-status" hidden></div>
       </section>
 
       <!-- Step 2 — .claude dir -->
@@ -84,37 +78,37 @@
         </button>
       </section>
 
-      <!-- Step 3 — obsidian vault -->
+      <!-- Step 3 — axolotl vs custom (prompt comes later) -->
       <section class="wizard-step" data-step="3">
-        <h2>obsidian vault <small>(optional)</small></h2>
-        <p class="muted">
-          twin reads daily notes, tags, and unfinished todos from your vault
-          to figure out what you're thinking about. nothing leaves your disk.
-        </p>
-        <div class="choice-grid">
-          <button class="choice-card" type="button" data-vault-choice="existing">
-            <strong>i have a vault</strong>
-            <span>point to an obsidian folder</span>
-          </button>
-          <button class="choice-card" type="button" data-vault-choice="create">
-            <strong>what's obsidian?</strong>
-            <span>we'll start one for you</span>
-          </button>
-          <button class="choice-card" type="button" data-vault-choice="skip">
-            <strong>skip</strong>
-            <span>claude harvest still runs</span>
-          </button>
+        <h2>how should your twin look?</h2>
+        <p class="muted">default is the classic chibi axolotl. custom = you describe a creature; you'll preview it after the api key step.</p>
+        <div class="choice-grid" style="max-width: 100%;">
+          <label class="choice-card" style="cursor: pointer;">
+            <input type="radio" name="sprite-mode" value="default" checked style="display: none" />
+            <strong>axolotl (default)</strong>
+            <span>classic twin.md axiotyle</span>
+          </label>
+          <label class="choice-card" style="cursor: pointer;">
+            <input type="radio" name="sprite-mode" value="custom" style="display: none" />
+            <strong>custom prompt</strong>
+            <span>you'll write &amp; preview the look in the next steps</span>
+          </label>
         </div>
-        <div class="vault-status" id="vault-status" hidden></div>
       </section>
 
-      <!-- Step 4 — provider + key -->
+      <!-- Step 4 — provider + key (+ rembg note) -->
       <section class="wizard-step" data-step="4">
         <h2>ai provider</h2>
         <p class="muted model-tier-hint">
           an API key is required for chat, sprite evolution, and brain-aware replies.
-          the key is stored on disk under <code>~/.claude/twin-ai.json</code> (permissions 600) by default.
+          stored in <code>~/.claude/twin-ai.json</code> (permissions 600) by default.
         </p>
+        <div class="rembg-hint" id="rembg-hint" style="font-size: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(71, 54, 67, 0.06); margin-bottom: 10px; line-height: 1.45;">
+          <strong>sprites &amp; /image</strong> (openai &amp; google) use
+          <a href="https://github.com/danielgatis/rembg" target="_blank" rel="noreferrer">rembg</a>
+          for background removal. install once on your machine:
+          <code style="user-select: all; display: block; margin-top: 4px">pipx install "rembg[cpu,cli]"</code>
+        </div>
         <div class="provider-row" role="radiogroup" aria-label="provider">
           <label class="provider-card">
             <input type="radio" name="provider" value="anthropic" checked />
@@ -156,7 +150,7 @@
         </label>
 
         <p class="muted" style="font-size: 12px; margin: 0 0 8px 0">
-          stored in <code>~/.claude/twin-ai.json</code> (only you can read it). never sent anywhere except the provider you pick.
+          only sent to the provider you pick. you can add rembg in parallel; it's not required to finish this screen.
         </p>
         <label class="checkbox-row">
           <input type="checkbox" id="store-keychain" />
@@ -164,8 +158,31 @@
         </label>
       </section>
 
-      <!-- Step 5 — summon -->
-      <section class="wizard-step" data-step="5">
+      <!-- Step 5 — custom preview (key already saved) -->
+      <section class="wizard-step" data-step="5" id="step-preview">
+        <h2>craft your look</h2>
+        <p class="muted">generate as many previews as you like. when it feels right, continue to summon.</p>
+        <label class="field">
+          <span>creature prompt</span>
+          <textarea
+            id="preview-prompt"
+            class="text-input"
+            rows="4"
+            placeholder="e.g. a tiny indigo axolotl with a vinyl jacket, chibi, thick outlines"
+            autocomplete="off"
+          ></textarea>
+        </label>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
+          <button id="btn-gen-preview" class="secondary-button" type="button">generate preview</button>
+          <span id="preview-status" class="muted" style="font-size: 12px;"></span>
+        </div>
+        <div id="preview-img-wrap" style="min-height: 120px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(71, 54, 67, 0.05); padding: 12px;">
+          <img id="preview-img" alt="" style="max-height: 200px; max-width: 100%; object-fit: contain; display: none;" />
+        </div>
+      </section>
+
+      <!-- Step 6 — summon -->
+      <section class="wizard-step" data-step="6">
         <div class="wizard-hero">
           <img src="/pets/axolotl/healthy/reaction-happy.png" alt="" class="wizard-hero-sprite" />
         </div>

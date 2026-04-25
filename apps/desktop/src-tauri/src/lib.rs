@@ -6,6 +6,7 @@ mod credentials;
 mod harvest;
 mod image_gen;
 mod ipc;
+mod rembg;
 mod model;
 mod paths;
 mod presence;
@@ -67,6 +68,7 @@ pub fn run() {
             // Image generation
             ipc::generate_image,
             ipc::regenerate_sprite,
+            ipc::generate_sprite_preview,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

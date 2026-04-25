@@ -1,14 +1,14 @@
 //! Image generation — OpenAI, Gemini, Anthropic (SVG) + sprite evolution routes.
+//! Raster outputs are piped through `rembg` for background removal.
 
 use anyhow::{anyhow, Result};
 use base64::Engine;
-use image::{codecs::png::PngEncoder, ExtendedColorType, Rgba, RgbaImage};
-use image::ImageEncoder;
 use serde::Serialize;
 use std::path::PathBuf;
 
 use crate::credentials::{active_provider_and_model, resolve_api_key};
 use crate::provider::Provider;
+use crate::rembg;
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -18,7 +18,7 @@ pub struct ImageResult {
     pub prompt: String,
 }
 
-/// Chat `/image` — follow active provider; OpenAI / Gemini only.
+/// Chat `/image` — follow active provider; OpenAI / Gemini only (raster → rembg).
 pub async fn generate(prompt: &str) -> Result<ImageResult> {
     let (prov, _model) = active_provider_and_model();
     let key = resolve_api_key(prov)
@@ -26,27 +26,30 @@ pub async fn generate(prompt: &str) -> Result<ImageResult> {
     match prov {
         Provider::Openai => {
             if let Ok(r) = generate_openai_gpt_image(&key, prompt).await {
-                return Ok(r);
+                return finalize_raster_media(r, prompt, "openai/gpt-image-1").await;
             }
-            generate_openai_dalle3(&key, prompt).await
+            let r = generate_openai_dalle3(&key, prompt).await?;
+            finalize_raster_media(r, prompt, "openai/dall-e-3").await
         }
         Provider::Gemini => {
             let bytes = generate_gemini_bytes(&key, prompt).await?;
-            let processed = white_to_transparent(&bytes).unwrap_or(bytes);
+            let processed = rembg::strip_bg(bytes)
+                .await
+                .map_err(|e| anyhow!(e))?;
             let path = save_bytes_media(&processed, "gemini", prompt, "png")?;
             Ok(ImageResult {
                 saved_path: path.display().to_string(),
-                provider_used: "gemini/imagen-3".to_string(),
+                provider_used: "gemini/imagen-3+rembg".to_string(),
                 prompt: prompt.to_string(),
             })
         }
         Provider::Anthropic => Err(anyhow!(
-            "/image with Anthropic: add an OpenAI or Google key in settings for photoreal /image, or use sprite evolution (Claude generates SVG for your companion automatically)"
+            "/image with Anthropic: add an OpenAI or Google key in settings for /image, or use sprite evolution (Claude can output SVG for sprites)"
         )),
     }
 }
 
-/// Evolutionary sprite: uses active provider (OpenAI transparent PNG, Gemini+matte, or Claude SVG).
+/// Evolutionary sprite: active provider; PNG routes go through rembg, Claude outputs SVG.
 pub async fn render_evolutionary_sprite(prompt: &str) -> Result<ImageResult> {
     let (prov, model) = active_provider_and_model();
     let key = resolve_api_key(prov)
@@ -54,18 +57,20 @@ pub async fn render_evolutionary_sprite(prompt: &str) -> Result<ImageResult> {
     match prov {
         Provider::Openai => {
             if let Ok(r) = generate_openai_gpt_image(&key, prompt).await {
-                return save_as_sprite(r, prompt, "openai/gpt-image-1");
+                return save_as_sprite_png(r, prompt, "openai/gpt-image-1").await;
             }
             let r = generate_openai_dalle3(&key, prompt).await?;
-            save_as_sprite(r, prompt, "openai/dall-e-3")
+            save_as_sprite_png(r, prompt, "openai/dall-e-3").await
         }
         Provider::Gemini => {
             let bytes = generate_gemini_bytes(&key, prompt).await?;
-            let processed = white_to_transparent(&bytes).unwrap_or(bytes);
+            let processed = rembg::strip_bg(bytes)
+                .await
+                .map_err(|e| anyhow!(e))?;
             let path = save_bytes_sprite(&processed, "gemini", prompt, "png")?;
             Ok(ImageResult {
                 saved_path: path.display().to_string(),
-                provider_used: "gemini/imagen-3".to_string(),
+                provider_used: "gemini/imagen-3+rembg".to_string(),
                 prompt: prompt.to_string(),
             })
         }
@@ -87,19 +92,32 @@ Use a limited friendly palette, thick outlines, cute proportions.";
     }
 }
 
-fn save_as_sprite(r: ImageResult, prompt: &str, prov: &str) -> Result<ImageResult> {
+async fn finalize_raster_media(
+    r: ImageResult,
+    prompt: &str,
+    prov: &str,
+) -> Result<ImageResult> {
     let src = PathBuf::from(&r.saved_path);
     let bytes = std::fs::read(&src).map_err(|e| anyhow!("read temp image: {e}"))?;
-    let out = if prov.contains("dall") {
-        white_to_transparent(&bytes).unwrap_or(bytes)
-    } else {
-        bytes
-    };
+    let processed = rembg::strip_bg(bytes).await.map_err(|e| anyhow!(e))?;
+    let _ = std::fs::remove_file(&src);
+    let path = save_bytes_media(&processed, "openai", prompt, "png")?;
+    Ok(ImageResult {
+        saved_path: path.display().to_string(),
+        provider_used: format!("{prov}+rembg"),
+        prompt: prompt.to_string(),
+    })
+}
+
+async fn save_as_sprite_png(r: ImageResult, prompt: &str, prov: &str) -> Result<ImageResult> {
+    let src = PathBuf::from(&r.saved_path);
+    let bytes = std::fs::read(&src).map_err(|e| anyhow!("read temp image: {e}"))?;
+    let out = rembg::strip_bg(bytes).await.map_err(|e| anyhow!(e))?;
     let p = save_bytes_sprite(&out, "sprite", prompt, "png")?;
     let _ = std::fs::remove_file(&src);
     Ok(ImageResult {
         saved_path: p.display().to_string(),
-        provider_used: prov.to_string(),
+        provider_used: format!("{prov}+rembg"),
         prompt: prompt.to_string(),
     })
 }
@@ -113,7 +131,7 @@ async fn generate_openai_gpt_image(api_key: &str, prompt: &str) -> Result<ImageR
         "prompt": prompt,
         "n": 1,
         "size": "1024x1024",
-        "background": "transparent"
+        "background": "auto"
     });
     let res = client
         .post("https://api.openai.com/v1/images/generations")
@@ -192,7 +210,7 @@ async fn generate_gemini_bytes(api_key: &str, prompt: &str) -> Result<Vec<u8>> {
         "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={}",
         urlencoding::encode(api_key)
     );
-    let p = format!("{prompt} — isolated subject on flat white background, no frame, full body, centered");
+    let p = format!("{prompt} — isolated subject on flat white or pastel background, no frame, full body, centered, single character");
     let body = serde_json::json!({
         "instances": [{ "prompt": p }],
         "parameters": { "sampleCount": 1 }
@@ -213,25 +231,6 @@ async fn generate_gemini_bytes(api_key: &str, prompt: &str) -> Result<Vec<u8>> {
         .as_str()
         .ok_or_else(|| anyhow!("no image data in gemini response"))?;
     Ok(base64::engine::general_purpose::STANDARD.decode(b64)?)
-}
-
-/// Near-white → transparent; cheap matte key for sprites.
-fn white_to_transparent(png: &[u8]) -> Result<Vec<u8>> {
-    let img = image::load_from_memory(png)
-        .map_err(|e| anyhow!("decode png: {e}"))?
-        .to_rgba8();
-    let (w, h) = (img.width(), img.height());
-    let mut out = RgbaImage::new(w, h);
-    for (x, y, p) in img.enumerate_pixels() {
-        let [r, g, b, a] = p.0;
-        let a2 = if r >= 243 && g >= 243 && b >= 243 { 0 } else { a };
-        out.put_pixel(x, y, Rgba([r, g, b, a2]));
-    }
-    let mut buf = Vec::new();
-    PngEncoder::new(&mut buf)
-        .write_image(out.as_raw(), w, h, ExtendedColorType::Rgba8)
-        .map_err(|e| anyhow!("encode png: {e}"))?;
-    Ok(buf)
 }
 
 fn extract_svg(s: &str) -> Option<String> {

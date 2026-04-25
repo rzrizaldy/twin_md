@@ -7,6 +7,8 @@ import {
   onReminder,
   onStateChanged,
   onSpriteUpdated,
+  onSpriteEvolving,
+  onSpriteEvolveError,
   openChatWindow,
   sendChat,
 } from "./ipc.ts";
@@ -14,6 +16,7 @@ import type { PetState, Reminder, TwinMood, TwinSpecies } from "./types.ts";
 
 // ── Pet sprite elements ──────────────────────────────────────────────────────
 
+const spriteWrap = document.getElementById("sprite-wrap") as HTMLDivElement | null;
 const sprite = document.getElementById("sprite") as HTMLImageElement;
 const pet = document.getElementById("pet") as HTMLDivElement;
 const ambientBubble = document.getElementById("ambient-bubble") as HTMLDivElement;
@@ -363,9 +366,28 @@ async function init() {
     render();
   });
 
+  void onSpriteEvolving(() => {
+    spriteWrap?.classList.add("is-evolving");
+  });
+
+  void onSpriteEvolveError(() => {
+    spriteWrap?.classList.remove("is-evolving");
+  });
+
   void onSpriteUpdated((payload) => {
-    evolutionSpritePath = payload.path;
-    render();
+    const url = convertFileSrc(payload.path);
+    const next = new Image();
+    next.onload = () => {
+      evolutionSpritePath = payload.path;
+      spriteWrap?.classList.remove("is-evolving");
+      spriteWrap?.classList.add("sprite-swap");
+      render();
+      setTimeout(() => spriteWrap?.classList.remove("sprite-swap"), 280);
+    };
+    next.onerror = () => {
+      spriteWrap?.classList.remove("is-evolving");
+    };
+    next.src = url;
   });
 
   await onReminder((reminder: Reminder) => {

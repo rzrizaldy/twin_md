@@ -9,7 +9,9 @@
   <body class="window window-companion" data-window="companion">
     <main id="stage" class="stage" data-tauri-drag-region>
       <div id="pet" class="pet" data-tauri-drag-region>
-        <img id="sprite" class="sprite" alt="" draggable="false" />
+        <div id="sprite-wrap" class="sprite-wrap" aria-hidden="true">
+          <img id="sprite" class="sprite" alt="" draggable="false" />
+        </div>
       </div>
       <div id="ambient-bubble" class="ambient-bubble" aria-live="polite" hidden></div>
       <div id="caption" class="caption" hidden></div>

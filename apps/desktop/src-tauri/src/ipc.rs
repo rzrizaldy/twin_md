@@ -9,6 +9,7 @@ use crate::commands as slash_commands;
 use crate::credentials;
 use crate::harvest;
 use crate::image_gen;
+use crate::rembg;
 use crate::model::{ChatTurn, ChatWindowMessage, PetState};
 use crate::paths::{chat_history_dir, claude_dir};
 use crate::provider::Provider;
@@ -31,6 +32,8 @@ pub struct ChatStatus {
     pub notes_available: usize,
     pub provider: String,
     pub model: String,
+    #[serde(rename = "rembgInstalled")]
+    pub rembg_installed: bool,
 }
 
 #[tauri::command]
@@ -53,6 +56,7 @@ pub fn get_chat_status() -> ChatStatus {
         notes_available: ctx.notes.len(),
         provider: provider.slug().to_string(),
         model,
+        rembg_installed: rembg::is_available(),
     }
 }
 
@@ -608,5 +612,26 @@ pub async fn regenerate_sprite(app: AppHandle) -> Result<String, String> {
     crate::sprite::regenerate(&app)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Onboarding: generate a one-off preview sprite (no evolution meta / rate limit).
+#[tauri::command]
+pub async fn generate_sprite_preview(prompt: String) -> Result<String, String> {
+    let p = prompt.trim();
+    if p.is_empty() {
+        return Err("describe your creature first".to_string());
+    }
+    let (prov, _) = credentials::active_provider_and_model();
+    match prov {
+        Provider::Openai | Provider::Gemini if !rembg::is_available() => {
+            return Err(rembg::rembg_install_hint_err());
+        }
+        _ => {}
+    }
+    let full = crate::sprite::build_preview_prompt(p);
+    let img = image_gen::render_evolutionary_sprite(&full)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(img.saved_path)
 }
 

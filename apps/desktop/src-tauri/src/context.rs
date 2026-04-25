@@ -10,6 +10,8 @@ use crate::paths::{claude_dir, twin_md_path};
 
 const MAX_NOTES: usize = 5;
 const MAX_NOTE_CHARS: usize = 1600;
+const CANDIDATE_NOTES: usize = 40;
+const NOTE_RECENCY_DAYS: u64 = 14;
 
 #[derive(Debug, Clone)]
 pub struct ChatContext {
@@ -36,13 +38,19 @@ struct TwinConfig {
     obsidian_vault_path: Option<String>,
 }
 
+/// No user message bias — most recently modified notes.
 pub fn gather() -> ChatContext {
+    gather_for_user_message(None)
+}
+
+/// Prefer notes that overlap the latest user turn (words) and are recently modified.
+pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
     let twin_md = std::fs::read_to_string(twin_md_path()).ok();
 
     let vault_path = read_vault_path();
     let notes = vault_path
         .as_ref()
-        .map(|p| collect_recent_notes(p))
+        .map(|p| collect_ranked_notes(p, user_message))
         .unwrap_or_default();
 
     let buddy = read_buddy_context();
@@ -66,7 +74,11 @@ fn read_vault_path() -> Option<PathBuf> {
         return None;
     }
     let path = PathBuf::from(shellexpand_tilde(&raw));
-    if path.exists() { Some(path) } else { None }
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
 }
 
 fn shellexpand_tilde(input: &str) -> String {
@@ -87,7 +99,6 @@ fn read_buddy_context() -> (Vec<String>, Vec<String>, Option<String>) {
     };
     let claude_dir = format!("{home}/.claude");
 
-    // Read last 5 buddy memory entries from twin-buddy-memory.jsonl
     let memory_path = format!("{claude_dir}/twin-buddy-memory.jsonl");
     let buddy_memory = std::fs::read_to_string(&memory_path)
         .unwrap_or_default()
@@ -103,7 +114,6 @@ fn read_buddy_context() -> (Vec<String>, Vec<String>, Option<String>) {
         .take(5)
         .collect::<Vec<_>>();
 
-    // Read stuck_threads and recent_last_user_msg from twin-buddy-sessions.json if it exists
     let sessions_path = format!("{claude_dir}/twin-buddy-sessions.json");
     let sessions_json = std::fs::read_to_string(&sessions_path)
         .ok()
@@ -130,16 +140,62 @@ fn read_buddy_context() -> (Vec<String>, Vec<String>, Option<String>) {
     (buddy_memory, stuck_threads, recent_last_user_msg)
 }
 
-fn collect_recent_notes(root: &Path) -> Vec<VaultNote> {
+fn word_overlap_score(user_msg: &str, text: &str) -> i32 {
+    use std::collections::HashSet;
+    let words: HashSet<String> = user_msg
+        .split(|c: char| !c.is_alphanumeric() && c != '_')
+        .map(|s| s.trim())
+        .filter(|s| s.len() > 2)
+        .map(|s| s.to_lowercase())
+        .collect();
+    if words.is_empty() {
+        return 0;
+    }
+    let body = text.to_lowercase();
+    words.iter().filter(|w| body.contains(w.as_str())).count() as i32
+}
+
+fn collect_ranked_notes(root: &Path, user_message: Option<&str>) -> Vec<VaultNote> {
     let mut entries: Vec<(SystemTime, PathBuf)> = Vec::new();
     walk_markdown(root, &mut entries, 0);
-
     entries.sort_by(|a, b| b.0.cmp(&a.0));
-    entries.truncate(MAX_NOTES);
 
-    entries
+    if user_message.map(|s| s.trim().is_empty()).unwrap_or(true) {
+        entries.truncate(MAX_NOTES);
+        return entries
+            .into_iter()
+            .filter_map(|(_, p)| build_note(root, &p))
+            .collect();
+    }
+    let user_m = user_message.unwrap().trim();
+    let n = CANDIDATE_NOTES.min(entries.len());
+    let top: Vec<(SystemTime, PathBuf)> = entries.into_iter().take(n).collect();
+
+    let now = SystemTime::now();
+    let recency = std::time::Duration::from_secs(NOTE_RECENCY_DAYS * 24 * 3600);
+    let mut rows: Vec<(i32, SystemTime, PathBuf)> = Vec::new();
+    for (mt, path) in top {
+        if let Some(n) = build_note(root, &path) {
+            let mut score = word_overlap_score(user_m, &n.snippet) * 4;
+            if now
+                .duration_since(mt)
+                .ok()
+                .map(|d| d < recency)
+                .unwrap_or(false)
+            {
+                score += 2;
+            }
+            rows.push((score, mt, path));
+        }
+    }
+    rows.sort_by(|a, b| b.0.cmp(&a.0));
+    if rows.iter().all(|(s, _, _)| *s == 0) {
+        rows.sort_by(|a, b| b.1.cmp(&a.1));
+    }
+    rows
         .into_iter()
-        .filter_map(|(_, path)| build_note(root, &path))
+        .take(MAX_NOTES)
+        .filter_map(|(_, _, p)| build_note(root, &p))
         .collect()
 }
 
@@ -153,10 +209,8 @@ fn walk_markdown(dir: &Path, acc: &mut Vec<(SystemTime, PathBuf)>, depth: usize)
     };
     for entry in read_dir.flatten() {
         let path = entry.path();
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-
-        // Skip Obsidian system dirs and dotfiles.
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
         if name.starts_with('.')
             || name == "node_modules"
             || name == ".obsidian"
@@ -164,12 +218,10 @@ fn walk_markdown(dir: &Path, acc: &mut Vec<(SystemTime, PathBuf)>, depth: usize)
         {
             continue;
         }
-
         let metadata = match entry.metadata() {
             Ok(m) => m,
             Err(_) => continue,
         };
-
         if metadata.is_dir() {
             walk_markdown(&path, acc, depth + 1);
         } else if path.extension().and_then(|e| e.to_str()) == Some("md") {
@@ -202,11 +254,14 @@ fn build_note(root: &Path, path: &Path) -> Option<VaultNote> {
 pub fn render_prompt(context: &ChatContext) -> String {
     let mut buf = String::new();
     buf.push_str(
-        "You are twin.md — a small desk creature mirroring the user's inner state. \
-         You are warm, brief, a little guilt-trippy when they neglect themselves, \
-         and you quote the user's own second brain back at them when it's helpful. \
-         Never invent dates, numbers, or file paths — only use facts that appear in \
-         the context below. Respond in 1-3 short paragraphs.\n\n",
+        "You are twin.md — a small desk companion that reflects the user's Obsidian vault and their own writing back at them. \
+         twin.md (live state) and mood below are only flavor; do not treat them as medical facts or reasons to give health advice. \
+         Never invent dates, numbers, or file paths — only use what appears in the context below. \
+         Respond in 1–3 short paragraphs.\n\n\
+         Do NOT: give generic wellness tips, hydration reminders, step-by-step daily routines, or health advice. \
+         Do NOT list numbered steps or \"action plans\" unless the user explicitly asks. \
+         Do: quote or paraphrase the vault note snippets below. Name patterns and connections between notes. \
+         If the notes don't speak to the user's message, say so clearly and ask which project or note to look at next.\n\n",
     );
 
     if let Some(md) = &context.twin_md {

@@ -1,8 +1,10 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   createStarterVault,
   ensureClaudeDir,
+  generateSpritePreview,
   listModels,
   openChatWindow,
   runOnboarding,
@@ -13,7 +15,7 @@ import {
   type ClaudeDirStatus
 } from "./ipc.ts";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 const PROVIDER_KEY_URLS: Record<AiProvider, string> = {
   anthropic: "https://console.anthropic.com/settings/keys",
@@ -27,7 +29,7 @@ const PROVIDER_KEY_HINTS: Record<AiProvider, string> = {
   gemini: "AIza…"
 };
 
-type VaultChoice = "existing" | "create" | "skip";
+type VaultChoice = "existing" | "create" | "skip" | null;
 type SpriteMode = "default" | "custom";
 
 interface WizardState {
@@ -35,7 +37,7 @@ interface WizardState {
   spriteMode: SpriteMode;
   customSprite: string;
   owner: string;
-  vaultChoice: VaultChoice | null;
+  vaultChoice: VaultChoice;
   vaultPath: string | null;
   claudeDir: ClaudeDirStatus | null;
   provider: AiProvider;
@@ -68,15 +70,31 @@ const dots = $$<HTMLElement>(".wizard-dot");
 const nextBtn = $<HTMLButtonElement>("#wizard-next");
 const backBtn = $<HTMLButtonElement>("#wizard-back");
 const statusEl = $<HTMLElement>("#onboard-status");
-const customWrap = document.getElementById("custom-sprite-wrap") as HTMLDivElement | null;
-const customTa = document.getElementById("custom-sprite") as HTMLTextAreaElement | null;
-function syncCustomVis() {
-  if (customWrap) customWrap.hidden = state.spriteMode !== "custom";
+
+const previewPrompt = document.getElementById(
+  "preview-prompt"
+) as HTMLTextAreaElement | null;
+const btnGenPreview = document.getElementById(
+  "btn-gen-preview"
+) as HTMLButtonElement | null;
+const previewStatus = document.getElementById("preview-status");
+const previewImg = document.getElementById("preview-img") as HTMLImageElement | null;
+let lastPreviewAt = 0;
+
+function syncSpriteDot() {
+  const d5 = document.querySelector<HTMLElement>('[data-step-dot="5"]');
+  if (d5) d5.style.display = state.spriteMode === "custom" ? "" : "none";
 }
 
-
-function setStep(step: number) {
-  state.step = Math.max(0, Math.min(TOTAL_STEPS - 1, step));
+function setStep(requested: number) {
+  let step = Math.max(0, Math.min(TOTAL_STEPS - 1, requested));
+  if (step === 5 && state.spriteMode === "default") {
+    step = 6;
+  }
+  state.step = step;
+  if (state.step === 5 && previewPrompt) {
+    previewPrompt.value = state.customSprite;
+  }
   stepsEls.forEach((el) => {
     el.classList.toggle(
       "is-active",
@@ -85,11 +103,23 @@ function setStep(step: number) {
   });
   dots.forEach((dot) => {
     const idx = Number(dot.dataset.stepDot ?? -1);
+    const skip =
+      state.spriteMode === "default" && idx === 5;
+    if (skip) {
+      dot.style.display = "none";
+    } else {
+      dot.style.display = "";
+    }
     dot.classList.toggle("is-active", idx === state.step);
-    dot.classList.toggle("is-done", idx < state.step);
+    const visualDone =
+      state.spriteMode === "default" && state.step > 5 && idx === 5
+        ? true
+        : idx < state.step;
+    dot.classList.toggle("is-done", visualDone);
   });
   backBtn.hidden = state.step === 0;
-  nextBtn.textContent = state.step === TOTAL_STEPS - 1 ? "summon my twin" : "next";
+  nextBtn.textContent =
+    state.step === TOTAL_STEPS - 1 ? "summon my twin" : "next";
   if (state.step < 4) statusEl.textContent = "";
   if (state.step === 2) runClaudeDirCheck();
 }
@@ -98,32 +128,68 @@ function validateStep(step: number): string | null {
   switch (step) {
     case 1: {
       if (!state.owner.trim()) return "tell your twin who you are.";
-      if (state.spriteMode === "custom" && !state.customSprite.trim()) {
-        return "describe your custom creature, or pick default axolotl.";
-      }
+      if (!state.vaultChoice) return "pick an option for your vault.";
+      if (state.vaultChoice === "existing" && !state.vaultPath)
+        return "pick a folder or choose another option.";
       return null;
     }
     case 2:
       if (!state.claudeDir) return "still checking ~/.claude/…";
       return null;
     case 3:
-      if (!state.vaultChoice) return "pick an option for your vault.";
-      if (state.vaultChoice === "existing" && !state.vaultPath)
-        return "pick a folder or choose another option.";
       return null;
     case 4:
       if (!state.apiKey.trim())
         return "add an API key for the selected provider.";
+      return null;
+    case 5:
+      if (state.spriteMode === "custom" && !state.customSprite.trim()) {
+        return "describe your creature, or go back to default axolotl.";
+      }
       return null;
     default:
       return null;
   }
 }
 
+function advanceAfterStep4() {
+  if (state.spriteMode === "custom") {
+    if (previewPrompt) {
+      if (!state.customSprite.trim() && previewPrompt.value.trim()) {
+        state.customSprite = previewPrompt.value.trim();
+      }
+      if (!state.customSprite.trim() && !previewPrompt.value.trim()) {
+        previewPrompt.value = "";
+      } else {
+        previewPrompt.value = state.customSprite.trim() || previewPrompt.value.trim();
+        state.customSprite = previewPrompt.value;
+      }
+    }
+    setStep(5);
+  } else {
+    setStep(6);
+  }
+}
+
+function backFromStep6() {
+  if (state.spriteMode === "custom") {
+    setStep(5);
+  } else {
+    setStep(4);
+  }
+}
+
 nextBtn.addEventListener("click", async () => {
   const err = validateStep(state.step);
   if (err) {
-    statusEl.textContent = err;
+    if (state.step === 1) {
+      vaultStatusEl.hidden = false;
+      vaultStatusEl.textContent = err;
+    }
+    if (state.step === 4) statusEl.textContent = err;
+    if (state.step === 5) {
+      if (previewStatus) previewStatus.textContent = err;
+    }
     return;
   }
 
@@ -155,8 +221,10 @@ nextBtn.addEventListener("click", async () => {
       nextBtn.disabled = false;
       return;
     }
-    statusEl.textContent = "saved. you're good to go.";
+    statusEl.textContent = "saved.";
     nextBtn.disabled = false;
+    advanceAfterStep4();
+    return;
   }
 
   if (state.step === TOTAL_STEPS - 1) {
@@ -166,52 +234,31 @@ nextBtn.addEventListener("click", async () => {
 
   setStep(state.step + 1);
 });
-backBtn.addEventListener("click", () => setStep(state.step - 1));
 
-// — Step 1 —
-if (customTa) {
-  customTa.addEventListener("input", () => {
-    state.customSprite = customTa.value;
-  });
-}
-document.querySelectorAll<HTMLInputElement>('input[name="sprite-mode"]').forEach((el) => {
-  el.addEventListener("change", () => {
-    state.spriteMode = el.value as SpriteMode;
-    syncCustomVis();
-  });
+backBtn.addEventListener("click", () => {
+  if (state.step === 6) {
+    backFromStep6();
+    return;
+  }
+  if (state.step === 5) {
+    setStep(4);
+    return;
+  }
+  if (state.step > 0) setStep(state.step - 1);
 });
-syncCustomVis();
 
 $<HTMLInputElement>("#owner").addEventListener("input", (event) => {
   state.owner = (event.target as HTMLInputElement).value;
 });
 
-// — Step 2 —
-async function runClaudeDirCheck() {
-  const card = $<HTMLElement>('[data-detection="claude-dir"]');
-  const retry = $<HTMLButtonElement>("#retry-claude");
-  card.querySelector(".detection-body")!.textContent = "checking…";
-  card.classList.remove("ok", "warn");
-  try {
-    const result = await ensureClaudeDir();
-    state.claudeDir = result;
-    card.classList.add("ok");
-    card.querySelector(".detection-icon")!.textContent = "✓";
-    card.querySelector(".detection-body")!.textContent = result.created
-      ? `created ${result.path}`
-      : `found ${result.path}`;
-    retry.hidden = true;
-  } catch (err) {
-    card.classList.add("warn");
-    card.querySelector(".detection-icon")!.textContent = "!";
-    card.querySelector(".detection-body")!.textContent = `couldn't prepare ~/.claude/: ${String(err)}`;
-    retry.hidden = false;
-  }
-}
+document.querySelectorAll<HTMLInputElement>('input[name="sprite-mode"]').forEach((el) => {
+  el.addEventListener("change", () => {
+    state.spriteMode = el.value as SpriteMode;
+    syncSpriteDot();
+  });
+});
+syncSpriteDot();
 
-$<HTMLButtonElement>("#retry-claude").addEventListener("click", runClaudeDirCheck);
-
-// — Step 3 —
 const vaultStatusEl = $<HTMLElement>("#vault-status");
 
 document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn) => {
@@ -267,11 +314,35 @@ async function persistVault(path: string | null) {
   }
 }
 
-// — Step 4 —
+async function runClaudeDirCheck() {
+  const card = $<HTMLElement>('[data-detection="claude-dir"]');
+  const retry = $<HTMLButtonElement>("#retry-claude");
+  card.querySelector(".detection-body")!.textContent = "checking…";
+  card.classList.remove("ok", "warn");
+  try {
+    const result = await ensureClaudeDir();
+    state.claudeDir = result;
+    card.classList.add("ok");
+    card.querySelector(".detection-icon")!.textContent = "✓";
+    card.querySelector(".detection-body")!.textContent = result.created
+      ? `created ${result.path}`
+      : `found ${result.path}`;
+    retry.hidden = true;
+  } catch (err) {
+    card.classList.add("warn");
+    card.querySelector(".detection-icon")!.textContent = "!";
+    card.querySelector(".detection-body")!.textContent = `couldn't prepare ~/.claude/: ${String(err)}`;
+    retry.hidden = false;
+  }
+}
+
+$<HTMLButtonElement>("#retry-claude").addEventListener("click", runClaudeDirCheck);
+
 const modelSelect = $<HTMLSelectElement>("#model");
 const apiKeyInput = $<HTMLInputElement>("#api-key");
 const whereLink = $<HTMLAnchorElement>("#where-link");
 const storeKeychain = $<HTMLInputElement>("#store-keychain");
+
 async function loadModels(provider: AiProvider) {
   state.provider = provider;
   whereLink.href = PROVIDER_KEY_URLS[provider];
@@ -279,13 +350,11 @@ async function loadModels(provider: AiProvider) {
   try {
     const { models, default_model } = await listModels(provider);
     modelSelect.innerHTML = "";
-
-    // Group into flash/mini (recommended) vs pro/legacy
     const flashIds = new Set([
       "claude-haiku-4-5",
       "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini",
       "gemini-3-flash-preview", "gemini-3.1-flash-lite-preview",
-      "gemini-2.5-flash", "gemini-flash-latest",
+      "gemini-2.5-flash", "gemini-flash-latest"
     ]);
     const flashModels = models.filter((m) => flashIds.has(m));
     const proModels = models.filter((m) => !flashIds.has(m));
@@ -315,7 +384,7 @@ async function loadModels(provider: AiProvider) {
 
 document.querySelectorAll<HTMLInputElement>('input[name="provider"]').forEach((el) => {
   el.addEventListener("change", () => {
-    if (el.checked) loadModels(el.value as AiProvider);
+    if (el.checked) void loadModels(el.value as AiProvider);
   });
 });
 
@@ -325,18 +394,50 @@ modelSelect.addEventListener("change", () => {
 
 apiKeyInput.addEventListener("input", () => {
   state.apiKey = apiKeyInput.value;
-  
 });
 
 storeKeychain.addEventListener("change", () => {
   state.storeInKeychain = storeKeychain.checked;
 });
 
-// — Step 5 —
+if (previewPrompt) {
+  previewPrompt.addEventListener("input", () => {
+    state.customSprite = previewPrompt.value;
+  });
+}
+
+btnGenPreview?.addEventListener("click", async () => {
+  const p = (previewPrompt?.value ?? state.customSprite).trim();
+  if (!p) {
+    if (previewStatus) previewStatus.textContent = "add a description first";
+    return;
+  }
+  const now = Date.now();
+  if (now - lastPreviewAt < 1000) {
+    if (previewStatus) previewStatus.textContent = "wait a moment…";
+    return;
+  }
+  lastPreviewAt = now;
+  state.customSprite = p;
+  if (previewStatus) previewStatus.textContent = "generating…";
+  try {
+    const path = await generateSpritePreview(p);
+    if (previewImg) {
+      previewImg.style.display = "block";
+      previewImg.src = convertFileSrc(path);
+    }
+    if (previewStatus) previewStatus.textContent = "preview ready — tweak the prompt or continue.";
+  } catch (e) {
+    if (previewStatus) previewStatus.textContent = String(e);
+  }
+});
+
 async function runSummon() {
   nextBtn.disabled = true;
   statusEl.textContent = "harvesting your second brain…";
-
+  if (state.spriteMode === "custom" && previewPrompt) {
+    state.customSprite = previewPrompt.value.trim() || state.customSprite;
+  }
   const payload = {
     species: "axolotl" as const,
     owner: state.owner.trim(),
@@ -346,7 +447,6 @@ async function runSummon() {
       customPrompt: state.spriteMode === "custom" ? state.customSprite.trim() : null
     }
   };
-
   try {
     const result = await runOnboarding(payload);
     if (!result.ok) {
@@ -362,11 +462,9 @@ async function runSummon() {
   }
 }
 
-// Boot.
 void loadModels(state.provider);
 setStep(0);
 
-// — Step 5 extras —
 const openChatPreviewBtn = document.getElementById(
   "open-chat-preview"
 ) as HTMLButtonElement | null;

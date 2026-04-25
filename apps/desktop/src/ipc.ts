@@ -20,6 +20,7 @@ export interface ChatStatus {
   notes_available: number;
   provider: string;
   model: string;
+  rembgInstalled: boolean;
 }
 
 export type AiProvider = "anthropic" | "openai" | "gemini";
@@ -123,6 +124,8 @@ export interface SpriteUpdatePayload {
   isSvg: boolean;
 }
 
+export type SpriteEvolvingReason = "auto" | "manual";
+
 export function onSpriteUpdated(
   cb: (payload: SpriteUpdatePayload) => void
 ): Promise<UnlistenFn> {
@@ -131,8 +134,29 @@ export function onSpriteUpdated(
   );
 }
 
+export function onSpriteEvolving(
+  cb: (payload: { reason: SpriteEvolvingReason }) => void
+): Promise<UnlistenFn> {
+  return listen<{ reason: SpriteEvolvingReason }>(
+    "twin://sprite-evolving",
+    (event) => cb(event.payload)
+  );
+}
+
+export function onSpriteEvolveError(
+  cb: (payload: { message: string }) => void
+): Promise<UnlistenFn> {
+  return listen<{ message: string }>("twin://sprite-evolve-error", (event) =>
+    cb(event.payload)
+  );
+}
+
 export async function regenerateSprite(): Promise<string> {
   return invoke<string>("regenerate_sprite");
+}
+
+export async function generateSpritePreview(prompt: string): Promise<string> {
+  return invoke<string>("generate_sprite_preview", { prompt });
 }
 
 export function onReminder(

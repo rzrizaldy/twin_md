@@ -27,6 +27,8 @@ import {
   saveProviderCredentials,
   validateProviderKey,
   onSpriteUpdated,
+  onSpriteEvolving,
+  onSpriteEvolveError,
   regenerateSprite,
   type AiProvider,
 } from "./ipc.ts";
@@ -70,6 +72,7 @@ const cwLog = document.getElementById("cw-log") as HTMLDivElement;
 const cwForm = document.getElementById("cw-form") as HTMLFormElement;
 const cwInput = document.getElementById("cw-input") as HTMLTextAreaElement;
 const cwSend = document.getElementById("cw-send") as HTMLButtonElement;
+const cwSpriteWrap = document.getElementById("cw-sprite-wrap") as HTMLDivElement | null;
 const cwSprite = document.getElementById("cw-sprite") as HTMLImageElement;
 const cwSubtitle = document.getElementById("cw-subtitle") as HTMLParagraphElement;
 const cwRegenBtn = document.getElementById("cw-regen") as HTMLButtonElement;
@@ -124,7 +127,38 @@ function updateSprite(state: PetState) {
   if (!evolutionSpritePath) {
     cwSprite.src = `/pets/${species}/${mood}/breath-a.png`;
   }
-  cwSubtitle.textContent = state.caption.toLowerCase();
+  if (!cwSpriteWrap?.classList.contains("is-evolving")) {
+    cwSubtitle.textContent = state.caption.toLowerCase();
+  }
+}
+
+function swapChatSprite(path: string) {
+  const url = convertFileSrc(path);
+  const next = new Image();
+  next.onload = () => {
+    cwSpriteWrap?.classList.remove("is-evolving");
+    cwSpriteWrap?.classList.add("sprite-swap");
+    cwSprite.src = url;
+    if (cwRegenBtn) cwRegenBtn.disabled = false;
+    void refreshSubtitleFromState();
+    setTimeout(() => cwSpriteWrap?.classList.remove("sprite-swap"), 280);
+  };
+  next.onerror = () => {
+    cwSpriteWrap?.classList.remove("is-evolving");
+    if (cwRegenBtn) cwRegenBtn.disabled = false;
+    void refreshSubtitleFromState();
+    appendStatus("couldn't load new sprite", "error");
+  };
+  next.src = url;
+}
+
+async function refreshSubtitleFromState() {
+  try {
+    const st = await invoke<PetState | null>("get_state");
+    if (st) cwSubtitle.textContent = st.caption.toLowerCase();
+  } catch {
+    /* ignore */
+  }
 }
 
 // ── Font size ─────────────────────────────────────────────────────────────
@@ -550,10 +584,17 @@ cwRegenBtn?.addEventListener("click", async () => {
   try {
     const path = await regenerateSprite();
     evolutionSpritePath = path;
-    cwSprite.src = convertFileSrc(path);
     appendStatus("new evolution sprite");
   } catch (e) {
-    appendStatus(`sprite: ${String(e)}`, "error");
+    const s = String(e);
+    if (s.includes("rate_limited:")) {
+      const sec = parseInt(s.split("rate_limited:")[1]?.trim() ?? "0", 10);
+      const m = Math.floor(sec / 60);
+      const rest = sec % 60;
+      appendStatus(`evolution on cooldown — ${m}m ${rest}s left`, "error");
+      return;
+    }
+    appendStatus(`sprite: ${s}`, "error");
   }
 });
 
@@ -606,9 +647,30 @@ async function init() {
     // ignore
   }
 
+  void onSpriteEvolving(() => {
+    cwSpriteWrap?.classList.add("is-evolving");
+    if (cwRegenBtn) cwRegenBtn.disabled = true;
+    cwSubtitle.textContent = "evolving…";
+  });
+
+  void onSpriteEvolveError((p) => {
+    cwSpriteWrap?.classList.remove("is-evolving");
+    if (cwRegenBtn) cwRegenBtn.disabled = false;
+    void refreshSubtitleFromState();
+    const m = p.message;
+    if (m.includes("rembg_missing")) {
+      appendStatus(
+        'install rembg for transparent sprites: pipx install "rembg[cpu,cli]" then restart.',
+        "error"
+      );
+    } else {
+      appendStatus(`evolution failed: ${m}`, "error");
+    }
+  });
+
   void onSpriteUpdated((payload) => {
     evolutionSpritePath = payload.path;
-    cwSprite.src = convertFileSrc(payload.path);
+    swapChatSprite(payload.path);
   });
 
   // Listen for proactive seed messages (from reminder engine or companion sprite click)
