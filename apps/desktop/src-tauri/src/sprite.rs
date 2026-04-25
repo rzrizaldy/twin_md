@@ -69,6 +69,21 @@ fn baseline_description() -> String {
     DEFAULT_AXO.to_string()
 }
 
+fn custom_evolution_enabled() -> bool {
+    let bytes = match fs::read(twin_config_path()) {
+        Ok(b) if !b.is_empty() => b,
+        _ => return false,
+    };
+    let v: serde_json::Value = match serde_json::from_slice(&bytes) {
+        Ok(x) => x,
+        _ => return false,
+    };
+    v.get("spriteEvolution")
+        .and_then(|x| x.get("kind"))
+        .and_then(|k| k.as_str())
+        == Some("custom")
+}
+
 /// Onboarding preview: neutral state + user-supplied baseline (not yet in config).
 pub fn build_preview_prompt(user_baseline: &str) -> String {
     let state = PetState {
@@ -226,6 +241,13 @@ pub struct SpriteEvolutionSnapshot {
 }
 
 pub fn current_snapshot() -> SpriteEvolutionSnapshot {
+    if !custom_evolution_enabled() {
+        return SpriteEvolutionSnapshot {
+            current_path: None,
+            is_svg: false,
+        };
+    }
+
     let path = fs::read(twin_config_path())
         .ok()
         .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
@@ -256,6 +278,10 @@ fn needs_evolution(state: &PetState) -> bool {
 
 /// Called when `twin-state.json` changes (mood or scene lane).
 pub async fn on_pet_state_changed(app: &AppHandle, state: PetState) -> Result<()> {
+    if !custom_evolution_enabled() {
+        return Ok(());
+    }
+
     if !needs_evolution(&state) {
         return Ok(());
     }

@@ -2,7 +2,7 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::chat;
 use crate::ai_agents;
@@ -59,6 +59,14 @@ pub fn get_chat_status() -> ChatStatus {
         model,
         rembg_installed: rembg::is_available(),
     }
+}
+
+#[tauri::command]
+pub async fn install_rembg() -> Result<String, String> {
+    crate::rembg::install()
+        .await
+        .map(|path| path.display().to_string())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -293,6 +301,7 @@ pub struct OnboardingResult {
 #[tauri::command]
 pub async fn run_onboarding(
     app: AppHandle,
+    shared: State<'_, SharedState>,
     payload: OnboardingPayload,
 ) -> Result<OnboardingResult, String> {
     let vault = payload.obsidian_vault.as_deref();
@@ -324,6 +333,11 @@ pub async fn run_onboarding(
             ok: false,
             message: format!("harvest failed: {err}"),
         });
+    }
+
+    if let Ok(Some(next)) = crate::state::read_state_file() {
+        shared.set(next.clone());
+        let _ = app.emit("twin://state-changed", next);
     }
 
     if let Err(err) = windows::show_companion(&app) {

@@ -52,7 +52,9 @@ body.window {
   width: 100vw;
   height: 100vh;
   display: grid;
-  place-items: center;
+  align-items: end;
+  justify-items: center;
+  padding: 230px 0 20px;
   cursor: grab;
 }
 
@@ -62,7 +64,9 @@ body.window {
 
 .pet {
   position: relative;
-  width: min(86vw, 86vh);
+  width: min(82vw, calc(100vh - 260px));
+  min-width: 210px;
+  max-width: 280px;
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
@@ -112,34 +116,44 @@ body.window {
   position: absolute;
   left: 50%;
   right: auto;
-  bottom: 66px;
-  width: min(320px, calc(100vw - 32px));
-  transform: translateX(-50%);
+  top: 18px;
+  width: min(292px, calc(100vw - 20px));
+  max-height: 216px;
+  overflow: auto;
+  transform: translate(-50%, -6px) scale(0.96);
   z-index: 5;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1.5px solid var(--ink);
-  border-radius: 18px;
+  border-radius: 15px;
   background: var(--paper);
   color: var(--ink);
-  box-shadow: 7px 7px 0 rgba(71, 54, 67, 0.1);
+  box-shadow: 5px 5px 0 rgba(71, 54, 67, 0.1);
   font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.35;
-  text-align: left;
+  font-size: 11.5px;
+  line-height: 1.28;
+  text-align: center;
+  opacity: 0;
   pointer-events: none;
+  scrollbar-width: thin;
+  transition: opacity 160ms ease, transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .ambient-bubble::after {
   content: "";
   position: absolute;
-  right: 52px;
+  left: 50%;
   bottom: -9px;
   width: 16px;
   height: 16px;
   background: var(--paper);
   border-right: 1.5px solid var(--ink);
   border-bottom: 1.5px solid var(--ink);
-  transform: rotate(45deg);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.stage:hover .ambient-bubble:not([aria-hidden="true"]) {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
 }
 
 .caption {
@@ -330,9 +344,16 @@ body.window {
 }
 
 .chat-bubble {
+  display: block;
+  aspect-ratio: auto;
+  animation: none;
+  filter: none;
+  transform: none;
+  pointer-events: auto;
   max-width: 92%;
   width: fit-content;
   min-width: 0;
+  height: auto;
   padding: 11px 15px;
   border-radius: 14px;
   line-height: 1.55;
@@ -493,41 +514,54 @@ body.window {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(100% + 4px);
-  background: #fff;
-  border: 1px solid rgba(71, 54, 67, 0.2);
-  border-radius: 10px;
-  box-shadow: 0 12px 24px rgba(29, 22, 28, 0.12);
-  max-height: 220px;
+  bottom: 76px;
+  background: rgba(255, 250, 234, 0.98);
+  border: 1.5px solid rgba(71, 54, 67, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(29, 22, 28, 0.18);
+  max-height: 260px;
   overflow-y: auto;
   font-family: var(--font-body);
   font-size: 13px;
-  padding: 4px;
-  z-index: 20;
+  padding: 7px;
+  z-index: 60;
+  backdrop-filter: blur(14px);
+}
+
+.chat-autocomplete[hidden] {
+  display: none;
 }
 
 .chat-autocomplete-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 10px;
-  border-radius: 6px;
+  display: grid;
+  grid-template-columns: minmax(86px, auto) 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 10px;
+  border-radius: 11px;
   cursor: pointer;
+  border: 1px solid transparent;
 }
 
 .chat-autocomplete-item:hover,
 .chat-autocomplete-item.active {
-  background: var(--cream);
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(71, 54, 67, 0.12);
+  box-shadow: 0 4px 12px rgba(71, 54, 67, 0.08);
 }
 
 .chat-autocomplete-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 540;
+  white-space: nowrap;
 }
 
 .chat-autocomplete-blurb {
   color: rgba(71, 54, 67, 0.68);
   font-size: 12px;
-  text-align: right;
+  text-align: left;
+  line-height: 1.25;
 }
 
 .chat-input:focus {
@@ -1286,6 +1320,7 @@ body.window-onboarding {
 .cw-layout {
   display: flex;
   flex-direction: column;
+  position: relative;
   height: 100vh;
   overflow: hidden;
 }
@@ -1493,9 +1528,15 @@ body.window-onboarding {
 }
 
 .cw-log .chat-bubble {
+  display: block;
+  aspect-ratio: auto;
+  animation: none;
+  filter: none;
+  transform: none;
   max-width: 86%;
   width: fit-content;
   min-width: 0;
+  height: auto;
   padding: 9px 12px;
   border-radius: 14px;
   line-height: 1.4;

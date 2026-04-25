@@ -15,6 +15,7 @@ const NOTE_RECENCY_DAYS: u64 = 14;
 
 #[derive(Debug, Clone)]
 pub struct ChatContext {
+    pub owner: Option<String>,
     pub twin_md: Option<String>,
     pub notes: Vec<VaultNote>,
     pub vault_path: Option<PathBuf>,
@@ -34,6 +35,7 @@ pub struct VaultNote {
 
 #[derive(Debug, Deserialize)]
 struct TwinConfig {
+    owner: Option<String>,
     #[serde(rename = "obsidianVaultPath")]
     obsidian_vault_path: Option<String>,
 }
@@ -47,7 +49,14 @@ pub fn gather() -> ChatContext {
 pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
     let twin_md = std::fs::read_to_string(twin_md_path()).ok();
 
-    let vault_path = read_vault_path();
+    let cfg = read_config();
+    let owner = cfg
+        .as_ref()
+        .and_then(|c| c.owner.as_deref())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(ToOwned::to_owned);
+    let vault_path = read_vault_path_from_config(cfg.as_ref());
     let notes = vault_path
         .as_ref()
         .map(|p| collect_ranked_notes(p, user_message))
@@ -56,6 +65,7 @@ pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
     let buddy = read_buddy_context();
 
     ChatContext {
+        owner,
         twin_md,
         notes,
         vault_path,
@@ -65,11 +75,14 @@ pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
     }
 }
 
-fn read_vault_path() -> Option<PathBuf> {
+fn read_config() -> Option<TwinConfig> {
     let cfg_path = claude_dir().join("twin.config.json");
     let bytes = std::fs::read(&cfg_path).ok()?;
-    let cfg: TwinConfig = serde_json::from_slice(&bytes).ok()?;
-    let raw = cfg.obsidian_vault_path?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn read_vault_path_from_config(cfg: Option<&TwinConfig>) -> Option<PathBuf> {
+    let raw = cfg?.obsidian_vault_path.as_deref()?;
     if raw.trim().is_empty() {
         return None;
     }
@@ -263,6 +276,14 @@ pub fn render_prompt(context: &ChatContext) -> String {
          Do: quote or paraphrase the vault note snippets below. Name patterns and connections between notes. \
          If the notes don't speak to the user's message, say so clearly and ask which project or note to look at next.\n\n",
     );
+
+    if let Some(owner) = &context.owner {
+        buf.push_str(&format!(
+            "== user identity ==\n\
+             The user's preferred name is {owner}. Address them by name naturally and warmly, especially at the start of a new reply or when giving reassurance. \
+             Do not force the name into every sentence; aim for familiarity, like a small companion that knows its person.\n\n"
+        ));
+    }
 
     if let Some(md) = &context.twin_md {
         buf.push_str("== twin.md (live state) ==\n");

@@ -46,6 +46,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::get_state,
             ipc::get_chat_status,
+            ipc::install_rembg,
             ipc::get_sprite_evolution,
             ipc::generated_asset_data_url,
             ipc::dismiss_bubble,

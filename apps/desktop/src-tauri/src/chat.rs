@@ -33,10 +33,20 @@ pub async fn stream_with_system(
     state: Option<PetState>,
     system_override: Option<String>,
 ) -> Result<()> {
+    let ctx = context::gather_for_user_message(Some(message.as_str()));
+    let system = match system_override {
+        Some(custom) => {
+            let base = context::render_prompt(&ctx);
+            format!("{base}\n\n== persona ==\n{custom}\n")
+        }
+        None => build_system(state.as_ref(), &ctx),
+    };
+
     // ── B5: try installed CLI agent first ────────────────────────────────────
     if let Some(agent) = ai_agents::detect_cli_agent() {
         let app_clone = app.clone();
-        let result = ai_agents::stream_via_cli(&agent, &message, move |token| {
+        let prompt = build_single_cli_prompt(&system, &message);
+        let result = ai_agents::stream_via_cli(&agent, &prompt, move |token| {
             let _ = app_clone.emit("twin://chat-token", token);
         })
         .await;
@@ -59,15 +69,6 @@ pub async fn stream_with_system(
         fallback(&app, provider_kind);
         let _ = app.emit("twin://chat-done", ());
         return Ok(());
-    };
-
-    let ctx = context::gather_for_user_message(Some(message.as_str()));
-    let system = match system_override {
-        Some(custom) => {
-            let base = context::render_prompt(&ctx);
-            format!("{base}\n\n== persona ==\n{custom}\n")
-        }
-        None => build_system(state.as_ref(), &ctx),
     };
 
     match provider::stream(provider_kind, &model, &api_key, &system, &message).await {
@@ -123,6 +124,12 @@ fn fallback(app: &AppHandle, provider: provider::Provider) {
         provider.env_key(),
     );
     let _ = app.emit("twin://chat-token", line);
+}
+
+fn build_single_cli_prompt(system: &str, message: &str) -> String {
+    format!(
+        "{system}\n== user ==\n{message}\n\nReply as twin. Keep it concise, grounded, and use the user's preferred name naturally when it fits.\n"
+    )
 }
 
 // ── Dedicated chat window (multi-turn) ──────────────────────────────────────
@@ -220,7 +227,7 @@ fn build_cw_cli_prompt(system: &str, messages: &[ChatWindowMessage]) -> String {
         prompt.push_str(&message.content);
         prompt.push('\n');
     }
-    prompt.push_str("\nReply as twin. Keep it concise and grounded in the user's local context.\n");
+    prompt.push_str("\nReply as twin. Keep it concise and grounded in the user's local context. Use the user's preferred name naturally when it fits.\n");
     prompt
 }
 

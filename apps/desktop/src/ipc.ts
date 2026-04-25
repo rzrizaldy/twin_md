@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { PetState, Reminder } from "./types.ts";
 
 export async function getState(): Promise<PetState | null> {
@@ -81,6 +81,10 @@ export async function getChatStatus(): Promise<ChatStatus | null> {
   } catch {
     return null;
   }
+}
+
+export async function installRembg(): Promise<string> {
+  return invoke<string>("install_rembg");
 }
 
 export async function dismissBubble(id: string): Promise<void> {
@@ -194,6 +198,14 @@ export function onChatToken(
 
 export function onChatDone(cb: () => void): Promise<UnlistenFn> {
   return listen<null>("twin://chat-done", () => cb());
+}
+
+export async function emitLastChat(message: string): Promise<void> {
+  await emit("twin://last-chat", message);
+}
+
+export function onLastChat(cb: (message: string) => void): Promise<UnlistenFn> {
+  return listen<string>("twin://last-chat", (event) => cb(event.payload));
 }
 
 export async function sendChat(message: string): Promise<void> {

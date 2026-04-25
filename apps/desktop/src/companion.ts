@@ -4,8 +4,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getState,
   getSpriteEvolution,
+  emitLastChat,
   onChatDone,
   onChatToken,
+  onLastChat,
   onReminder,
   onStateChanged,
   onSpriteUpdated,
@@ -54,9 +56,8 @@ const DEFAULT_STATE: PetState = {
 };
 
 let current: PetState = DEFAULT_STATE;
-let frame: "breath-a" | "breath-b" = "breath-a";
-let blinkTimer: number | null = null;
 let evolutionSpritePath: string | null = null;
+let lastChatPreview = "";
 
 // ── Sprite helpers ───────────────────────────────────────────────────────────
 
@@ -68,48 +69,42 @@ function setSpriteFor(species: TwinSpecies, mood: TwinMood, frameName: string) {
   sprite.src = pngPath(species, mood, frameName);
 }
 
+function compactPreview(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 420 ? `${normalized.slice(0, 417).trim()}…` : normalized;
+}
+
+function setLastChatPreview(text: string) {
+  lastChatPreview = compactPreview(text);
+  renderAmbientBubble();
+}
+
+function renderAmbientBubble() {
+  const shouldShowOnHover = Boolean(lastChatPreview) && bubble.dataset.state === "hidden";
+  ambientBubble.textContent = lastChatPreview;
+  ambientBubble.hidden = !lastChatPreview;
+  ambientBubble.setAttribute("aria-hidden", shouldShowOnHover ? "false" : "true");
+}
+
 function render() {
   if (evolutionSpritePath) {
     spriteWrap?.classList.add("has-evolved-sprite");
     sprite.src = convertFileSrc(evolutionSpritePath);
   } else {
     spriteWrap?.classList.remove("has-evolved-sprite");
-    setSpriteFor(current.species, current.state, frame);
+    setSpriteFor(current.species, current.state, "breath-a");
   }
   caption.textContent = current.caption.toLowerCase();
   caption.hidden = false;
   bubble.dataset.tone = current.state.replace("_", "-");
-  ambientBubble.textContent = current.message || current.caption;
-  ambientBubble.hidden = bubble.dataset.state !== "hidden";
+  renderAmbientBubble();
 }
 
 function breathLoop() {
   setInterval(() => {
-    frame = frame === "breath-a" ? "breath-b" : "breath-a";
-    pet.classList.toggle("is-breath-a", frame === "breath-a");
-    pet.classList.toggle("is-breath-b", frame === "breath-b");
-    render();
+    pet.classList.toggle("is-breath-b");
+    pet.classList.toggle("is-breath-a", !pet.classList.contains("is-breath-b"));
   }, 2200);
-}
-
-function scheduleBlink() {
-  if (blinkTimer !== null) window.clearTimeout(blinkTimer);
-  const delay = 4000 + Math.random() * 3000;
-  blinkTimer = window.setTimeout(() => {
-    if (!current) {
-      scheduleBlink();
-      return;
-    }
-    if (evolutionSpritePath) {
-      scheduleBlink();
-      return;
-    }
-    setSpriteFor(current.species, current.state, "blink");
-    window.setTimeout(() => {
-      render();
-      scheduleBlink();
-    }, 120);
-  }, delay);
 }
 
 // ── Speech bubble state machine ──────────────────────────────────────────────
@@ -120,11 +115,10 @@ function setBubbleState(state: BubbleState) {
   bubble.dataset.state = state;
   if (state === "hidden") {
     bubble.style.display = "none";
-    ambientBubble.hidden = false;
   } else {
     bubble.style.display = "flex";
-    ambientBubble.hidden = true;
   }
+  renderAmbientBubble();
 }
 
 function openBubble(prefill?: string) {
@@ -210,6 +204,8 @@ async function submitMessage(text: string) {
         content: activeAssistantText,
         ts: new Date().toISOString(),
       });
+      setLastChatPreview(activeAssistantText);
+      void emitLastChat(activeAssistantText);
     }
     activeAssistantEl = null;
     activeAssistantText = "";
@@ -225,6 +221,7 @@ async function submitMessage(text: string) {
     if (activeAssistantEl) {
       activeAssistantEl.textContent = "hmm, something went wrong. try again?";
     }
+    setLastChatPreview("hmm, something went wrong. try again?");
     setBubbleState("done");
   }
 }
@@ -244,18 +241,27 @@ function attachInteractions() {
   const win = getCurrentWindow();
   const chatButton = document.getElementById("chat-button") as HTMLButtonElement;
 
-  // Clicking the pet sprite opens the dedicated chat window.
-  // We track mousedown position to distinguish click from drag.
+  // Dragging the pet moves the native transparent companion window.
+  // Chat stays available through the button so the sprite remains a drag handle.
   let mouseDownX = 0;
   let mouseDownY = 0;
   pet.removeAttribute("data-tauri-drag-region");
-  pet.addEventListener("mousedown", (e) => {
-    mouseDownX = e.clientX;
-    mouseDownY = e.clientY;
+  pet.addEventListener("mousedown", async (e) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button, textarea, input, form, a")) return;
+
+    mouseDownX = e.screenX;
+    mouseDownY = e.screenY;
+    try {
+      await win.startDragging();
+    } catch (err) {
+      console.debug("native drag unavailable", err);
+    }
   });
   pet.addEventListener("click", async (e) => {
-    const dx = Math.abs(e.clientX - mouseDownX);
-    const dy = Math.abs(e.clientY - mouseDownY);
+    const dx = Math.abs(e.screenX - mouseDownX);
+    const dy = Math.abs(e.screenY - mouseDownY);
     if (dx < 6 && dy < 6) {
       e.stopPropagation();
       try {
@@ -344,7 +350,6 @@ function attachInteractions() {
   });
 
   win.onCloseRequested(() => {
-    if (blinkTimer !== null) window.clearTimeout(blinkTimer);
     logSessionToVault();
   });
 }
@@ -387,10 +392,12 @@ async function init() {
     spriteWrap?.classList.remove("is-evolving");
   });
 
-  void onSpriteEvolveCooldown((payload) => {
-    const mins = Math.ceil(payload.waitSecs / 60);
-    ambientBubble.textContent = `evolution is resting — about ${mins}m.`;
-    ambientBubble.hidden = bubble.dataset.state !== "hidden";
+  void onSpriteEvolveCooldown(() => {
+    spriteWrap?.classList.remove("is-evolving");
+  });
+
+  void onLastChat((message) => {
+    setLastChatPreview(message);
   });
 
   void onSpriteUpdated((payload) => {
@@ -429,7 +436,6 @@ async function init() {
   });
 
   breathLoop();
-  scheduleBlink();
   attachInteractions();
 }
 

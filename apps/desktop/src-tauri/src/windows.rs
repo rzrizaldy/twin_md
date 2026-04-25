@@ -11,8 +11,8 @@ pub fn show_companion(app: &AppHandle) -> Result<()> {
     }
     WebviewWindowBuilder::new(app, "companion", WebviewUrl::App("index.html".into()))
         .title("twin")
-        .inner_size(320.0, 320.0)
-        .min_inner_size(240.0, 240.0)
+        .inner_size(320.0, 520.0)
+        .min_inner_size(240.0, 360.0)
         .transparent(true)
         .decorations(false)
         .always_on_top(true)

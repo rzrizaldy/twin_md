@@ -8,6 +8,7 @@ import {
   generateSpritePreview,
   generatedAssetDataUrl,
   getChatStatus,
+  installRembg,
   listModels,
   openChatWindow,
   runOnboarding,
@@ -374,6 +375,14 @@ const apiKeyInput = $<HTMLInputElement>("#api-key");
 const whereLink = $<HTMLAnchorElement>("#where-link");
 const storeKeychain = $<HTMLInputElement>("#store-keychain");
 const skipProvider = $<HTMLInputElement>("#skip-provider");
+const installRembgBtn = document.getElementById("install-rembg") as HTMLButtonElement | null;
+
+function updateRembgInstallButton(): void {
+  if (!installRembgBtn) return;
+  const installed = Boolean(chatStatus?.rembgInstalled);
+  installRembgBtn.textContent = installed ? "rembg installed" : "install for me";
+  installRembgBtn.disabled = installed;
+}
 const localAgentCard = $<HTMLElement>("#local-agent-status");
 
 async function refreshLocalAgentStatus() {
@@ -384,6 +393,7 @@ async function refreshLocalAgentStatus() {
   icon.textContent = "·";
   body.textContent = "checking local agent…";
   chatStatus = await getChatStatus();
+  updateRembgInstallButton();
   if (!chatStatus) {
     localAgentCard.classList.add("warn");
     icon.textContent = "!";
@@ -481,6 +491,22 @@ skipProvider.addEventListener("change", () => {
     apiKeyInput.value = "";
     state.apiKey = "";
     setStatus("provider setup skipped for now.", "info");
+  }
+});
+
+installRembgBtn?.addEventListener("click", async () => {
+  installRembgBtn.disabled = true;
+  setStatus("installing rembg… this can take a minute on first run.");
+  try {
+    const path = await installRembg();
+    chatStatus = await getChatStatus();
+    updateRembgInstallButton();
+    setStatus(`rembg installed: ${path}`, "ok");
+  } catch (e) {
+    setStatus(`rembg install failed: ${String(e)}`, "error");
+    installRembgBtn.disabled = false;
+  } finally {
+    updateRembgInstallButton();
   }
 });
 

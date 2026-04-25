@@ -25,6 +25,7 @@ import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
 import {
   getChatStatus,
   getSpriteEvolution,
+  emitLastChat,
   generatedAssetDataUrl,
   listModels,
   saveProviderCredentials,
@@ -284,6 +285,7 @@ async function sendMessages() {
     if (finalText) {
       messages.push({ role: "assistant", content: finalText });
       sessionTurns.push({ role: "assistant", content: finalText, ts: new Date().toISOString() });
+      void emitLastChat(finalText);
     }
     cwInput.focus();
   });
@@ -439,9 +441,11 @@ function startNewSession() {
 // ── Autocomplete ──────────────────────────────────────────────────────────
 
 function showAutoComplete(query: string) {
-  const matches = SLASH_COMMANDS.filter((c) =>
-    c.name.startsWith(query.toLowerCase())
-  );
+  const needle = query.toLowerCase().replace(/^\//, "");
+  const matches = SLASH_COMMANDS.filter((c) => {
+    const haystack = `${c.name} ${c.blurb} ${c.args}`.toLowerCase();
+    return !needle || haystack.includes(needle);
+  });
   if (matches.length === 0) {
     hideAutoComplete();
     return;
@@ -464,6 +468,7 @@ function showAutoComplete(query: string) {
       hideAutoComplete();
       cwInput.focus();
     });
+    item.addEventListener("mouseenter", () => setAutocompleteIndex(i));
     cwAutoComplete.appendChild(item);
   });
   cwAutoComplete.hidden = false;
