@@ -14,6 +14,7 @@
  *  - Proactive seed: listens for twin://cw-seed to pre-fill/auto-send
  */
 
+import "./ensure-tauri.ts";
 import { invoke } from "@tauri-apps/api/core";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -23,12 +24,15 @@ import DOMPurify from "dompurify";
 import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
 import {
   getChatStatus,
+  getSpriteEvolution,
+  generatedAssetDataUrl,
   listModels,
   saveProviderCredentials,
   validateProviderKey,
   onSpriteUpdated,
   onSpriteEvolving,
   onSpriteEvolveError,
+  onSpriteEvolveCooldown,
   regenerateSprite,
   type AiProvider,
 } from "./ipc.ts";
@@ -101,10 +105,13 @@ let sessionId = crypto.randomUUID();
 let isStreaming = false;
 let lastAssistantText = "";
 let evolutionSpritePath: string | null = null;
+let currentMood: TwinMood = "healthy";
 
 let settingsProvider: AiProvider = "anthropic";
 let currentProvider = "anthropic";
 let currentModel = "";
+let settingsReturnFocus: HTMLElement | null = null;
+let activeAutocompleteIndex = 0;
 
 // Font size (12–20px, stored in localStorage)
 const FONT_SIZE_KEY = "twin-cw-font-size";
@@ -119,11 +126,17 @@ function renderMarkdown(text: string): string {
   return DOMPurify.sanitize(raw, { ADD_ATTR: ["target"] });
 }
 
+function assistantMoodClass(): string {
+  return `mood-${currentMood.replace(/_/g, "-")}`;
+}
+
 // ── Pet sprite helpers ────────────────────────────────────────────────────
 
 function updateSprite(state: PetState) {
   const species = state.species as TwinSpecies;
   const mood = state.state as TwinMood;
+  currentMood = mood;
+  cwLog.dataset.mood = mood;
   if (!evolutionSpritePath) {
     cwSprite.src = `/pets/${species}/${mood}/breath-a.png`;
   }
@@ -137,6 +150,7 @@ function swapChatSprite(path: string) {
   const next = new Image();
   next.onload = () => {
     cwSpriteWrap?.classList.remove("is-evolving");
+    cwSpriteWrap?.classList.add("has-evolved-sprite");
     cwSpriteWrap?.classList.add("sprite-swap");
     cwSprite.src = url;
     if (cwRegenBtn) cwRegenBtn.disabled = false;
@@ -174,6 +188,9 @@ function appendMessage(role: "user" | "assistant", content: string): HTMLDivElem
   const bubble = document.createElement("div");
   bubble.className = `chat-bubble ${role === "user" ? "me" : "pet"}`;
   if (role === "assistant") {
+    bubble.classList.add(assistantMoodClass());
+  }
+  if (role === "assistant") {
     bubble.innerHTML = renderMarkdown(content);
   } else {
     bubble.textContent = content;
@@ -191,11 +208,10 @@ function appendToolCard(html: string): void {
   cwLog.scrollTop = cwLog.scrollHeight;
 }
 
-function appendImageBlock(filePath: string, prompt: string, providerUsed: string): void {
+async function appendImageBlock(filePath: string, prompt: string, providerUsed: string): Promise<void> {
   const wrap = document.createElement("div");
   wrap.className = "cw-image-block";
   const img = document.createElement("img");
-  img.src = convertFileSrc(filePath);
   img.alt = prompt;
   img.className = "cw-image";
   const caption = document.createElement("p");
@@ -205,6 +221,16 @@ function appendImageBlock(filePath: string, prompt: string, providerUsed: string
   wrap.appendChild(caption);
   cwLog.appendChild(wrap);
   cwLog.scrollTop = cwLog.scrollHeight;
+  try {
+    img.src = await generatedAssetDataUrl(filePath);
+  } catch {
+    img.src = convertFileSrc(filePath);
+    img.addEventListener("error", () => {
+      wrap.classList.add("cw-image-block--error");
+      img.remove();
+      caption.textContent = `image saved but couldn't be displayed: ${filePath}`;
+    });
+  }
 }
 
 function appendStatus(text: string, kind: "info" | "error" = "info"): void {
@@ -228,17 +254,28 @@ async function sendMessages() {
   const bubble = appendMessage("assistant", "");
   bubble.classList.add("is-streaming");
   let streamText = "";
+  let renderFrame: number | null = null;
+  const flushStream = () => {
+    renderFrame = null;
+    bubble.innerHTML = renderMarkdown(streamText);
+    cwLog.scrollTop = cwLog.scrollHeight;
+  };
 
   const unlistenToken = await listen<string>("twin://cw-token", (event) => {
     streamText += event.payload;
     lastAssistantText = streamText;
-    bubble.innerHTML = renderMarkdown(streamText);
-    cwLog.scrollTop = cwLog.scrollHeight;
+    if (renderFrame === null) {
+      renderFrame = window.requestAnimationFrame(flushStream);
+    }
   });
 
   const unlistenDone = await listen<null>("twin://cw-done", () => {
     unlistenToken();
     unlistenDone();
+    if (renderFrame !== null) {
+      window.cancelAnimationFrame(renderFrame);
+      flushStream();
+    }
     bubble.classList.remove("is-streaming");
     isStreaming = false;
     cwSend.disabled = false;
@@ -256,8 +293,15 @@ async function sendMessages() {
   } catch (err) {
     unlistenToken();
     unlistenDone();
-    bubble.textContent = "something went wrong — check your api key in settings ⚙";
+    if (renderFrame !== null) {
+      window.cancelAnimationFrame(renderFrame);
+      renderFrame = null;
+    }
+    bubble.innerHTML = renderMarkdown(
+      `something went wrong — local agent and provider fallback both failed. open settings if you want to add an API key.\n\n_${String(err)}_`
+    );
     bubble.classList.remove("is-streaming");
+    bubble.classList.add("is-error");
     isStreaming = false;
     cwSend.disabled = false;
   }
@@ -360,7 +404,7 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     try {
       const result = await invoke<ImageGenResult>("generate_image", { prompt });
       if (result.ok && result.savedPath) {
-        appendImageBlock(result.savedPath, result.prompt, result.providerUsed ?? "");
+        await appendImageBlock(result.savedPath, result.prompt, result.providerUsed ?? "");
       } else {
         appendStatus(result.error ?? "image generation failed", "error");
       }
@@ -403,10 +447,13 @@ function showAutoComplete(query: string) {
     return;
   }
   cwAutoComplete.innerHTML = "";
+  activeAutocompleteIndex = 0;
   matches.forEach((cmd, i) => {
     const item = document.createElement("div");
     item.className = `chat-autocomplete-item${i === 0 ? " active" : ""}`;
     item.setAttribute("role", "option");
+    item.id = `cw-ac-${i}`;
+    item.setAttribute("aria-selected", i === 0 ? "true" : "false");
     item.dataset.cmd = cmd.name;
     item.innerHTML = `
       <span class="chat-autocomplete-name">${cmd.name} <span class="chip-args">${cmd.args}</span></span>
@@ -420,16 +467,46 @@ function showAutoComplete(query: string) {
     cwAutoComplete.appendChild(item);
   });
   cwAutoComplete.hidden = false;
+  cwInput.setAttribute("aria-expanded", "true");
+  cwInput.setAttribute("aria-activedescendant", "cw-ac-0");
 }
 
 function hideAutoComplete() {
   cwAutoComplete.hidden = true;
   cwAutoComplete.innerHTML = "";
+  cwInput.setAttribute("aria-expanded", "false");
+  cwInput.removeAttribute("aria-activedescendant");
+}
+
+function autocompleteItems(): HTMLDivElement[] {
+  return Array.from(cwAutoComplete.querySelectorAll<HTMLDivElement>(".chat-autocomplete-item"));
+}
+
+function setAutocompleteIndex(nextIndex: number): void {
+  const items = autocompleteItems();
+  if (items.length === 0) return;
+  activeAutocompleteIndex = (nextIndex + items.length) % items.length;
+  items.forEach((item, index) => {
+    const active = index === activeAutocompleteIndex;
+    item.classList.toggle("active", active);
+    item.setAttribute("aria-selected", active ? "true" : "false");
+    if (active) cwInput.setAttribute("aria-activedescendant", item.id);
+  });
+}
+
+function applyActiveAutocomplete(): void {
+  const item = autocompleteItems()[activeAutocompleteIndex];
+  const cmd = item?.dataset.cmd;
+  if (!cmd) return;
+  cwInput.value = cmd + " ";
+  hideAutoComplete();
+  cwInput.focus();
 }
 
 // ── Settings panel ────────────────────────────────────────────────────────
 
 async function openSettings() {
+  settingsReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : cwSettingsBtn;
   await loadProviderStatus();
   settingsOverlay.hidden = false;
   settingsKey.focus();
@@ -437,6 +514,8 @@ async function openSettings() {
 
 function closeSettings() {
   settingsOverlay.hidden = true;
+  settingsReturnFocus?.focus();
+  settingsReturnFocus = null;
 }
 
 async function loadProviderStatus() {
@@ -449,8 +528,13 @@ async function loadProviderStatus() {
     updateProviderTabs(settingsProvider);
     await refreshModelList(settingsProvider);
     settingsModel.value = status.model;
-    pillProvider.textContent = status.provider;
-    pillModel.textContent = status.model;
+    if (status.local_mcp_ready) {
+      pillProvider.textContent = "local first";
+      pillModel.textContent = status.local_agent ?? "mcp";
+    } else {
+      pillProvider.textContent = status.provider;
+      pillModel.textContent = status.has_api_key ? status.model : "setup needed";
+    }
     // Show masked key placeholder if key is configured
     settingsKey.placeholder = status.has_api_key
       ? "••••••••••••••••••••"
@@ -462,7 +546,10 @@ async function loadProviderStatus() {
 
 function updateProviderTabs(provider: AiProvider) {
   settingsTabs.forEach((tab) => {
-    tab.classList.toggle("is-active", tab.dataset.provider === provider);
+    const active = tab.dataset.provider === provider;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+    tab.tabIndex = active ? 0 : -1;
   });
 }
 
@@ -495,6 +582,16 @@ settingsTabs.forEach((tab) => {
     settingsKey.placeholder = "enter api key for " + settingsProvider;
     hideSettingsStatus();
   });
+  tab.addEventListener("keydown", async (event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const tabs = Array.from(settingsTabs);
+    const index = tabs.indexOf(tab);
+    const delta = event.key === "ArrowRight" ? 1 : -1;
+    const next = tabs[(index + delta + tabs.length) % tabs.length];
+    next.focus();
+    next.click();
+  });
 });
 
 settingsTest.addEventListener("click", async () => {
@@ -515,6 +612,10 @@ settingsTest.addEventListener("click", async () => {
 settingsSave.addEventListener("click", async () => {
   const key = settingsKey.value.trim() || undefined;
   const model = settingsModel.value;
+  if (!key) {
+    showSettingsStatus("enter a key to save direct provider fallback", "error");
+    return;
+  }
   showSettingsStatus("saving…");
   try {
     await saveProviderCredentials({
@@ -556,6 +657,28 @@ cwForm.addEventListener("submit", async (e) => {
 });
 
 cwInput.addEventListener("keydown", async (e) => {
+  if (!cwAutoComplete.hidden) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setAutocompleteIndex(activeAutocompleteIndex + 1);
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setAutocompleteIndex(activeAutocompleteIndex - 1);
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      applyActiveAutocomplete();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      hideAutoComplete();
+      return;
+    }
+  }
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     await submitText(cwInput.value);
@@ -612,6 +735,30 @@ settingsOverlay.addEventListener("click", (e) => {
   if (e.target === settingsOverlay) closeSettings();
 });
 
+settingsOverlay.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeSettings();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const focusable = Array.from(
+    settingsOverlay.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute("hidden"));
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
 // Font size keyboard shortcuts
 document.addEventListener("keydown", async (e) => {
   if ((e.metaKey || e.ctrlKey) && (e.key === "=" || e.key === "+")) {
@@ -633,6 +780,16 @@ async function init() {
 
   // Load current provider status and update pill
   await loadProviderStatus();
+
+  try {
+    const evo = await getSpriteEvolution();
+    if (evo.currentPath) {
+      evolutionSpritePath = evo.currentPath;
+      swapChatSprite(evo.currentPath);
+    }
+  } catch {
+    // Non-fatal; bundled sprites are always available.
+  }
 
   // Listen for state changes (update sprite + mood label)
   await listen<PetState>("twin://state-changed", (event) => {
@@ -660,12 +817,17 @@ async function init() {
     const m = p.message;
     if (m.includes("rembg_missing")) {
       appendStatus(
-        'install rembg for transparent sprites: pipx install "rembg[cpu,cli]" then restart.',
+        'run pipx install "rembg[cpu,cli]" (or pip install "rembg[cpu,cli]"), then restart twin.',
         "error"
       );
     } else {
       appendStatus(`evolution failed: ${m}`, "error");
     }
+  });
+
+  void onSpriteEvolveCooldown((payload) => {
+    const mins = Math.ceil(payload.waitSecs / 60);
+    appendStatus(`evolution cooldown — about ${mins}m left`);
   });
 
   void onSpriteUpdated((payload) => {

@@ -1,3 +1,4 @@
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -58,6 +59,45 @@ pub fn get_chat_status() -> ChatStatus {
         model,
         rembg_installed: rembg::is_available(),
     }
+}
+
+#[tauri::command]
+pub fn get_sprite_evolution() -> crate::sprite::SpriteEvolutionSnapshot {
+    crate::sprite::current_snapshot()
+}
+
+#[tauri::command]
+pub fn generated_asset_data_url(path: String) -> Result<String, String> {
+    let raw = PathBuf::from(path.trim());
+    let canonical = raw.canonicalize().map_err(|e| e.to_string())?;
+    let claude_root = claude_dir().canonicalize().map_err(|e| e.to_string())?;
+    let vault_media = resolve_vault_root()
+        .and_then(|root| root.join("media").canonicalize().ok());
+
+    let allowed = canonical.starts_with(claude_root.join("twin"))
+        || vault_media
+            .as_ref()
+            .map(|media| canonical.starts_with(media))
+            .unwrap_or(false);
+    if !allowed {
+        return Err("refusing to read generated asset outside twin data folders".to_string());
+    }
+
+    let ext = canonical
+        .extension()
+        .and_then(|x| x.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let mime = match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        _ => return Err(format!("unsupported generated asset type: {ext}")),
+    };
+    let bytes = fs::read(&canonical).map_err(|e| e.to_string())?;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+    Ok(format!("data:{mime};base64,{encoded}"))
 }
 
 #[tauri::command]

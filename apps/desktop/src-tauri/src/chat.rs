@@ -4,7 +4,7 @@
 //!   - `stream()` / `stream_with_system()` — companion bubble (single-turn).
 //!     Priority: installed CLI agent (B5) → direct API key fallback.
 //!   - `stream_chat_window()` — dedicated persistent chat window (multi-turn).
-//!     Always uses direct API key; CLI path stays in the companion bubble.
+//!     Priority: installed CLI agent (B5) → direct API key fallback.
 
 use anyhow::Result;
 use futures::StreamExt;
@@ -131,26 +131,11 @@ fn fallback(app: &AppHandle, provider: provider::Provider) {
 // independently from the companion bubble.
 
 /// Stream a full conversation history for the dedicated chat window.
-/// Never uses the CLI agent — always goes direct API for multi-turn fidelity.
 pub async fn stream_chat_window(
     app: AppHandle,
     messages: Vec<ChatWindowMessage>,
     state: Option<PetState>,
 ) -> Result<()> {
-    let (provider_kind, model) = active_provider_and_model();
-    let Some(api_key) = resolve_api_key(provider_kind) else {
-        let _ = app.emit(
-            "twin://cw-token",
-            format!(
-                "no api key for {} — open settings (⚙) to add one, or set {} in your shell",
-                provider_kind.slug(),
-                provider_kind.env_key()
-            ),
-        );
-        let _ = app.emit("twin://cw-done", ());
-        return Ok(());
-    };
-
     let last_user = messages
         .iter()
         .rev()
@@ -158,6 +143,39 @@ pub async fn stream_chat_window(
         .map(|m| m.content.as_str());
     let ctx = context::gather_for_user_message(last_user);
     let system = build_cw_system(state.as_ref(), &ctx);
+
+    if let Some(agent) = ai_agents::detect_cli_agent() {
+        let prompt = build_cw_cli_prompt(&system, &messages);
+        let app_clone = app.clone();
+        let result = ai_agents::stream_via_cli(&agent, &prompt, move |token| {
+            let _ = app_clone.emit("twin://cw-token", token);
+        })
+        .await;
+
+        match result {
+            Ok(()) => {
+                let _ = app.emit("twin://cw-done", ());
+                return Ok(());
+            }
+            Err(err) => {
+                eprintln!("[twin] {} CLI failed for chat window, falling back to API: {err:?}", agent.name());
+            }
+        }
+    }
+
+    let (provider_kind, model) = active_provider_and_model();
+    let Some(api_key) = resolve_api_key(provider_kind) else {
+        let _ = app.emit(
+            "twin://cw-token",
+            format!(
+                "I can't reach a local agent or {} yet — open settings to add a provider key, or set {} in your shell.",
+                provider_kind.slug(),
+                provider_kind.env_key()
+            ),
+        );
+        let _ = app.emit("twin://cw-done", ());
+        return Ok(());
+    };
 
     match provider::stream_history(provider_kind, &model, &api_key, &system, &messages).await {
         Ok(mut s) => {
@@ -189,6 +207,21 @@ pub async fn stream_chat_window(
 
     let _ = app.emit("twin://cw-done", ());
     Ok(())
+}
+
+fn build_cw_cli_prompt(system: &str, messages: &[ChatWindowMessage]) -> String {
+    let mut prompt = String::new();
+    prompt.push_str(system);
+    prompt.push_str("\n== conversation so far ==\n");
+    for message in messages.iter().rev().take(12).collect::<Vec<_>>().into_iter().rev() {
+        let role = if message.role == "assistant" { "twin" } else { "user" };
+        prompt.push_str(role);
+        prompt.push_str(": ");
+        prompt.push_str(&message.content);
+        prompt.push('\n');
+    }
+    prompt.push_str("\nReply as twin. Keep it concise and grounded in the user's local context.\n");
+    prompt
 }
 
 fn build_cw_system(state: Option<&PetState>, ctx: &context::ChatContext) -> String {

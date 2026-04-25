@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
+use serde::Serialize;
 use serde_json::json;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
@@ -36,6 +37,14 @@ fn env_key(e: &Environment) -> &'static str {
         Environment::StarsAtNoon => "stars_at_noon",
         Environment::StormRoom => "storm_room",
         Environment::GreyNook => "grey_nook",
+    }
+}
+
+fn species_key(s: &Species) -> &'static str {
+    match s {
+        Species::Axolotl => "axolotl",
+        Species::Cat => "cat",
+        Species::Slime => "slime",
     }
 }
 
@@ -90,12 +99,19 @@ pub fn build_evolutionary_prompt(state: &PetState) -> String {
 }
 
 fn build_evolutionary_prompt_with_baseline(state: &PetState, base: &str) -> String {
-    let out_fmt = "full-body sprite on a clean solid background (white or pastel); single character; rembg will remove the background — do not use transparency / checkerboard patterns in the image.";
+    let out_fmt = "full-body sprite on a clean solid white or pastel background; single character; rembg will remove the background — do not use transparency / checkerboard patterns in raster image routes.";
     let mood = mood_key(&state.state);
     let env = env_key(&state.environment);
+    let species = species_key(&state.species);
+    let species_cue = match state.species {
+        Species::Axolotl => "axolotl silhouette: frilled external gills, soft rounded body, curious eyes",
+        Species::Cat => "cat silhouette: clear triangle ears, compact body, self-contained expression",
+        Species::Slime => "slime silhouette: rounded dome body, bouncy droop, goofy low-ego face",
+    };
     format!(
         r#"You are generating a single sprite of a persistent desktop companion.
 Render: full body, centered, facing 3/4 forward, isolated — no frame, no UI, no text, no title.
+The sprite must read at 32x32 px by silhouette alone. Avoid corporate mascot energy, SaaS flat-vector filler, sticker-pack gloss, and Memoji realism.
 
 Output must be: {out_fmt}
 
@@ -103,6 +119,7 @@ BASELINE (do not break identity across evolutions; keep the same character reada
 {base}
 
 CURRENT STATE (subtle, small mutations only — pose, eyes, gill color, line weight, tint):
+- species: {species} ({species_cue})
 - mood: {mood}
 - environment vibe: {env}
 - energy: {}/100
@@ -121,13 +138,14 @@ Mood → visual cues (apply lightly, keep silhouette):
     )
 }
 
-fn read_last_pair() -> Option<(String, String)> {
+fn read_last_pair() -> Option<(String, String, String)> {
     let bytes = fs::read(twin_config_path()).ok()?;
     let v: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
     let se = v.get("spriteEvolution")?;
+    let s = se.get("lastSpecies")?.as_str()?.to_string();
     let a = se.get("lastMood")?.as_str()?.to_string();
     let b = se.get("lastEnvironment")?.as_str()?.to_string();
-    Some((a, b))
+    Some((s, a, b))
 }
 
 fn read_updated_at_utc() -> Option<chrono::DateTime<chrono::Utc>> {
@@ -162,7 +180,7 @@ fn needs_rembg_for_provider() -> bool {
     matches!(p, Provider::Openai | Provider::Gemini)
 }
 
-fn write_evolution_meta(path: &str, mood: &str, env: &str) -> Result<()> {
+fn write_evolution_meta(path: &str, species: &str, mood: &str, env: &str) -> Result<()> {
     let p = twin_config_path();
     fs::create_dir_all(
         p.parent()
@@ -185,6 +203,7 @@ fn write_evolution_meta(path: &str, mood: &str, env: &str) -> Result<()> {
     }
     let m = se.as_object_mut().expect("obj");
     m.insert("currentPath".to_string(), json!(path));
+    m.insert("lastSpecies".to_string(), json!(species));
     m.insert("lastMood".to_string(), json!(mood));
     m.insert("lastEnvironment".to_string(), json!(env));
     m.insert(
@@ -199,13 +218,39 @@ fn write_evolution_meta(path: &str, mood: &str, env: &str) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpriteEvolutionSnapshot {
+    pub current_path: Option<String>,
+    pub is_svg: bool,
+}
+
+pub fn current_snapshot() -> SpriteEvolutionSnapshot {
+    let path = fs::read(twin_config_path())
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .and_then(|v| {
+            v.get("spriteEvolution")
+                .and_then(|se| se.get("currentPath"))
+                .and_then(|p| p.as_str())
+                .map(|p| p.to_string())
+        })
+        .filter(|p| !p.trim().is_empty() && std::path::Path::new(p).exists());
+    let is_svg = path.as_deref().map(|p| p.ends_with(".svg")).unwrap_or(false);
+    SpriteEvolutionSnapshot {
+        current_path: path,
+        is_svg,
+    }
+}
+
 /// If mood or environment changed from last saved evolution, return true.
 fn needs_evolution(state: &PetState) -> bool {
+    let s = species_key(&state.species);
     let m = mood_key(&state.state);
     let e = env_key(&state.environment);
     match read_last_pair() {
         None => true,
-        Some((lm, le)) => lm != m || le != e,
+        Some((ls, lm, le)) => ls != s || lm != m || le != e,
     }
 }
 
@@ -214,8 +259,11 @@ pub async fn on_pet_state_changed(app: &AppHandle, state: PetState) -> Result<()
     if !needs_evolution(&state) {
         return Ok(());
     }
-    if rate_limit_wait_secs().is_some() {
-        // Auto path: silent skip — too soon
+    if let Some(wait) = rate_limit_wait_secs() {
+        let _ = app.emit(
+            "twin://sprite-evolve-cooldown",
+            json!({ "waitSecs": wait }),
+        );
         return Ok(());
     }
     if needs_rembg_for_provider() && !rembg::is_available() {
@@ -271,9 +319,10 @@ async fn run_evolution_inner(app: &AppHandle, state: &PetState) -> Result<String
     let img = image_gen::render_evolutionary_sprite(&prompt)
         .await
         .map_err(|e| anyhow!(e))?;
+    let species = species_key(&state.species);
     let mood = mood_key(&state.state);
     let env = env_key(&state.environment);
-    write_evolution_meta(&img.saved_path, mood, env)?;
+    write_evolution_meta(&img.saved_path, species, mood, env)?;
     let is_svg = img.saved_path.ends_with(".svg");
     let p = img.saved_path.clone();
     let _ = app.emit(

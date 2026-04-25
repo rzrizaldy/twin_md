@@ -9,18 +9,29 @@
   <body class="window window-chat" data-window="chat">
 
     <!-- ── Settings overlay ─────────────────────────────────────────── -->
-    <div id="settings-overlay" class="settings-overlay" hidden aria-modal="true" role="dialog">
+    <div
+      id="settings-overlay"
+      class="settings-overlay"
+      hidden
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="settings-title"
+      aria-describedby="settings-description"
+    >
       <div class="settings-panel">
         <div class="settings-header">
-          <span class="settings-title">settings</span>
+          <span id="settings-title" class="settings-title">settings</span>
           <button id="settings-close" class="settings-close" type="button" aria-label="close">✕</button>
         </div>
 
         <div class="settings-section">
+          <p id="settings-description" class="settings-description">
+            Local Claude/Codex + MCP is preferred. Save a provider key only when you want direct API fallback or image/sprite generation.
+          </p>
           <div class="provider-tabs" role="tablist" aria-label="provider">
-            <button class="ptab is-active" data-provider="anthropic" role="tab">anthropic</button>
-            <button class="ptab" data-provider="openai" role="tab">openai</button>
-            <button class="ptab" data-provider="gemini" role="tab">gemini</button>
+            <button class="ptab is-active" data-provider="anthropic" role="tab" aria-selected="true" tabindex="0">anthropic</button>
+            <button class="ptab" data-provider="openai" role="tab" aria-selected="false" tabindex="-1">openai</button>
+            <button class="ptab" data-provider="gemini" role="tab" aria-selected="false" tabindex="-1">gemini</button>
           </div>
 
           <label class="settings-field">
@@ -29,7 +40,7 @@
           </label>
 
           <label class="settings-field">
-            <span>api key <small class="muted">(saved to keychain)</small></span>
+            <span>api key <small class="muted">(optional direct fallback)</small></span>
             <input
               id="settings-key"
               class="text-input"
@@ -71,7 +82,7 @@
       <!-- Provider pill (shows current provider:model, clickable → settings) -->
       <div id="cw-provider-bar" class="cw-provider-bar">
         <button id="cw-provider-pill" class="provider-pill" type="button" title="change provider / model">
-          <span id="pill-provider">anthropic</span>
+          <span id="pill-provider">local first</span>
           <span class="pill-sep">·</span>
           <span id="pill-model">loading…</span>
         </button>
@@ -81,7 +92,7 @@
       <div id="cw-log" class="cw-log" aria-live="polite" aria-label="conversation"></div>
 
       <!-- Slash command autocomplete -->
-      <div id="cw-autocomplete" class="chat-autocomplete" hidden role="listbox"></div>
+      <div id="cw-autocomplete" class="chat-autocomplete" hidden role="listbox" aria-label="slash commands"></div>
 
       <!-- Input footer -->
       <footer class="cw-footer">
@@ -92,6 +103,8 @@
             placeholder="message twin… (/ for commands)"
             rows="1"
             autocomplete="off"
+            aria-controls="cw-autocomplete"
+            aria-autocomplete="list"
           ></textarea>
           <button id="cw-send" class="chat-send" type="submit" disabled>↑</button>
         </form>

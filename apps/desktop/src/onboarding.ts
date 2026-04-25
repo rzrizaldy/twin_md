@@ -1,3 +1,4 @@
+import "./ensure-tauri.ts";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -5,6 +6,8 @@ import {
   createStarterVault,
   ensureClaudeDir,
   generateSpritePreview,
+  generatedAssetDataUrl,
+  getChatStatus,
   listModels,
   openChatWindow,
   runOnboarding,
@@ -12,6 +15,7 @@ import {
   setVaultPath,
   validateProviderKey,
   type AiProvider,
+  type ChatStatus,
   type ClaudeDirStatus
 } from "./ipc.ts";
 
@@ -44,6 +48,7 @@ interface WizardState {
   model: string;
   apiKey: string;
   storeInKeychain: boolean;
+  providerSkipped: boolean;
 }
 
 const state: WizardState = {
@@ -57,7 +62,8 @@ const state: WizardState = {
   provider: "anthropic",
   model: "claude-haiku-4-5",
   apiKey: "",
-  storeInKeychain: false
+  storeInKeychain: false,
+  providerSkipped: false
 };
 
 const $ = <T extends HTMLElement>(sel: string): T =>
@@ -80,6 +86,17 @@ const btnGenPreview = document.getElementById(
 const previewStatus = document.getElementById("preview-status");
 const previewImg = document.getElementById("preview-img") as HTMLImageElement | null;
 let lastPreviewAt = 0;
+let chatStatus: ChatStatus | null = null;
+
+function localAgentReady(): boolean {
+  return Boolean(chatStatus?.local_mcp_ready);
+}
+
+function setStatus(message: string, kind: "info" | "error" | "ok" = "info"): void {
+  statusEl.textContent = message;
+  statusEl.dataset.kind = kind;
+  statusEl.hidden = message.length === 0;
+}
 
 function syncSpriteDot() {
   const d5 = document.querySelector<HTMLElement>('[data-step-dot="5"]');
@@ -120,8 +137,9 @@ function setStep(requested: number) {
   backBtn.hidden = state.step === 0;
   nextBtn.textContent =
     state.step === TOTAL_STEPS - 1 ? "summon my twin" : "next";
-  if (state.step < 4) statusEl.textContent = "";
+  if (state.step < 4) setStatus("");
   if (state.step === 2) runClaudeDirCheck();
+  if (state.step === 4) void refreshLocalAgentStatus();
 }
 
 function validateStep(step: number): string | null {
@@ -139,8 +157,14 @@ function validateStep(step: number): string | null {
     case 3:
       return null;
     case 4:
-      if (!state.apiKey.trim())
-        return "add an API key for the selected provider.";
+      if (
+        !state.apiKey.trim() &&
+        !state.providerSkipped &&
+        !localAgentReady() &&
+        !chatStatus?.has_api_key
+      ) {
+        return "no local agent found. add a provider key, or check skip to configure later.";
+      }
       return null;
     case 5:
       if (state.spriteMode === "custom" && !state.customSprite.trim()) {
@@ -186,7 +210,7 @@ nextBtn.addEventListener("click", async () => {
       vaultStatusEl.hidden = false;
       vaultStatusEl.textContent = err;
     }
-    if (state.step === 4) statusEl.textContent = err;
+    if (state.step === 4) setStatus(err, "error");
     if (state.step === 5) {
       if (previewStatus) previewStatus.textContent = err;
     }
@@ -195,33 +219,40 @@ nextBtn.addEventListener("click", async () => {
 
   if (state.step === 4) {
     nextBtn.disabled = true;
-    statusEl.textContent = "checking your key…";
-    try {
-      const check = await validateProviderKey(state.provider, state.apiKey.trim());
-      if (!check.ok) {
-        statusEl.textContent = `key rejected — ${check.message}`;
+    if (state.apiKey.trim()) {
+      setStatus("checking your key…");
+      try {
+        const check = await validateProviderKey(state.provider, state.apiKey.trim());
+        if (!check.ok) {
+          setStatus(`key rejected — ${check.message}`, "error");
+          nextBtn.disabled = false;
+          return;
+        }
+      } catch (e) {
+        setStatus(`couldn't reach ${state.provider}: ${String(e)}`, "error");
         nextBtn.disabled = false;
         return;
       }
-    } catch (e) {
-      statusEl.textContent = `couldn't reach ${state.provider}: ${String(e)}`;
-      nextBtn.disabled = false;
-      return;
+      setStatus("saving credentials…");
+      try {
+        await saveProviderCredentials({
+          provider: state.provider,
+          model: state.model,
+          apiKey: state.apiKey.trim(),
+          storeInKeychain: state.storeInKeychain
+        });
+      } catch (e) {
+        setStatus(`couldn't save: ${String(e)}`, "error");
+        nextBtn.disabled = false;
+        return;
+      }
+      setStatus("provider saved.", "ok");
+    } else {
+      const line = localAgentReady()
+        ? "using your local agent/MCP. provider key can wait."
+        : "skipping direct provider setup. add a key later from chat settings.";
+      setStatus(line, localAgentReady() ? "ok" : "info");
     }
-    statusEl.textContent = "saving credentials…";
-    try {
-      await saveProviderCredentials({
-        provider: state.provider,
-        model: state.model,
-        apiKey: state.apiKey.trim(),
-        storeInKeychain: state.storeInKeychain
-      });
-    } catch (e) {
-      statusEl.textContent = `couldn't save: ${String(e)}`;
-      nextBtn.disabled = false;
-      return;
-    }
-    statusEl.textContent = "saved.";
     nextBtn.disabled = false;
     advanceAfterStep4();
     return;
@@ -342,6 +373,46 @@ const modelSelect = $<HTMLSelectElement>("#model");
 const apiKeyInput = $<HTMLInputElement>("#api-key");
 const whereLink = $<HTMLAnchorElement>("#where-link");
 const storeKeychain = $<HTMLInputElement>("#store-keychain");
+const skipProvider = $<HTMLInputElement>("#skip-provider");
+const localAgentCard = $<HTMLElement>("#local-agent-status");
+
+async function refreshLocalAgentStatus() {
+  const body = localAgentCard.querySelector(".detection-body");
+  const icon = localAgentCard.querySelector(".detection-icon");
+  if (!body || !icon) return;
+  localAgentCard.classList.remove("ok", "warn");
+  icon.textContent = "·";
+  body.textContent = "checking local agent…";
+  chatStatus = await getChatStatus();
+  if (!chatStatus) {
+    localAgentCard.classList.add("warn");
+    icon.textContent = "!";
+    body.textContent = "couldn't inspect local chat setup yet.";
+    return;
+  }
+  if (chatStatus.local_mcp_ready) {
+    localAgentCard.classList.add("ok");
+    icon.textContent = "✓";
+    const agent = chatStatus.local_agent ?? "local agent";
+    body.textContent = `${agent} detected — chat can run locally with twin MCP context.`;
+    return;
+  }
+  if (chatStatus.local_agent) {
+    localAgentCard.classList.add("warn");
+    icon.textContent = "!";
+    body.textContent = `${chatStatus.local_agent} is installed, but twin MCP is not built yet. run npm run build or add a provider key.`;
+    return;
+  }
+  if (chatStatus.has_api_key) {
+    localAgentCard.classList.add("ok");
+    icon.textContent = "✓";
+    body.textContent = `direct ${chatStatus.provider} key already configured.`;
+    return;
+  }
+  localAgentCard.classList.add("warn");
+  icon.textContent = "!";
+  body.textContent = "no local agent or provider key yet — add a key below, or skip and configure later.";
+}
 
 async function loadModels(provider: AiProvider) {
   state.provider = provider;
@@ -378,7 +449,7 @@ async function loadModels(provider: AiProvider) {
 
     state.model = default_model;
   } catch (err) {
-    statusEl.textContent = `couldn't load models: ${String(err)}`;
+    setStatus(`couldn't load models: ${String(err)}`, "error");
   }
 }
 
@@ -394,10 +465,23 @@ modelSelect.addEventListener("change", () => {
 
 apiKeyInput.addEventListener("input", () => {
   state.apiKey = apiKeyInput.value;
+  if (state.apiKey.trim()) {
+    skipProvider.checked = false;
+    state.providerSkipped = false;
+  }
 });
 
 storeKeychain.addEventListener("change", () => {
   state.storeInKeychain = storeKeychain.checked;
+});
+
+skipProvider.addEventListener("change", () => {
+  state.providerSkipped = skipProvider.checked;
+  if (state.providerSkipped) {
+    apiKeyInput.value = "";
+    state.apiKey = "";
+    setStatus("provider setup skipped for now.", "info");
+  }
 });
 
 if (previewPrompt) {
@@ -424,7 +508,16 @@ btnGenPreview?.addEventListener("click", async () => {
     const path = await generateSpritePreview(p);
     if (previewImg) {
       previewImg.style.display = "block";
-      previewImg.src = convertFileSrc(path);
+      try {
+        previewImg.src = await generatedAssetDataUrl(path);
+      } catch {
+        previewImg.onerror = () => {
+          if (previewStatus) {
+            previewStatus.textContent = `preview saved but couldn't display: ${path}`;
+          }
+        };
+        previewImg.src = convertFileSrc(path);
+      }
     }
     if (previewStatus) previewStatus.textContent = "preview ready — tweak the prompt or continue.";
   } catch (e) {
@@ -434,7 +527,7 @@ btnGenPreview?.addEventListener("click", async () => {
 
 async function runSummon() {
   nextBtn.disabled = true;
-  statusEl.textContent = "harvesting your second brain…";
+  setStatus("harvesting your second brain…");
   if (state.spriteMode === "custom" && previewPrompt) {
     state.customSprite = previewPrompt.value.trim() || state.customSprite;
   }
@@ -450,14 +543,14 @@ async function runSummon() {
   try {
     const result = await runOnboarding(payload);
     if (!result.ok) {
-      statusEl.textContent = result.message;
+      setStatus(result.message, "error");
       nextBtn.disabled = false;
       return;
     }
-    statusEl.textContent = "your twin is ready.";
+    setStatus("your twin is ready.", "ok");
     await getCurrentWindow().close();
   } catch (err) {
-    statusEl.textContent = `summon failed: ${String(err)}`;
+    setStatus(`summon failed: ${String(err)}`, "error");
     nextBtn.disabled = false;
   }
 }
@@ -471,7 +564,7 @@ const openChatPreviewBtn = document.getElementById(
 if (openChatPreviewBtn) {
   openChatPreviewBtn.addEventListener("click", () => {
     openChatWindow().catch((err) => {
-      statusEl.textContent = `couldn't open chat: ${String(err)}`;
+      setStatus(`couldn't open chat: ${String(err)}`, "error");
     });
   });
 }

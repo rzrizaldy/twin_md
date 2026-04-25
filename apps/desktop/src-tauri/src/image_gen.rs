@@ -131,7 +131,7 @@ async fn generate_openai_gpt_image(api_key: &str, prompt: &str) -> Result<ImageR
         "prompt": prompt,
         "n": 1,
         "size": "1024x1024",
-        "background": "auto"
+        "background": "opaque"
     });
     let res = client
         .post("https://api.openai.com/v1/images/generations")
@@ -237,7 +237,15 @@ fn extract_svg(s: &str) -> Option<String> {
     let t = s.trim();
     if let Some(i) = t.find("<svg") {
         if let Some(j) = t[i..].find("</svg>") {
-            return Some(t[i..i + j + 6].to_string());
+            let svg = t[i..i + j + 6].to_string();
+            let lower = svg.to_ascii_lowercase();
+            if lower.contains("<svg")
+                && lower.contains("</svg>")
+                && lower.contains("viewbox")
+                && !lower.contains("<script")
+            {
+                return Some(svg);
+            }
         }
     }
     None

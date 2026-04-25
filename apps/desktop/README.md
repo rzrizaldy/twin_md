@@ -18,9 +18,11 @@ npm install
 npm run dev:desktop
 ```
 
-`dev:desktop` runs `tauri dev`, which spawns Vite on :1420 and boots the native
-shell around it. Edits to `src/**` hot-reload; edits to `src-tauri/**` recompile
-the Rust side.
+`dev:desktop` runs `tauri dev`. Tauri starts Vite on **`http://localhost:1420`**
+(see `tauri.conf.json` → `devUrl`) so the **native webview** can load the app
+with HMR. That is the desktop UI dev server, not the marketing site (`apps/landing`
+→ GitHub Pages) and not a browser-tab companion. Edits to `src/**` hot-reload;
+edits to `src-tauri/**` recompile the Rust side.
 
 ## Build
 
@@ -50,12 +52,14 @@ own window position + prefs.
 |---------------|------------------|----------------------------------------------|
 | `companion`   | `index.html`     | 320×320 transparent frameless sprite         |
 | `bubble-*`    | `bubble.html`    | Transient reminder bubbles, 45s auto-dismiss |
-| `chat`        | `chat.html`      | 420×540 chat surface, streams from Anthropic |
-| `onboarding`  | `onboarding.html`| First-run species + vault picker             |
+| `chat`        | `chat.html`      | Desktop chat surface, local agent first, API fallback |
+| `onboarding`  | `onboarding.html`| First-run local setup, vault, and optional provider config |
 
 ## Env vars
 
-- `ANTHROPIC_API_KEY` — enables streaming chat; absent = heuristic fallback
-- `TWIN_ANTHROPIC_MODEL` — override model (default `claude-sonnet-4-6`)
+- `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — optional direct
+  provider fallback; local Claude/Codex + MCP is preferred when available
+- `TWIN_ANTHROPIC_MODEL`, `TWIN_OPENAI_MODEL`, `TWIN_GEMINI_MODEL` — override
+  provider defaults
 - `TWIN_CLAUDE_DIR` — override the default `~/.claude/` state directory (useful
   for tests)

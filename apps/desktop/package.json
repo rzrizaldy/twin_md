@@ -12,7 +12,6 @@
     "prebuild": "npm run stage-assets",
     "build": "tauri build",
     "build:web": "vite build",
-    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri"
   },

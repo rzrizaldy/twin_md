@@ -8,6 +8,7 @@
   </head>
   <body class="window window-onboarding" data-window="onboarding">
     <main class="onboard wizard" data-current-step="0">
+      <div class="wizard-scroll">
       <nav class="wizard-dots" aria-label="onboarding progress">
         <span class="wizard-dot is-active" data-step-dot="0">brief</span>
         <span class="wizard-dot" data-step-dot="1">you</span>
@@ -17,6 +18,7 @@
         <span class="wizard-dot" data-step-dot="5" data-custom-only>craft</span>
         <span class="wizard-dot" data-step-dot="6">summon</span>
       </nav>
+      <p id="onboard-status" class="wizard-status" role="status" aria-live="polite"></p>
 
       <!-- Step 0 — brief -->
       <section class="wizard-step is-active" data-step="0">
@@ -45,7 +47,7 @@
             autocomplete="off"
           />
         </label>
-        <div class="choice-grid" style="max-width: 100%; margin-top: 12px;">
+        <div class="choice-grid choice-grid--wide">
           <button class="choice-card" type="button" data-vault-choice="existing">
             <strong>i have a vault</strong>
             <span>point to an obsidian folder</span>
@@ -81,15 +83,15 @@
       <!-- Step 3 — axolotl vs custom (prompt comes later) -->
       <section class="wizard-step" data-step="3">
         <h2>how should your twin look?</h2>
-        <p class="muted">default is the classic chibi axolotl. custom = you describe a creature; you'll preview it after the api key step.</p>
-        <div class="choice-grid" style="max-width: 100%;">
-          <label class="choice-card" style="cursor: pointer;">
-            <input type="radio" name="sprite-mode" value="default" checked style="display: none" />
+        <p class="muted">default is the classic chibi axolotl. custom = you describe a creature; you'll preview it if you add a provider key.</p>
+        <div class="choice-grid choice-grid--wide">
+          <label class="choice-card choice-card--label">
+            <input type="radio" name="sprite-mode" value="default" checked />
             <strong>axolotl (default)</strong>
-            <span>classic twin.md axiotyle</span>
+            <span>classic twin.md axolotl</span>
           </label>
-          <label class="choice-card" style="cursor: pointer;">
-            <input type="radio" name="sprite-mode" value="custom" style="display: none" />
+          <label class="choice-card choice-card--label">
+            <input type="radio" name="sprite-mode" value="custom" />
             <strong>custom prompt</strong>
             <span>you'll write &amp; preview the look in the next steps</span>
           </label>
@@ -98,16 +100,19 @@
 
       <!-- Step 4 — provider + key (+ rembg note) -->
       <section class="wizard-step" data-step="4">
-        <h2>ai provider</h2>
+        <h2>local intelligence</h2>
         <p class="muted model-tier-hint">
-          an API key is required for chat, sprite evolution, and brain-aware replies.
-          stored in <code>~/.claude/twin-ai.json</code> (permissions 600) by default.
+          twin prefers your local Claude/Codex + MCP setup. Provider keys are optional fallback power tools for image generation, sprite evolution, and direct API chat.
         </p>
-        <div class="rembg-hint" id="rembg-hint" style="font-size: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(71, 54, 67, 0.06); margin-bottom: 10px; line-height: 1.45;">
+        <div class="detection-card" id="local-agent-status" data-detection="local-agent">
+          <span class="detection-icon" aria-hidden="true">·</span>
+          <span class="detection-body">checking local agent…</span>
+        </div>
+        <div class="rembg-hint" id="rembg-hint">
           <strong>sprites &amp; /image</strong> (openai &amp; google) use
           <a href="https://github.com/danielgatis/rembg" target="_blank" rel="noreferrer">rembg</a>
           for background removal. install once on your machine:
-          <code style="user-select: all; display: block; margin-top: 4px">pipx install "rembg[cpu,cli]"</code>
+          <code>pipx install "rembg[cpu,cli]"</code>
         </div>
         <div class="provider-row" role="radiogroup" aria-label="provider">
           <label class="provider-card">
@@ -134,7 +139,7 @@
 
         <label class="field">
           <span>
-            API key
+            optional API key
             <a href="#" class="where-link" id="where-link" target="_blank" rel="noreferrer">
               where do i get this?
             </a>
@@ -149,9 +154,13 @@
           />
         </label>
 
-        <p class="muted" style="font-size: 12px; margin: 0 0 8px 0">
-          only sent to the provider you pick. you can add rembg in parallel; it's not required to finish this screen.
+        <p class="muted provider-note">
+          leave blank to use your local agent/MCP when available. if no local agent is ready, you can still skip and add a key later from chat settings.
         </p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="skip-provider" />
+          <span>skip direct provider setup for now</span>
+        </label>
         <label class="checkbox-row">
           <input type="checkbox" id="store-keychain" />
           <span>advanced: use OS keychain / credential manager instead of the file (may prompt to unlock more often on macOS)</span>
@@ -172,12 +181,12 @@
             autocomplete="off"
           ></textarea>
         </label>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
+        <div class="preview-actions">
           <button id="btn-gen-preview" class="secondary-button" type="button">generate preview</button>
-          <span id="preview-status" class="muted" style="font-size: 12px;"></span>
+          <span id="preview-status" class="muted preview-status"></span>
         </div>
-        <div id="preview-img-wrap" style="min-height: 120px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(71, 54, 67, 0.05); padding: 12px;">
-          <img id="preview-img" alt="" style="max-height: 200px; max-width: 100%; object-fit: contain; display: none;" />
+        <div id="preview-img-wrap" class="preview-img-wrap">
+          <img id="preview-img" alt="" class="preview-img" />
         </div>
       </section>
 
@@ -191,7 +200,6 @@
           we'll harvest your second brain, seed your <code>twin.md</code>, and
           wake the companion window. this usually takes a few seconds.
         </p>
-        <p id="onboard-status" class="muted"></p>
         <button
           id="open-chat-preview"
           class="text-button"
@@ -201,6 +209,7 @@
           open chat panel
         </button>
       </section>
+      </div>
 
       <footer class="wizard-footer">
         <button id="wizard-back" class="secondary-button" type="button" hidden>

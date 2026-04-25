@@ -38,8 +38,9 @@ pub fn open_onboarding(app: &AppHandle) -> Result<()> {
         WebviewUrl::App("onboarding.html".into()),
     )
     .title("meet your twin")
-    .inner_size(560.0, 620.0)
-    .resizable(false)
+    .inner_size(560.0, 640.0)
+    .resizable(true)
+    .min_inner_size(400.0, 420.0)
     .center()
     .visible(true)
     .build()

@@ -1,3 +1,4 @@
+import "./ensure-tauri.ts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { dismissBubble } from "./ipc.ts";
 import type { BubbleTone } from "./types.ts";

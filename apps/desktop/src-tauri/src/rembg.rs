@@ -24,7 +24,12 @@ pub fn resolve_rembg_binary() -> Option<PathBuf> {
                 return Some(p);
             }
             if let Ok(home) = std::env::var("HOME") {
-                for rel in [".local/bin/rembg", "Library/Python/3.12/bin/rembg"] {
+                for rel in [
+                    ".local/bin/rembg",
+                    "Library/Python/3.13/bin/rembg",
+                    "Library/Python/3.12/bin/rembg",
+                    "Library/Python/3.11/bin/rembg",
+                ] {
                     let cand = PathBuf::from(&home).join(rel);
                     if cand.is_file() {
                         return Some(cand);
@@ -75,10 +80,12 @@ pub async fn strip_bg(png: Vec<u8>) -> Result<Vec<u8>> {
             .map_err(|e| anyhow!("rembg stdin: {e}"))?;
     }
 
-    let out = match timeout(Duration::from_secs(30), child.wait_with_output()).await {
+    // First run can download/load the ONNX model, so keep this comfortably above
+    // normal per-image runtime while still preventing a permanently hung CLI.
+    let out = match timeout(Duration::from_secs(180), child.wait_with_output()).await {
         Ok(Ok(out)) => out,
         Ok(Err(e)) => return Err(anyhow!("rembg wait: {e}")),
-        Err(_) => return Err(anyhow!("rembg timed out after 30s")),
+        Err(_) => return Err(anyhow!("rembg timed out after 180s")),
     };
 
     if !out.status.success() {
@@ -92,5 +99,5 @@ pub async fn strip_bg(png: Vec<u8>) -> Result<Vec<u8>> {
 }
 
 pub fn rembg_install_hint_err() -> String {
-    "rembg_missing: install rembg for transparent sprites — pipx install \"rembg[cpu,cli]\"  (or pip install \"rembg[cpu,cli]\"), then restart twin.".to_string()
+    "rembg_missing: run pipx install \"rembg[cpu,cli]\" (or pip install \"rembg[cpu,cli]\"), then restart twin.".to_string()
 }

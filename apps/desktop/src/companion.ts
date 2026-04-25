@@ -1,7 +1,9 @@
+import "./ensure-tauri.ts";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getState,
+  getSpriteEvolution,
   onChatDone,
   onChatToken,
   onReminder,
@@ -9,7 +11,9 @@ import {
   onSpriteUpdated,
   onSpriteEvolving,
   onSpriteEvolveError,
+  onSpriteEvolveCooldown,
   openChatWindow,
+  saveChatSession,
   sendChat,
 } from "./ipc.ts";
 import type { PetState, Reminder, TwinMood, TwinSpecies } from "./types.ts";
@@ -66,12 +70,15 @@ function setSpriteFor(species: TwinSpecies, mood: TwinMood, frameName: string) {
 
 function render() {
   if (evolutionSpritePath) {
+    spriteWrap?.classList.add("has-evolved-sprite");
     sprite.src = convertFileSrc(evolutionSpritePath);
   } else {
+    spriteWrap?.classList.remove("has-evolved-sprite");
     setSpriteFor(current.species, current.state, frame);
   }
   caption.textContent = current.caption.toLowerCase();
   caption.hidden = false;
+  bubble.dataset.tone = current.state.replace("_", "-");
   ambientBubble.textContent = current.message || current.caption;
   ambientBubble.hidden = bubble.dataset.state !== "hidden";
 }
@@ -225,11 +232,7 @@ async function submitMessage(text: string) {
 async function logSessionToVault() {
   if (sessionTurns.length === 0) return;
   try {
-    await fetch("/api/chat/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, turns: sessionTurns }),
-    });
+    await saveChatSession(sessionId, sessionTurns);
   } catch {
     // Vault log is best-effort — don't surface errors to user
   }
@@ -355,6 +358,16 @@ async function init() {
   // Paint the default sprite immediately so the window never looks empty.
   render();
 
+  try {
+    const evo = await getSpriteEvolution();
+    if (evo.currentPath) {
+      evolutionSpritePath = evo.currentPath;
+      render();
+    }
+  } catch {
+    // Non-fatal; bundled sprites are always available.
+  }
+
   const fetched = await getState();
   if (fetched) {
     current = fetched;
@@ -372,6 +385,12 @@ async function init() {
 
   void onSpriteEvolveError(() => {
     spriteWrap?.classList.remove("is-evolving");
+  });
+
+  void onSpriteEvolveCooldown((payload) => {
+    const mins = Math.ceil(payload.waitSecs / 60);
+    ambientBubble.textContent = `evolution is resting — about ${mins}m.`;
+    ambientBubble.hidden = bubble.dataset.state !== "hidden";
   });
 
   void onSpriteUpdated((payload) => {
@@ -394,6 +413,7 @@ async function init() {
     // Auto-open the speech bubble with the reminder text
     sessionTurns = [];
     sessionId = crypto.randomUUID();
+    bubble.dataset.tone = reminder.tone;
     openBubble(reminder.body);
 
     // Also animate the pet briefly

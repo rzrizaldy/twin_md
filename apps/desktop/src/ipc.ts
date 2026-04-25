@@ -126,6 +126,19 @@ export interface SpriteUpdatePayload {
 
 export type SpriteEvolvingReason = "auto" | "manual";
 
+export interface SpriteEvolutionSnapshot {
+  currentPath: string | null;
+  isSvg: boolean;
+}
+
+export async function getSpriteEvolution(): Promise<SpriteEvolutionSnapshot> {
+  return invoke<SpriteEvolutionSnapshot>("get_sprite_evolution");
+}
+
+export async function generatedAssetDataUrl(path: string): Promise<string> {
+  return invoke<string>("generated_asset_data_url", { path });
+}
+
 export function onSpriteUpdated(
   cb: (payload: SpriteUpdatePayload) => void
 ): Promise<UnlistenFn> {
@@ -147,6 +160,14 @@ export function onSpriteEvolveError(
   cb: (payload: { message: string }) => void
 ): Promise<UnlistenFn> {
   return listen<{ message: string }>("twin://sprite-evolve-error", (event) =>
+    cb(event.payload)
+  );
+}
+
+export function onSpriteEvolveCooldown(
+  cb: (payload: { waitSecs: number }) => void
+): Promise<UnlistenFn> {
+  return listen<{ waitSecs: number }>("twin://sprite-evolve-cooldown", (event) =>
     cb(event.payload)
   );
 }

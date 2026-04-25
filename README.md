@@ -33,7 +33,9 @@ npm run build
 npm run dev:desktop
 ```
 
-That runs Vite on `http://localhost:1420` and the Tauri shell. For chat, add your own API key in the chat settings (BYOK) or use Claude via MCP as configured in onboarding.
+**You do not start a second “web product.”** `npm run dev:desktop` runs Tauri, which in turn **starts Vite on `localhost:1420`** so the *native* window can load the UI with hot reload. That local URL is the desktop dev pipeline only — not the public site, and not something you open in a normal browser (the `apps/desktop` build is Tauri-only).
+
+**Marketing / landing** lives in `apps/landing` and is deployed to [GitHub Pages](https://rzrizaldy.github.io/twin_md/). You only run `npm run dev:landing` when you are **editing** that site; day-to-day desk-app work does not use it.
 
 ## Everyday commands
 

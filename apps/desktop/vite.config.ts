@@ -10,6 +10,7 @@ export default defineConfig(() => ({
   server: {
     port: 1420,
     strictPort: true,
+    open: false, // Tauri webview loads this URL; do not auto-open a browser tab
     host: host || false,
     hmr: host
       ? { protocol: "ws", host, port: 1421 }
