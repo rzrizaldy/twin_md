@@ -10,14 +10,16 @@ const moods = [
 ] as const;
 ---
 
-<CozyLayout title="meet the cast" active="meet">
+<CozyLayout
+  title="meet Axiotyle"
+  description="Meet the default twin.md companion: one axolotl named Axiotyle, or describe your own custom desktop companion during onboarding."
+  active="meet"
+>
   <header class="mt-10 max-w-3xl">
-    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">character bible</p>
-    <h1 class="mt-2 font-display text-4xl sm:text-5xl">one axolotl, four moods, evolving art</h1>
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">companion</p>
+    <h1 class="mt-2 font-display text-4xl sm:text-5xl">one default companion, or describe your own</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      The desktop companion is a chibi axolotl. Your week shapes the <em>mood</em> lane; the app can
-      <strong>evolve</strong> the sprite (transparent PNG or SVG) as your state changes, or you can
-      describe a custom creature at setup.
+      Twin starts with Axiotyle, a soft chibi axolotl. During onboarding you can keep Axiotyle, describe a different creature, or upload a photo to redraw as a small desktop companion.
     </p>
   </header>
 
@@ -34,15 +36,14 @@ const moods = [
           class="inline-block rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]"
           style="background:var(--color-axolotl-accent);color:var(--color-paper)"
         >
-          axolotl
+          default
         </p>
         <h2 class="mt-2 font-display text-3xl">Axiotyle</h2>
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
           soft, curious, a little dramatic — the default twin.md look.
         </p>
         <p class="mt-4 max-w-xl text-[var(--color-ink)]">
-          Moods are driven by <code class="rounded bg-[var(--color-cream)] px-1.5 text-sm">twin.md</code>
-          and your sources; sprite evolution re-renders when mood and scene change.
+          Mood changes affect expression and scene, but the companion should stay recognizable. Custom characters are created intentionally with <code class="rounded bg-[var(--color-cream)] px-1.5 text-sm">/change-char</code>; iterations use <code class="rounded bg-[var(--color-cream)] px-1.5 text-sm">/evolution</code>.
         </p>
         <div class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {moods.map((m) => (
@@ -53,6 +54,28 @@ const moods = [
               <figcaption class="text-[10px] text-[var(--color-ink-soft)]">{m.label}</figcaption>
             </figure>
           ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-[1.75rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">custom setup</p>
+      <h2 class="mt-1 font-display text-2xl">Describe your own companion</h2>
+      <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
+        Try prompts like “Doraemon as a tiny desktop helper,” “a sleepy Pittsburgh raccoon,” or “a calm study dragon.” Twin saves the generated character and should keep future evolutions close to that first summon.
+      </p>
+      <div class="mt-5 grid gap-4 sm:grid-cols-3">
+        <div>
+          <h3 class="font-display text-lg">New identity</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">Use <code class="rounded bg-[var(--color-paper)] px-1 text-xs">/change-char</code> when you want a brand-new character.</p>
+        </div>
+        <div>
+          <h3 class="font-display text-lg">Small iteration</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">Use <code class="rounded bg-[var(--color-paper)] px-1 text-xs">/evolution</code> when you want the same character adjusted.</p>
+        </div>
+        <div>
+          <h3 class="font-display text-lg">Photo style</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">Upload a reference photo if you want a character inspired by a real object, pet, or sketch.</p>
         </div>
       </div>
     </section>

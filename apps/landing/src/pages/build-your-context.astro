@@ -7,13 +7,17 @@ const rawBase = import.meta.env.BASE_URL;
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 ---
 
-<CozyLayout title="build your context" active="context">
+<CozyLayout
+  title="build your context"
+  description="How to help twin.md understand you: start with an Obsidian vault, then optionally add a short CLAUDE.md file for voice and preferences."
+  active="context"
+>
   <header class="mt-10 grid gap-8 sm:grid-cols-[2fr_1fr] sm:items-center">
     <div>
       <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">feed your twin</p>
-      <h1 class="mt-2 font-display text-4xl sm:text-5xl">a system prompt that sounds like you</h1>
+      <h1 class="mt-2 font-display text-4xl sm:text-5xl">your vault is the memory. your prompt is the voice.</h1>
       <p class="mt-4 max-w-2xl text-[var(--color-ink-soft)]">
-        A good twin isn’t powered by a better model, it’s powered by a better <em>you-file</em>. Andrej Karpathy wrote a short gist on growing one. Read it, riff on it, and drop the result into <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/CLAUDE.md</code>. Your twin will harvest it next refresh.
+        The fastest way to make Twin useful is to point it at the notes you already keep. If you want it to sound more like you, add a short <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">CLAUDE.md</code> with your working style.
       </p>
     </div>
     <div class="flex justify-center">
@@ -23,12 +27,34 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
     </div>
   </header>
 
-  <KarpathyGist />
+  <section class="mt-16 grid gap-4 sm:grid-cols-3">
+    <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
+      <p class="font-mono text-xs text-[var(--color-ink-soft)]">01</p>
+      <h2 class="mt-2 font-display text-xl">Choose your vault</h2>
+      <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+        Obsidian, a Markdown folder, class notes, project notes, daily logs — this is the real context.
+      </p>
+    </article>
+    <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
+      <p class="font-mono text-xs text-[var(--color-ink-soft)]">02</p>
+      <h2 class="mt-2 font-display text-xl">Ask specific questions</h2>
+      <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+        “What do I know about EVPI?” is better than “summarize my vault.” Twin retrieves matching notes first.
+      </p>
+    </article>
+    <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
+      <p class="font-mono text-xs text-[var(--color-ink-soft)]">03</p>
+      <h2 class="mt-2 font-display text-xl">Add voice later</h2>
+      <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+        A small CLAUDE.md file tells Twin how to speak, what to prioritize, and what to avoid.
+      </p>
+    </article>
+  </section>
 
   <section class="mt-16">
-    <h2 class="font-display text-2xl">what to put in the file</h2>
+    <h2 class="font-display text-2xl">what to put in CLAUDE.md</h2>
     <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
-      Three sections. Short is good. The point is not coverage, it’s voice — your creature will extrapolate.
+      This file is optional. Keep it short: identity, work style, and current focus.
     </p>
 
     <div class="mt-6 grid gap-4 sm:grid-cols-3">
@@ -45,7 +71,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
           <p class="font-mono text-xs text-[var(--color-ink-soft)]">{'{{role}}'}</p>
         </div>
         <h3 class="font-display text-xl">who you are</h3>
-        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">A sentence about what you do. One sentence about what you’re good at. One about what you avoid.</p>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">What you do, what you care about, and where you want the assistant to be careful.</p>
       </article>
       <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
         <div class="mb-4 flex items-center gap-3">
@@ -60,7 +86,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
           <p class="font-mono text-xs text-[var(--color-ink-soft)]">{'{{values}}'}</p>
         </div>
         <h3 class="font-display text-xl">how you work</h3>
-        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">Your non-negotiables. Deep-work cadence. The thing that always gets dropped when you’re underwater.</p>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">Your defaults: concise or detailed, direct or gentle, fast iteration or careful planning.</p>
       </article>
       <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
         <div class="mb-4 flex items-center gap-3">
@@ -74,8 +100,8 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
           />
           <p class="font-mono text-xs text-[var(--color-ink-soft)]">{'{{current_focus}}'}</p>
         </div>
-        <h3 class="font-display text-xl">what you want next</h3>
-        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">A two-week horizon. Not lifetime goals — what would make this fortnight feel like a win.</p>
+        <h3 class="font-display text-xl">what matters now</h3>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">The current semester, product, job search, project, or life focus Twin should keep in mind.</p>
       </article>
     </div>
 
@@ -99,6 +125,8 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
       </p>
     </div>
   </section>
+
+  <KarpathyGist />
 
   <section class="mt-16 rounded-[1.75rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
     <div class="flex flex-wrap items-center justify-between gap-4">

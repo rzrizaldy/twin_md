@@ -11,27 +11,53 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     </p>
   </header>
 
-  <!-- Section 1: One-liner -->
   <section class="mt-10" id="quick-start">
-    <h2 class="font-display text-2xl">1. desktop app</h2>
-    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">The easiest path for most people. Install the app, pick a vault, then chat with the companion.</p>
+    <h2 class="font-display text-2xl">For most people</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">You only need the desktop app and an Obsidian or Markdown folder.</p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <ol class="grid gap-5 sm:grid-cols-3">
+        <li>
+          <p class="font-mono text-xs text-[var(--color-ink-soft)]">01</p>
+          <h3 class="mt-1 font-display text-xl">Download</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+            Get the newest macOS <code class="rounded bg-[var(--color-paper)] px-1 text-xs">.dmg</code> from GitHub Releases.
+          </p>
+        </li>
+        <li>
+          <p class="font-mono text-xs text-[var(--color-ink-soft)]">02</p>
+          <h3 class="mt-1 font-display text-xl">Open</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+            Drag Twin to Applications. If macOS warns you, right-click the app and choose Open.
+          </p>
+        </li>
+        <li>
+          <p class="font-mono text-xs text-[var(--color-ink-soft)]">03</p>
+          <h3 class="mt-1 font-display text-xl">Pick a vault</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+            Onboarding asks for your Obsidian or Markdown vault. Twin uses that folder for retrieval and restore.
+          </p>
+        </li>
+      </ol>
       <a
         href="https://github.com/rzrizaldy/twin_md/releases"
         target="_blank"
         rel="noreferrer"
-        class="inline-flex items-center rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
+        class="mt-6 inline-flex items-center rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
       >
-        download from GitHub Releases →
+        download latest release →
       </a>
-      <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
-        Look for the latest <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin_*_aarch64.dmg</code> if you are on Apple Silicon.
-      </p>
-      <div class="mt-6 border-t border-[var(--color-ink)]/10 pt-5">
-        <h3 class="font-display text-lg">CLI setup, if you want Claude Desktop wiring</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">This scaffolds config, seeds <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin.md</code>, and registers the MCP server.</p>
+    </div>
+  </section>
+
+  <section class="mt-12" id="optional-cli">
+    <h2 class="font-display text-2xl">Optional: Claude Desktop wiring</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">Use this only if you want the CLI and MCP bridge. New users can skip it at first.</p>
+    <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <div>
+        <h3 class="font-display text-lg">CLI setup</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">This seeds Twin context and registers the MCP server for Claude Desktop.</p>
       </div>
-      <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+      <div class="mt-4 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
         <span class="text-[var(--color-ink-soft)]">$</span>
         <code>npx twin-md init</code>
         <button
@@ -41,7 +67,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
         >copy</button>
       </div>
       <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
-        Writes <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin.config.json</code>, creates <code class="rounded bg-[var(--color-paper)] px-1 text-xs">~/.claude/twin.md</code>, and registers the twin MCP server for Claude Desktop.
+        You do not need to memorize generated file paths. The desktop app and CLI manage the setup.
       </p>
       <div class="mt-4 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
         <span class="text-[var(--color-ink-soft)]">$</span>
@@ -58,14 +84,10 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     </div>
   </section>
 
-  <!-- Section 2: Local dev from source -->
   <section class="mt-12" id="local-dev">
-    <h2 class="font-display text-2xl">2. local dev from source</h2>
+    <h2 class="font-display text-2xl">Develop from source</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      Hacking the repo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri + Rust IPC + Vite UI), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/landing</code> (Astro), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/brain</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/mcp</code>, and <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/cli</code>.
-    </p>
-    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      Prebuilt desktop: <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" target="_blank" rel="noreferrer">GitHub Releases</a> (look for the newest <code class="rounded bg-[var(--color-cream)] px-1 text-xs">twin_*_aarch64.dmg</code> asset).
+      For contributors: the desktop app is Tauri + Rust + Vite, and the landing page is Astro.
     </p>
     <div class="mt-4 flex flex-col gap-3 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       {[
@@ -90,9 +112,8 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     </div>
   </section>
 
-  <!-- Section 3: Wire a provider key -->
   <section class="mt-12" id="api-keys">
-    <h2 class="font-display text-2xl">3. optional provider keys</h2>
+    <h2 class="font-display text-2xl">Optional provider keys</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
       Claude Desktop MCP can handle local context. Add Anthropic/OpenAI/Gemini keys when you want direct in-app chat, generated backgrounds, or custom sprites.
     </p>
@@ -132,33 +153,19 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     </div>
   </section>
 
-  <!-- Section 4: Verify the pet is alive -->
   <section class="mt-12" id="verify">
-    <h2 class="font-display text-2xl">4. verify the pet is alive</h2>
-    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">After first harvest, these files should exist:</p>
+    <h2 class="font-display text-2xl">If something feels wrong</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">Start here before digging through internal files.</p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
-      <ul class="space-y-2 font-mono text-sm">
-        {[
-          '~/.claude/twin.md',
-          '~/.claude/twin.config.json',
-          '~/.claude/twin-state.json',
-          '~/.claude/twin-buddy-memory.jsonl',
-        ].map((f) => (
-          <li class="flex items-center gap-2">
-            <span class="text-[var(--color-ink-soft)]">✓</span>
-            <code class="rounded bg-[var(--color-paper)] px-1.5 py-0.5">{f}</code>
-          </li>
-        ))}
-      </ul>
-      <div class="mt-6 border-t border-[var(--color-ink)]/10 pt-4">
-        <p class="text-sm font-medium mb-2">run the pet in the terminal (or use the Tauri app after <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm run dev:desktop</code> / a release build):</p>
+      <div>
+        <p class="text-sm font-medium mb-2">Developer smoke test:</p>
         <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
           <span class="text-[var(--color-ink-soft)]">$</span>
           <code>twin-md watch</code>
           <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="twin-md watch">copy</button>
         </div>
       </div>
-      <details class="mt-6">
+      <details class="mt-6" open>
         <summary class="cursor-pointer text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">troubleshooting</summary>
         <div class="mt-3 space-y-3 text-sm text-[var(--color-ink-soft)]">
           <div>
@@ -179,7 +186,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
   </section>
 
   <section class="mt-12 mb-16" id="sprite-deps">
-    <h2 class="font-display text-2xl">5. custom sprites</h2>
+    <h2 class="font-display text-2xl">Custom sprites</h2>
     <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
       Prompt and photo sprites use image generation plus optional background removal. The desktop onboarding can guide installation, or you can install it yourself:
     </p>

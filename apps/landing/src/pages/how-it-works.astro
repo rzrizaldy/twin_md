@@ -1,100 +1,109 @@
 ---
 import CozyLayout from '../layouts/CozyLayout.astro';
 
-const sources = [
-  { name: 'Apple Health', path: '~/twin-sources/health.json', hint: 'sleep · steps · HRV · workouts' },
-  { name: 'Calendar ICS', path: '~/twin-sources/calendar.ics', hint: 'meeting load · density · deadlines' },
-  { name: 'Claude memory', path: '~/.claude/', hint: 'CLAUDE.md · MEMORY.md · summaries' },
-  { name: 'Obsidian vault', path: 'configurable', hint: 'recent notes · tags · unfinished todos' },
-  { name: 'Location', path: '~/twin-sources/location.json', hint: 'home-ratio · novelty cues' },
+const integrations = [
+  { name: 'Obsidian', role: 'your Markdown vault', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]' },
+  { name: 'Claude', role: 'local agent + MCP handoff', tone: 'bg-[#d97706]/10 text-[#92400e]' },
+  { name: 'OpenAI', role: 'optional model provider', tone: 'bg-[#10a37f]/10 text-[#047857]' },
+  { name: 'Gemini', role: 'optional model provider', tone: 'bg-[#4285f4]/10 text-[#1d4ed8]' },
+  { name: 'Spotify', role: 'approved desktop action', tone: 'bg-[#1db954]/10 text-[#15803d]' },
+  { name: 'Playwright', role: 'approved browser action', tone: 'bg-[#2563eb]/10 text-[#1e40af]' },
+  { name: 'Reminders', role: 'approved personal action', tone: 'bg-[var(--color-pink)] text-[var(--color-ink)]' },
 ];
 
 const steps = [
   {
-    k: '01 · harvest',
-    t: 'local sources → one file',
-    b: 'Health, calendar, Claude files, Obsidian, and optional location signals merge into ~/.claude/twin.md.',
+    k: '01',
+    t: 'Choose a vault',
+    b: 'During onboarding, Twin remembers the Obsidian or Markdown folder you point it at. That vault becomes the main knowledge source.',
   },
   {
-    k: '02 · interpret',
-    t: 'twin.md → twin-state.json',
-    b: 'A local interpreter writes energy, stress, mood, scene, caption, and sprite state to one JSON file.',
+    k: '02',
+    t: 'Ask or save',
+    b: 'The desktop chat can retrieve relevant notes, count what is in the vault, save inbox thoughts, and keep session snapshots.',
   },
   {
-    k: '03 · act',
-    t: 'desktop + MCP',
-    b: 'The Tauri companion queues desktop actions as local JSONL. Terminal approval flips them from needs_approval to pending, then Claude Desktop can execute through MCP.',
+    k: '03',
+    t: 'Approve actions',
+    b: 'Desktop actions start blocked. You approve a capability like Spotify, Playwright, or Reminders once, then future matching requests can move faster.',
   },
 ];
 ---
 
-<CozyLayout title="how it works" active="how">
+<CozyLayout
+  title="how it works"
+  description="How twin.md connects an Obsidian vault, local desktop app, AI providers, and approved actions without turning into a cloud dashboard."
+  active="how"
+>
   <header class="mt-10 max-w-3xl">
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">architecture</p>
-    <h1 class="mt-2 font-display text-4xl sm:text-5xl">local files, small surfaces</h1>
+    <h1 class="mt-2 font-display text-4xl sm:text-5xl">your vault stays the center</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      twin.md is a monorepo: TypeScript packages for CLI/core/MCP, an Astro landing page, and a Tauri desktop app with a Rust backend. The shared contract is still plain files under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>.
+      Twin is a local desktop app with a small Rust backend. It reads the vault you selected, shows a companion window, and only hands off desktop actions after approval.
     </p>
   </header>
 
-  <!-- Pipeline diagram -->
   <section class="mt-12 rounded-[2rem] border border-[var(--color-ink)]/10 bg-gradient-to-br from-[var(--color-cream)] to-[var(--color-mint)] p-6 sm:p-10">
-    <div class="grid gap-4 text-sm sm:grid-cols-5 sm:items-stretch">
-      <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
-        <p class="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">local sources</p>
-        <ul class="mt-2 space-y-1 text-xs text-[var(--color-ink)]">
-          {sources.map((s) => (
-            <li>
-              <span class="font-medium">{s.name}</span>
-              <br />
-              <code class="text-[10px] text-[var(--color-ink-soft)]">{s.path}</code>
-            </li>
-          ))}
-        </ul>
+    <div class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <div>
+        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">plain English</p>
+        <h2 class="mt-1 font-display text-3xl sm:text-4xl">not a giant cloud brain</h2>
+        <p class="mt-3 text-[var(--color-ink-soft)]">
+          Think of Twin as a friendly desktop layer over files you already own: your vault, your local config, and your approved action queue.
+        </p>
       </div>
 
-      <div class="flex flex-col items-center justify-center py-2 sm:py-0">
-        <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">harvest</span>
-        <span aria-hidden="true" class="mt-1 text-2xl text-[var(--color-ink-soft)] sm:hidden">↓</span>
-        <span aria-hidden="true" class="mt-1 hidden text-2xl text-[var(--color-ink-soft)] sm:inline">→</span>
-      </div>
-
-      <div class="rounded-2xl border border-[var(--color-ink)]/20 bg-[var(--color-paper)] p-4 ring-2 ring-[var(--color-axolotl-accent)]/30">
-        <p class="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">single source of truth</p>
-        <p class="mt-2 font-display text-xl">twin.md</p>
-        <p class="mt-1 text-[11px] text-[var(--color-ink-soft)]">health · calendar · location · claude_memory_signals · obsidian_signals · now</p>
-        <p class="mt-3 font-mono text-[10px] text-[var(--color-ink-soft)]">→ twin-state.json</p>
-      </div>
-
-      <div class="flex flex-col items-center justify-center py-2 sm:py-0">
-        <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">render</span>
-        <span aria-hidden="true" class="mt-1 text-2xl text-[var(--color-ink-soft)] sm:hidden">↓</span>
-        <span aria-hidden="true" class="mt-1 hidden text-2xl text-[var(--color-ink-soft)] sm:inline">→</span>
-      </div>
-
-      <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
-        <p class="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">every surface</p>
-        <ul class="mt-2 space-y-1 text-xs text-[var(--color-ink)]">
-          <li>Terminal pet (<code class="text-[10px]">twin watch</code>)</li>
-          <li>Action approval (<code class="text-[10px]">twin-md action approve</code>)</li>
-          <li>Tauri desktop companion</li>
-          <li>Claude Desktop (MCP)</li>
-          <li>Astro landing page</li>
-        </ul>
+      <div class="grid gap-3 sm:grid-cols-2">
+        {integrations.map((item) => (
+          <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
+            <span class:list={['inline-flex rounded-full px-3 py-1 text-sm font-semibold', item.tone]}>
+              {item.name}
+            </span>
+            <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{item.role}</p>
+          </div>
+        ))}
       </div>
     </div>
   </section>
 
-  <!-- Three steps -->
-  <section class="mt-12 grid gap-4 sm:grid-cols-3">
-    {
-      steps.map((s) => (
-        <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
-          <p class="font-mono text-xs text-[var(--color-ink-soft)]">{s.k}</p>
-          <h3 class="mt-2 font-display text-xl">{s.t}</h3>
-          <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{s.b}</p>
-        </article>
-      ))
-    }
+  <section class="mt-12 grid gap-4 lg:grid-cols-3">
+    {steps.map((s) => (
+      <article class="rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6">
+        <p class="font-mono text-xs text-[var(--color-ink-soft)]">{s.k}</p>
+        <h3 class="mt-2 font-display text-xl">{s.t}</h3>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{s.b}</p>
+      </article>
+    ))}
+  </section>
+
+  <section class="mt-12 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6 sm:p-8">
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">current architecture</p>
+    <h2 class="mt-1 font-display text-3xl sm:text-4xl">four small loops</h2>
+    <div class="mt-6 grid gap-5 md:grid-cols-2">
+      <div>
+        <h3 class="font-display text-xl">Vault retrieval</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Read-only tools scan and retrieve Markdown from the onboarding vault before answering vault questions.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-display text-xl">Session restore</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Non-secret profile state is saved under <code class="rounded bg-[var(--color-cream)] px-1 text-xs">.twin-md</code> inside your vault.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-display text-xl">AI providers</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Claude Desktop can use MCP. Anthropic, OpenAI, or Gemini keys are optional for direct chat and image generation.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-display text-xl">Approved action queue</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Spotify, browser, and reminders requests go through a local permission queue instead of running silently.
+        </p>
+      </div>
+    </div>
   </section>
 </CozyLayout>
