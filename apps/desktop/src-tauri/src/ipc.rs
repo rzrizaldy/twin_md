@@ -148,6 +148,7 @@ pub fn apply_custom_sprite_preview(app: AppHandle, prompt: String, path: String)
         serde_json::json!({
             "kind": "custom",
             "customPrompt": prompt.trim(),
+            "initialPath": canonical.display().to_string(),
             "currentPath": canonical.display().to_string(),
             "updatedAt": chrono::Local::now().to_rfc3339()
         }),
@@ -391,8 +392,30 @@ fn merge_sprite_evolution(v: &serde_json::Value) -> Result<(), String> {
     if !value.is_object() {
         value = serde_json::json!({});
     }
+    let mut sprite_evolution = v.clone();
+    if sprite_evolution
+        .get("kind")
+        .and_then(|kind| kind.as_str())
+        == Some("custom")
+        && sprite_evolution.get("initialPath").is_none()
+    {
+        if let Some(current_path) = sprite_evolution
+            .get("currentPath")
+            .and_then(|path| path.as_str())
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+            .map(str::to_string)
+        {
+            if let Some(obj) = sprite_evolution.as_object_mut() {
+                obj.insert(
+                    "initialPath".to_string(),
+                    serde_json::Value::String(current_path),
+                );
+            }
+        }
+    }
     let o = value.as_object_mut().expect("object");
-    o.insert("spriteEvolution".into(), v.clone());
+    o.insert("spriteEvolution".into(), sprite_evolution);
     let json = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
     fs::write(&p, json).map_err(|e| e.to_string())?;
     Ok(())

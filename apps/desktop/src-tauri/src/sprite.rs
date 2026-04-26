@@ -4,7 +4,6 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use serde_json::json;
-use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 
@@ -17,8 +16,6 @@ use std::fs;
 
 const DEFAULT_AXO: &str = "Cute chibi axolotl: pink-peach body, feathery external gills, big dark eyes, \
 soft-serve line art, friendly proportions, paper-cutout style, single character only.";
-
-const MIN_EVOLVE_INTERVAL: Duration = Duration::from_secs(15 * 60);
 
 static EVO_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
@@ -118,17 +115,17 @@ fn build_evolutionary_prompt_with_baseline(state: &PetState, base: &str, custom_
     let mood = mood_key(&state.state);
     let env = env_key(&state.environment);
     let mutation_hint = if custom_identity {
-        "expression, pose, accessory emphasis, line weight, tint"
+        "tiny expression or tint adjustments only; no outfit, hair, body, age, species, or silhouette changes"
     } else {
         "pose, eyes, gill color, line weight, tint"
     };
     let identity_rule = if custom_identity {
-        "CUSTOM IDENTITY RULE: The BASELINE is binding. Preserve the first-summon character almost exactly: same silhouette, age, clothing, color family, face structure, and recognizable identity. Do not add axolotl gills, cat ears, slime body, or any default twin.md mascot traits unless BASELINE explicitly asks for them."
+        "CUSTOM IDENTITY RULE: The first-summon character is sacred. Preserve it almost exactly: same silhouette, age, clothing, hair, body proportions, face structure, color family, and recognizable identity. Mood and scene may NEVER redesign the character. Do not add axolotl gills, cat ears, slime body, or any default twin.md mascot traits unless BASELINE explicitly asks for them."
     } else {
         "DEFAULT IDENTITY RULE: Preserve the selected bundled species identity."
     };
     let mood_cues = if custom_identity {
-        "Mood is secondary. Apply it as a tiny acting note only: a slight eyelid, micro-pose, or very subtle tint. Never redesign the character for mood. The sprite must still look like the same first-summon image at a glance."
+        "Mood is secondary and optional. If mood is sad/stressed/tired, do NOT make a visibly sad new character. At most use a tiny eyelid change, micro-pose, or barely visible tint. Never change clothes, hair, face shape, body, species, age, or silhouette. The result must look like the same first-summon image at a glance."
     } else {
         "Mood -> visual cues (apply lightly, keep silhouette):\n- healthy: upright, warm saturation, soft smile\n- sleep_deprived: droopy lids, slight slouch, cool muted palette\n- stressed: tense micro-pose, slightly warmer stress tint\n- neglected: dimmer color, averted eye line, quieter posture"
     };
@@ -171,43 +168,6 @@ CURRENT STATE (subtle, small mutations only — {mutation_hint}):
         state.stress,
         cap = state.caption.replace('"', "'")
     )
-}
-
-fn read_last_pair() -> Option<(String, String, String)> {
-    let bytes = fs::read(twin_config_path()).ok()?;
-    let v: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    let se = v.get("spriteEvolution")?;
-    let s = se.get("lastSpecies")?.as_str()?.to_string();
-    let a = se.get("lastMood")?.as_str()?.to_string();
-    let b = se.get("lastEnvironment")?.as_str()?.to_string();
-    Some((s, a, b))
-}
-
-fn read_updated_at_utc() -> Option<chrono::DateTime<chrono::Utc>> {
-    let bytes = fs::read(twin_config_path()).ok()?;
-    let v: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    let t = v
-        .get("spriteEvolution")?
-        .get("updatedAt")?
-        .as_str()?;
-    chrono::DateTime::parse_from_rfc3339(t)
-        .ok()
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-}
-
-fn rate_limit_wait_secs() -> Option<u64> {
-    let t = read_updated_at_utc()?;
-    let now = chrono::Utc::now();
-    let elapsed = now
-        .signed_duration_since(t)
-        .num_seconds()
-        .max(0) as u64;
-    let window = MIN_EVOLVE_INTERVAL.as_secs();
-    if elapsed >= window {
-        None
-    } else {
-        Some(window - elapsed)
-    }
 }
 
 fn needs_rembg_for_provider() -> bool {
@@ -314,55 +274,18 @@ pub fn current_snapshot() -> SpriteEvolutionSnapshot {
     }
 }
 
-/// If mood or environment changed from last saved evolution, return true.
-fn needs_evolution(state: &PetState) -> bool {
-    let s = species_key(&state.species);
-    let m = mood_key(&state.state);
-    let e = env_key(&state.environment);
-    match read_last_pair() {
-        None => true,
-        Some((ls, lm, le)) => ls != s || lm != m || le != e,
-    }
-}
-
 /// Called when `twin-state.json` changes (mood or scene lane).
 pub async fn on_pet_state_changed(app: &AppHandle, state: PetState) -> Result<()> {
     if !custom_evolution_enabled() {
         return Ok(());
     }
 
-    if !needs_evolution(&state) {
-        return Ok(());
-    }
-    if let Some(wait) = rate_limit_wait_secs() {
-        let _ = app.emit(
-            "twin://sprite-evolve-cooldown",
-            json!({ "waitSecs": wait }),
-        );
-        return Ok(());
-    }
-    if needs_rembg_for_provider() && !rembg::is_available() {
-        let _ = app.emit(
-            "twin://sprite-evolve-error",
-            json!({ "message": rembg::rembg_install_hint_err() }),
-        );
-        return Ok(());
-    }
-    let _g = EVO_LOCK.lock().await;
-    if !needs_evolution(&state) {
-        return Ok(());
-    }
-    let _ = app.emit(
-        "twin://sprite-evolving",
-        json!({ "reason": "auto" }),
-    );
-    match run_evolution_inner(app, &state).await {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            let _ = app.emit("twin://sprite-evolve-error", json!({ "message": e.to_string() }));
-            Ok(())
-        }
-    }
+    // Never auto-regenerate custom/photo companions from mood changes. The
+    // accepted preview is the user's chosen identity; automatic re-rendering
+    // from text can drift into a different person/character.
+    let _ = app;
+    let _ = pin_current_sprite_to_state(&state);
+    Ok(())
 }
 
 /// Manual "regenerate" from UI.
