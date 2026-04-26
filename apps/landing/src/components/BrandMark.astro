@@ -1,0 +1,110 @@
+---
+import type { BrandMarkId } from '../brand-marks';
+
+/** Decorative brand marks (Simple Icons / app icon). Alt text empty when paired with visible labels. */
+interface Props {
+  mark: BrandMarkId;
+  size?: number;
+  class?: string;
+}
+
+const { mark, size = 22, class: className = '' } = Astro.props;
+
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+
+type SvgMarkId = Exclude<BrandMarkId, 'twin' | 'user' | 'list' | 'shield'>;
+
+const svgFile: Record<SvgMarkId, string> = {
+  anthropic: 'anthropic',
+  openai: 'openai',
+  googlegemini: 'googlegemini',
+  obsidian: 'obsidian',
+  spotify: 'spotify',
+  playwright: 'playwright',
+  apple: 'apple',
+};
+---
+
+{
+  mark === 'twin' ? (
+    <img
+      src={`${base}logos/twin-desktop.png`}
+      width={size}
+      height={size}
+      alt=""
+      class:list={['shrink-0 rounded-lg object-contain', className]}
+      decoding="async"
+    />
+  ) : mark === 'user' ? (
+    <svg
+      class:list={['shrink-0 text-[var(--color-ink)] opacity-80', className]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+      />
+    </svg>
+  ) : mark === 'list' ? (
+    <svg
+      class:list={['shrink-0 text-[var(--color-ink)] opacity-85', className]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <circle cx="5" cy="6" r="1.75" />
+      <circle cx="5" cy="12" r="1.75" />
+      <circle cx="5" cy="18" r="1.75" />
+      <rect x="9.5" y="4.25" width="11" height="3.5" rx="1" />
+      <rect x="9.5" y="10.25" width="11" height="3.5" rx="1" />
+      <rect x="9.5" y="16.25" width="8" height="3.5" rx="1" />
+    </svg>
+  ) : mark === 'shield' ? (
+    <svg
+      class:list={['shrink-0 text-[var(--color-ink)] opacity-85', className]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M12 3 4 6v5.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V6l-8-3Z"
+      />
+      <path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4" />
+    </svg>
+  ) : (
+    <img
+      src={`${base}logos/${svgFile[mark]}.svg`}
+      width={size}
+      height={size}
+      alt=""
+      class:list={['brand-mark-svg shrink-0 object-contain', className]}
+      decoding="async"
+    />
+  )
+}
+
+<style>
+  :global([data-theme='dark']) .brand-mark-svg {
+    filter: brightness(0) invert(1);
+    opacity: 0.88;
+  }
+</style>

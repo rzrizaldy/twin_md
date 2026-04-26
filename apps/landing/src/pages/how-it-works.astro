@@ -1,15 +1,17 @@
 ---
 import CozyLayout from '../layouts/CozyLayout.astro';
+import type { BrandMarkId } from '../brand-marks';
+import BrandMark from '../components/BrandMark.astro';
 
-const integrations = [
-  { name: 'Obsidian', role: 'Markdown vault', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]' },
-  { name: 'Claude Code', role: 'local chat · CLI + twin MCP', tone: 'bg-[#d97706]/10 text-[#92400e]' },
-  { name: 'Claude Desktop', role: 'optional · MCP + actions', tone: 'bg-[#ea580c]/10 text-[#9a3412]' },
-  { name: 'OpenAI', role: 'optional · sprites & backgrounds', tone: 'bg-[#10a37f]/10 text-[#047857]' },
-  { name: 'Gemini', role: 'optional · sprites & backgrounds', tone: 'bg-[#4285f4]/10 text-[#1d4ed8]' },
-  { name: 'Spotify', role: 'after approve', tone: 'bg-[#1db954]/10 text-[#15803d]' },
-  { name: 'Playwright', role: 'after approve', tone: 'bg-[#2563eb]/10 text-[#1e40af]' },
-  { name: 'Reminders', role: 'after approve', tone: 'bg-[var(--color-pink)] text-[var(--color-ink)]' },
+const integrations: { name: string; role: string; tone: string; mark: BrandMarkId }[] = [
+  { name: 'Obsidian', role: 'Markdown vault', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]', mark: 'obsidian' },
+  { name: 'Claude Code', role: 'local chat · CLI + twin MCP', tone: 'bg-[#d97706]/10 text-[#92400e]', mark: 'anthropic' },
+  { name: 'Claude Desktop', role: 'optional · MCP + actions', tone: 'bg-[#ea580c]/10 text-[#9a3412]', mark: 'anthropic' },
+  { name: 'OpenAI', role: 'optional · sprites & backgrounds', tone: 'bg-[#10a37f]/10 text-[#047857]', mark: 'openai' },
+  { name: 'Gemini', role: 'optional · sprites & backgrounds', tone: 'bg-[#4285f4]/10 text-[#1d4ed8]', mark: 'googlegemini' },
+  { name: 'Spotify', role: 'after approve', tone: 'bg-[#1db954]/10 text-[#15803d]', mark: 'spotify' },
+  { name: 'Playwright', role: 'after approve', tone: 'bg-[#2563eb]/10 text-[#1e40af]', mark: 'playwright' },
+  { name: 'Reminders', role: 'after approve', tone: 'bg-[var(--color-pink)] text-[var(--color-ink)]', mark: 'apple' },
 ];
 ---
 
@@ -39,15 +41,25 @@ const integrations = [
       <!-- 1: You → Twin -->
       <div class="how-flow__row how-flow__row--top">
         <div class="how-box how-box--compact">
-          <p class="how-box__title">You</p>
-          <p class="how-box__sub">onboarding · picks vault</p>
+          <div class="how-box__head">
+            <BrandMark mark="user" size={26} />
+            <div>
+              <p class="how-box__title">You</p>
+              <p class="how-box__sub">onboarding · picks vault</p>
+            </div>
+          </div>
         </div>
         <div class="how-flow__arrow how-flow__arrow--h" aria-hidden="true">
           <span />
         </div>
         <div class="how-box how-box--hero">
-          <p class="how-box__title">Twin.md</p>
-          <p class="how-box__sub">desktop app · chat · companion · Rust IPC</p>
+          <div class="how-box__head">
+            <BrandMark mark="twin" size={34} />
+            <div>
+              <p class="how-box__title">Twin.md</p>
+              <p class="how-box__sub">desktop app · chat · companion · Rust IPC</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -59,22 +71,37 @@ const integrations = [
       <div class="how-flow__row how-flow__row--triple">
         <div class="how-branch">
           <div class="how-box">
-            <p class="how-box__title">Vault</p>
-            <p class="how-box__sub">Obsidian / Markdown folder</p>
+            <div class="how-box__head">
+              <BrandMark mark="obsidian" size={26} />
+              <div>
+                <p class="how-box__title">Vault</p>
+                <p class="how-box__sub">Obsidian / Markdown folder</p>
+              </div>
+            </div>
             <p class="how-box__pill">read · retrieve snippets</p>
           </div>
         </div>
         <div class="how-branch">
           <div class="how-box">
-            <p class="how-box__title">Local chat</p>
-            <p class="how-box__sub">Claude Code or Codex CLI on your Mac, with twin MCP wired in—answers stay in the subprocess, not in a browser tab.</p>
+            <div class="how-box__head">
+              <BrandMark mark="anthropic" size={26} />
+              <div>
+                <p class="how-box__title">Local chat</p>
+                <p class="how-box__sub">Claude Code or Codex CLI on your Mac, with twin MCP wired in—answers stay in the subprocess, not in a browser tab.</p>
+              </div>
+            </div>
             <p class="how-box__pill">default for conversation</p>
           </div>
         </div>
         <div class="how-branch">
           <div class="how-box">
-            <p class="how-box__title">Action queue</p>
-            <p class="how-box__sub">local JSONL on disk</p>
+            <div class="how-box__head">
+              <BrandMark mark="list" size={26} />
+              <div>
+                <p class="how-box__title">Action queue</p>
+                <p class="how-box__sub">local JSONL on disk</p>
+              </div>
+            </div>
             <p class="how-box__pill">Spotify · Playwright · Reminders…</p>
           </div>
         </div>
@@ -85,10 +112,19 @@ const integrations = [
       </div>
 
       <div class="how-box how-box--wide how-box--note">
-        <p class="how-box__title">Optional provider keys</p>
-        <p class="how-box__sub">
-          Add Anthropic, OpenAI, or Gemini in settings when you want <strong>AI-generated sprites</strong>, <strong>scene wallpapers</strong>, or <strong>cloud API chat</strong> without installing the CLI. Keys are not required to use vault tools or the local CLI path.
-        </p>
+        <div class="how-box__head how-box__head--multi">
+          <div class="how-box__marks" aria-hidden="true">
+            <BrandMark mark="anthropic" size={24} />
+            <BrandMark mark="openai" size={24} />
+            <BrandMark mark="googlegemini" size={24} />
+          </div>
+          <div>
+            <p class="how-box__title">Optional provider keys</p>
+            <p class="how-box__sub">
+              Add Anthropic, OpenAI, or Gemini in settings when you want <strong>AI-generated sprites</strong>, <strong>scene wallpapers</strong>, or <strong>cloud API chat</strong> without installing the CLI. Keys are not required to use vault tools or the local CLI path.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="how-flow__spine" aria-hidden="true">
@@ -97,10 +133,15 @@ const integrations = [
 
       <!-- 3: Permission -->
       <div class="how-box how-box--wide">
-        <p class="how-box__title">Permission center</p>
-        <p class="how-box__sub">
-          Approve once per capability · or use <code class="rounded bg-[var(--color-cream)] px-1 text-[11px]">twin-md action</code> in Terminal · same queue
-        </p>
+        <div class="how-box__head">
+          <BrandMark mark="shield" size={28} />
+          <div>
+            <p class="how-box__title">Permission center</p>
+            <p class="how-box__sub">
+              Approve once per capability · or use <code class="rounded bg-[var(--color-cream)] px-1 text-[11px]">twin-md action</code> in Terminal · same queue
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="how-flow__spine how-flow__spine--dashed" aria-hidden="true">
@@ -109,10 +150,15 @@ const integrations = [
 
       <!-- 4: Claude optional -->
       <div class="how-box how-box--wide how-box--dashed">
-        <p class="how-box__title">Claude Desktop (separate app)</p>
-        <p class="how-box__sub">
-          Optional parallel setup: <code class="rounded bg-[var(--color-cream)] px-1 text-[11px]">npx twin-md init</code> registers the same twin MCP in <strong>Anthropic’s Claude Desktop</strong> so that app can poll the action queue, run computer-use, and resolve items. This does <em>not</em> replace in-app chat—it is an extra surface for power workflows.
-        </p>
+        <div class="how-box__head">
+          <BrandMark mark="anthropic" size={28} />
+          <div>
+            <p class="how-box__title">Claude Desktop (separate app)</p>
+            <p class="how-box__sub">
+              Optional parallel setup: <code class="rounded bg-[var(--color-cream)] px-1 text-[11px]">npx twin-md init</code> registers the same twin MCP in <strong>Anthropic’s Claude Desktop</strong> so that app can poll the action queue, run computer-use, and resolve items. This does <em>not</em> replace in-app chat—it is an extra surface for power workflows.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="how-flow__spine how-flow__spine--dashed" aria-hidden="true">
@@ -121,8 +167,17 @@ const integrations = [
 
       <!-- 5: Outcome -->
       <div class="how-box how-box--wide how-box--muted">
-        <p class="how-box__title">Real desktop &amp; apps</p>
-        <p class="how-box__sub">OS-level work happens here after approval—not silently in someone else’s cloud.</p>
+        <div class="how-box__head how-box__head--multi">
+          <div class="how-box__marks" aria-hidden="true">
+            <BrandMark mark="apple" size={24} />
+            <BrandMark mark="spotify" size={24} />
+            <BrandMark mark="playwright" size={24} />
+          </div>
+          <div>
+            <p class="how-box__title">Real desktop &amp; apps</p>
+            <p class="how-box__sub">OS-level work happens here after approval—not silently in someone else’s cloud.</p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -137,6 +192,7 @@ const integrations = [
       {
         integrations.map((item) => (
           <span class="inline-flex items-center gap-2 rounded-full border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-1.5 text-sm">
+            <BrandMark mark={item.mark} size={18} class="opacity-90" />
             <span class:list={['rounded-full px-2 py-0.5 text-xs font-semibold', item.tone]}>{item.name}</span>
             <span class="text-xs text-[var(--color-ink-soft)]">{item.role}</span>
           </span>
@@ -299,6 +355,24 @@ const integrations = [
   .how-box--note {
     background: color-mix(in srgb, var(--color-mint) 22%, var(--color-cream));
     border-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  }
+
+  .how-box__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .how-box__head--multi {
+    align-items: center;
+  }
+
+  .how-box__marks {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
   }
 
   .how-box__title {

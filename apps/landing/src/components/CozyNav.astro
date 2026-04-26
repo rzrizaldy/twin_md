@@ -21,14 +21,22 @@ const links: { id: Props['active']; href: string; label: string }[] = [
   <nav class="flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-wrap items-center gap-3">
       <a href={base} class="group inline-flex items-center gap-2 text-lg tracking-tight" aria-current={active === 'home' ? 'page' : undefined}>
-        <img
-          src={`${base}pets/axolotl/healthy/breath-a.png`}
-          alt=""
-          aria-hidden="true"
-          width="32"
-          height="32"
-          class="h-8 w-8 transition-transform duration-300 group-hover:-rotate-6"
-        />
+        <span class="inline-flex items-center gap-1.5" aria-hidden="true">
+          <img
+            src={`${base}logos/twin-desktop.png`}
+            alt=""
+            width="30"
+            height="30"
+            class="h-[30px] w-[30px] rounded-lg object-contain ring-1 ring-[var(--color-ink)]/10 transition-transform duration-300 group-hover:scale-105"
+          />
+          <img
+            src={`${base}pets/axolotl/healthy/breath-a.png`}
+            alt=""
+            width="30"
+            height="30"
+            class="h-[30px] w-[30px] transition-transform duration-300 group-hover:-rotate-6"
+          />
+        </span>
         <span class="font-display text-[1.05rem] font-medium">
           twin<span class="text-[var(--color-axolotl-accent)]">.</span>md
         </span>
