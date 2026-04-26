@@ -7,15 +7,30 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">install</p>
     <h1 class="mt-2 font-display text-4xl sm:text-5xl">get your twin running</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Node 20+ for the CLI/MCP server. The desktop app is Tauri (Rust + Vite). Everything important stays under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>; API keys are only needed for direct chat fallback or image generation.
+      Download the macOS desktop build, then choose your Obsidian or Markdown vault during onboarding. Node 20+ is only needed if you want the CLI/MCP tools or local development.
     </p>
   </header>
 
   <!-- Section 1: One-liner -->
   <section class="mt-10" id="quick-start">
-    <h2 class="font-display text-2xl">1. CLI + MCP</h2>
-    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">The fastest path. Scaffolds config, seeds twin.md, registers the MCP server.</p>
+    <h2 class="font-display text-2xl">1. desktop app</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">The easiest path for most people. Install the app, pick a vault, then chat with the companion.</p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <a
+        href="https://github.com/rzrizaldy/twin_md/releases"
+        target="_blank"
+        rel="noreferrer"
+        class="inline-flex items-center rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
+      >
+        download from GitHub Releases →
+      </a>
+      <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
+        Look for the latest <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin_*_aarch64.dmg</code> if you are on Apple Silicon.
+      </p>
+      <div class="mt-6 border-t border-[var(--color-ink)]/10 pt-5">
+        <h3 class="font-display text-lg">CLI setup, if you want Claude Desktop wiring</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">This scaffolds config, seeds <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin.md</code>, and registers the MCP server.</p>
+      </div>
       <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
         <span class="text-[var(--color-ink-soft)]">$</span>
         <code>npx twin-md init</code>
@@ -38,7 +53,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
         >copy</button>
       </div>
       <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-        Desktop handoffs start as <code class="rounded bg-[var(--color-paper)] px-1 text-xs">needs_approval</code>. Approve in Terminal; Claude Desktop then sees the action through MCP.
+        Desktop handoffs start as <code class="rounded bg-[var(--color-paper)] px-1 text-xs">needs_approval</code>. Approve in the app or Terminal; saved capabilities like Spotify, Playwright, and Reminders can run faster next time.
       </p>
     </div>
   </section>
@@ -50,7 +65,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
       Hacking the repo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri + Rust IPC + Vite UI), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/landing</code> (Astro), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/brain</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/mcp</code>, and <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/cli</code>.
     </p>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      Prebuilt desktop: <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" target="_blank" rel="noreferrer">GitHub Releases</a> (look for <code class="rounded bg-[var(--color-cream)] px-1 text-xs">desktop-v*</code> tags).
+      Prebuilt desktop: <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" target="_blank" rel="noreferrer">GitHub Releases</a> (look for the newest <code class="rounded bg-[var(--color-cream)] px-1 text-xs">twin_*_aarch64.dmg</code> asset).
     </p>
     <div class="mt-4 flex flex-col gap-3 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       {[

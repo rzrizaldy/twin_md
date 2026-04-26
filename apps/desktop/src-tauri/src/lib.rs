@@ -77,6 +77,7 @@ pub fn run() {
             ipc::create_starter_vault,
             ipc::save_provider_credentials,
             ipc::logout_provider_session,
+            ipc::sign_out_to_onboarding,
             ipc::list_models,
             // Chat window (Dinoki-style panel)
             ipc::open_chat_window,

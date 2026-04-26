@@ -118,6 +118,10 @@ export async function logoutProviderSession(): Promise<void> {
   await invoke("logout_provider_session");
 }
 
+export async function signOutToOnboarding(): Promise<void> {
+  await invoke("sign_out_to_onboarding");
+}
+
 export async function listModels(provider: AiProvider): Promise<ModelList> {
   return invoke<ModelList>("list_models", { provider });
 }

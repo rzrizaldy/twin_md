@@ -45,10 +45,10 @@ import {
   requestClaudeAction,
   retrieveVaultKnowledge,
   rejectTwinAction,
-  logoutProviderSession,
   runLocalCommand,
   saveProviderCredentials,
   saveVaultProfileUi,
+  signOutToOnboarding,
   validateProviderKey,
   onSpriteUpdated,
   onSpriteEvolving,
@@ -1661,18 +1661,23 @@ settingsSave.addEventListener("click", async () => {
 });
 
 settingsLogout.addEventListener("click", async () => {
+  const confirmed = window.confirm(
+    "Sign out of twin.md and return to onboarding? This clears the saved provider session and vault restore profile, but does not delete your Obsidian notes."
+  );
+  if (!confirmed) return;
   settingsLogout.disabled = true;
-  showSettingsStatus("logging out local provider session…");
+  showSettingsStatus("signing out and opening onboarding…");
   try {
-    await logoutProviderSession();
+    await persistSession();
+    await signOutToOnboarding();
     settingsKey.value = "";
     settingsKey.placeholder = "sk-ant-… / sk-… / AIza…";
     pillProvider.textContent = "local first";
     pillModel.textContent = "setup needed";
-    await persistSession();
-    showSettingsStatus("local provider session cleared. Claude Code/Desktop login is unchanged.", "ok");
+    showSettingsStatus("signed out. onboarding is open.", "ok");
+    await getCurrentWindow().close();
   } catch (e) {
-    showSettingsStatus(`logout failed: ${String(e)}`, "error");
+    showSettingsStatus(`sign out failed: ${String(e)}`, "error");
   } finally {
     settingsLogout.disabled = false;
   }

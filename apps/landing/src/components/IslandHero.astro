@@ -29,14 +29,14 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
     <div>
       <p class="inline-flex items-center gap-2 rounded-full border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 px-3 py-1 text-xs tracking-wide text-[var(--color-ink-soft)] backdrop-blur">
         <span class="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-slime-accent)]"></span>
-        local-first · no accounts
+        local-first · made for Obsidian vaults
       </p>
       <h1 class="mt-4 font-display text-4xl leading-[1.05] sm:text-6xl">
-        a local desktop companion<br />
-        <span class="wobble text-[var(--color-axolotl-accent)]">for Obsidian + Claude</span>
+        a desktop companion<br />
+        <span class="wobble text-[var(--color-axolotl-accent)]">that knows your notes</span>
       </h1>
       <p class="mt-5 max-w-xl text-[var(--color-ink-soft)] sm:text-lg">
-        twin.md turns your local notes, Claude context, and lightweight daily signals into a small pet on your desktop. Customize the character, chat with it, and hand off approved actions to Claude Desktop through MCP.
+        twin.md is a small pet and chat window for people who keep their life in Markdown. Point it at an Obsidian vault, ask what you know, save new thoughts, and approve useful desktop actions when you need them.
       </p>
 
       <div class="mt-7 flex flex-wrap items-center gap-3">
@@ -44,27 +44,27 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
           href={`${base}install`}
           class="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-paper)] transition-transform hover:-translate-y-0.5"
         >
-          install →
+          download / install →
         </a>
         <a
           href={`${base}how-it-works`}
           class="inline-flex items-center gap-2 rounded-full border border-[var(--color-ink)]/20 px-5 py-2.5 text-sm text-[var(--color-ink)] transition-colors hover:bg-[var(--color-paper)]"
         >
-          how it works
+          see how it works
         </a>
       </div>
 
       <div class="mt-6 inline-flex flex-col gap-2 sm:flex-row sm:items-center">
         <div class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-xs text-[var(--color-ink)]">
           <span class="text-[var(--color-ink-soft)]">$</span>
-          <span>npx twin-md init</span>
+          <span>choose vault in onboarding</span>
         </div>
         <a
           href="https://github.com/rzrizaldy/twin_md/releases"
           class="text-xs text-[var(--color-ink-soft)] underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]"
           target="_blank"
           rel="noreferrer"
-        >desktop builds on GitHub Releases →</a>
+        >macOS builds on GitHub Releases →</a>
       </div>
     </div>
 

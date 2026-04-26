@@ -1,102 +1,158 @@
 ---
 import CozyLayout from '../layouts/CozyLayout.astro';
 import IslandHero from '../components/IslandHero.astro';
-import KarpathyGist from '../components/KarpathyGist.astro';
 import BreathingSprite from '../components/BreathingSprite.astro';
 
 const rawBase = import.meta.env.BASE_URL;
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 ---
 
-<CozyLayout title="twin.md — desk companion for Obsidian + Claude (MCP)" active="home">
+<CozyLayout
+  title="twin.md — desktop companion for Obsidian vaults"
+  description="twin.md is a local desktop companion for people with Obsidian or Markdown vaults. It retrieves your notes, saves new thoughts, and helps with approved desktop actions."
+  active="home"
+>
   <IslandHero />
 
-  <!-- Current app -->
+  <!-- Plain explanation -->
+  <section class="mt-16 grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+    <div>
+      <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">what it is</p>
+      <h2 class="mt-1 font-display text-3xl sm:text-4xl">like OpenClaw, but for your desktop and your vault</h2>
+      <p class="mt-4 text-[var(--color-ink-soft)]">
+        Twin is not trying to become a giant productivity suite. It is a calm local companion that sits near your work, remembers the vault you selected during onboarding, and helps you use that knowledge without digging through folders.
+      </p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">Ask your vault</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          “What do I know about EVPI?” or “find my ML final notes” retrieves real Markdown from the Obsidian vault you chose.
+        </p>
+      </article>
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">Save thoughts back</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Capture inbox notes, mood logs, and chat summaries without leaving the companion.
+        </p>
+      </article>
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">Approve useful actions</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Let it hand off Spotify, browser, reminders, or desktop tasks only after you approve that capability.
+        </p>
+      </article>
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">Keep it local</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Your vault, chat snapshots, sprite state, and permissions stay on your machine or in your own vault folder.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Product flow -->
+  <section class="mt-16 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">how it feels</p>
+    <h2 class="mt-1 font-display text-3xl sm:text-4xl">one small window, three useful moves</h2>
+
+    <div class="mt-8 grid gap-6 lg:grid-cols-3">
+      <div>
+        <p class="font-mono text-xs text-[var(--color-ink-soft)]">01</p>
+        <h3 class="mt-2 font-display text-xl">Choose your vault</h3>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+          Onboarding points Twin at your Obsidian or Markdown folder. That becomes its home base.
+        </p>
+      </div>
+      <div>
+        <p class="font-mono text-xs text-[var(--color-ink-soft)]">02</p>
+        <h3 class="mt-2 font-display text-xl">Ask in normal language</h3>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+          It can scan, retrieve, and summarize your notes instead of answering from vibes.
+        </p>
+      </div>
+      <div>
+        <p class="font-mono text-xs text-[var(--color-ink-soft)]">03</p>
+        <h3 class="mt-2 font-display text-xl">Let it help on desktop</h3>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+          Approve a capability once, then future matching requests can move faster.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Companion personality -->
   <section class="mt-16">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">desktop app</p>
-        <h2 class="mt-1 font-display text-3xl sm:text-4xl">chat, companion, character</h2>
+        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">companion, not dashboard</p>
+        <h2 class="mt-1 font-display text-3xl sm:text-4xl">a pet-shaped interface for a serious notes folder</h2>
       </div>
       <a
-        href={`${base}install`}
+        href="https://github.com/rzrizaldy/twin_md/releases"
         class="text-sm text-[var(--color-ink-soft)] underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]"
+        target="_blank"
+        rel="noreferrer"
       >
-        install →
+        download release →
       </a>
     </div>
 
-    <div class="mt-8 grid gap-4 sm:grid-cols-3">
-      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
-        <h3 class="font-display text-lg">new character</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Use <code class="rounded bg-[var(--color-cream)] px-1 text-xs">/change-char</code> or upload a photo to create a fresh sprite identity.
-        </p>
-      </article>
-      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
-        <h3 class="font-display text-lg">safe evolution</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Use <code class="rounded bg-[var(--color-cream)] px-1 text-xs">/evolution</code> to iterate from the current sprite without silently redesigning it.
-        </p>
-      </article>
-      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
-        <h3 class="font-display text-lg">Claude bridge</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Desktop chat queues actions, opens terminal approval, then Claude Desktop picks them up through twin MCP.
-        </p>
-      </article>
+    <div class="mt-8 grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <div class="flex justify-center rounded-[2rem] border border-[var(--color-ink)]/10 bg-gradient-to-b from-[var(--color-pink)] to-[var(--color-paper)] p-8">
+        <BreathingSprite species="axolotl" mood="healthy" size={210} />
+      </div>
+      <div class="space-y-5">
+        <div>
+          <h3 class="font-display text-xl">Friendly enough to keep open</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+            The sprite gives the app a presence without turning your notes into a corporate dashboard.
+          </p>
+        </div>
+        <div>
+          <h3 class="font-display text-xl">Useful enough to trust</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+            Tool-use pills show when Twin is scanning the vault, retrieving notes, saving to your inbox, or asking for desktop approval.
+          </p>
+        </div>
+        <div>
+          <h3 class="font-display text-xl">Custom enough to feel yours</h3>
+          <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+            Create a character from a prompt or uploaded photo, then evolve it intentionally instead of randomly replacing it.
+          </p>
+        </div>
+      </div>
     </div>
   </section>
-
-  <!-- Four moods -->
-  <section class="mt-16">
-    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">mood map</p>
-    <h2 class="mt-1 font-display text-3xl sm:text-4xl">what your twin mirrors back</h2>
-    <p class="mt-2 max-w-2xl text-[var(--color-ink-soft)]">
-      The state model is intentionally small: enough to color the companion, not enough to become a dashboard.
-    </p>
-
-    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 text-center">
-        <BreathingSprite species="axolotl" mood="healthy" size={120} drift={false} />
-        <h3 class="mt-3 font-display text-xl">Bloom Mode</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">showing off, blooming, wants attention because life is good.</p>
-      </article>
-      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-dusk)] p-6 text-center">
-        <BreathingSprite species="axolotl" mood="sleep_deprived" size={120} drift={false} />
-        <h3 class="mt-3 font-display text-xl">Stars At Noon</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">groggy, half-lidded, reality has not loaded yet.</p>
-      </article>
-      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-storm)] p-6 text-center">
-        <BreathingSprite species="axolotl" mood="stressed" size={120} drift={false} />
-        <h3 class="mt-3 font-display text-xl">Paper Storm</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">pacing, overstimulated, the room is literally weather.</p>
-      </article>
-      <article class="flex flex-col items-center rounded-[1.5rem] border border-[var(--color-ink)]/10 bg-[var(--color-fog)] p-6 text-center">
-        <BreathingSprite species="axolotl" mood="neglected" size={120} drift={false} />
-        <h3 class="mt-3 font-display text-xl">Quiet Corner</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">the one that hurts. Not sad. Quiet. Fading.</p>
-      </article>
-    </div>
-  </section>
-
-  <KarpathyGist />
 
   <!-- Promise strip -->
   <section class="mt-16 rounded-[1.75rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6 sm:p-8">
     <div class="grid gap-6 sm:grid-cols-3">
       <div>
-        <h3 class="font-display text-lg">not a dashboard</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">no numbers, no graphs. one file, one creature, one scene.</p>
+        <h3 class="font-display text-lg">for vault people</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">students, researchers, builders, and anyone with too many Markdown notes.</p>
       </div>
       <div>
-        <h3 class="font-display text-lg">not a mascot</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">no upsells, no notifications yelling at you. closer to Animal Crossing than Clippy.</p>
+        <h3 class="font-display text-lg">local by default</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">state and session snapshots live on your machine or in your chosen vault.</p>
       </div>
       <div>
-        <h3 class="font-display text-lg">not a cloud pet</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">config, queue files, sprites, and state live on your machine.</p>
+        <h3 class="font-display text-lg">small on purpose</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">it retrieves, remembers, saves, and hands off. It does not try to own your workflow.</p>
       </div>
     </div>
+  </section>
+
+  <section class="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-[1.75rem] bg-[var(--color-ink)] px-6 py-5 text-[var(--color-paper)]">
+    <p class="max-w-2xl font-display text-2xl text-[var(--color-paper)]">
+      Have an Obsidian vault? Give it a companion that can actually read it.
+    </p>
+    <a
+      href={`${base}install`}
+      class="inline-flex items-center rounded-full bg-[var(--color-paper)] px-5 py-2.5 text-sm font-medium text-[var(--color-ink)] transition-transform hover:-translate-y-0.5"
+    >
+      start here →
+    </a>
   </section>
 </CozyLayout>

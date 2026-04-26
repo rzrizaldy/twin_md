@@ -1554,6 +1554,18 @@ pub fn logout_provider_session() -> Result<(), String> {
     credentials::logout_provider_session().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn sign_out_to_onboarding(app: AppHandle) -> Result<(), String> {
+    credentials::logout_provider_session().map_err(|e| e.to_string())?;
+    let _ = crate::profile::delete_vault_profile();
+
+    if let Some(win) = app.get_webview_window("companion") {
+        win.close().ok();
+    }
+    windows::open_onboarding(&app).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 pub struct ModelList {
     pub provider: String,
