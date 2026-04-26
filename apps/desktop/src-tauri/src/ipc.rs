@@ -18,6 +18,17 @@ use crate::provider::Provider;
 use crate::state::SharedState;
 use crate::windows;
 
+fn ensure_json_object(
+    value: &mut serde_json::Value,
+) -> Result<&mut serde_json::Map<String, serde_json::Value>, String> {
+    if !value.is_object() {
+        *value = serde_json::json!({});
+    }
+    value
+        .as_object_mut()
+        .ok_or_else(|| "expected JSON object".to_string())
+}
+
 #[tauri::command]
 pub fn get_state(shared: State<'_, SharedState>) -> Option<PetState> {
     shared.get()
@@ -139,10 +150,7 @@ pub fn apply_custom_sprite_preview(app: AppHandle, prompt: String, path: String)
         }
         _ => serde_json::json!({}),
     };
-    if !value.is_object() {
-        value = serde_json::json!({});
-    }
-    let obj = value.as_object_mut().expect("object");
+    let obj = ensure_json_object(&mut value)?;
     obj.insert(
         "spriteEvolution".into(),
         serde_json::json!({
@@ -199,10 +207,7 @@ pub fn apply_sprite_evolution_preview(app: AppHandle, path: String) -> Result<()
         }
         _ => serde_json::json!({}),
     };
-    if !value.is_object() {
-        value = serde_json::json!({});
-    }
-    let obj = value.as_object_mut().expect("object");
+    let obj = ensure_json_object(&mut value)?;
     let mut sprite_evolution = obj
         .get("spriteEvolution")
         .cloned()
@@ -210,7 +215,7 @@ pub fn apply_sprite_evolution_preview(app: AppHandle, path: String) -> Result<()
     if !sprite_evolution.is_object() {
         sprite_evolution = serde_json::json!({ "kind": "custom" });
     }
-    let se = sprite_evolution.as_object_mut().expect("object");
+    let se = ensure_json_object(&mut sprite_evolution)?;
     se.insert("kind".to_string(), serde_json::Value::String("custom".to_string()));
     se.insert(
         "currentPath".to_string(),
@@ -369,11 +374,7 @@ pub fn set_vault_path(payload: VaultPayload) -> Result<(), String> {
         _ => serde_json::json!({}),
     };
 
-    if !value.is_object() {
-        value = serde_json::json!({});
-    }
-
-    let obj = value.as_object_mut().expect("object");
+    let obj = ensure_json_object(&mut value)?;
     match payload.path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         Some(p) => {
             obj.insert(
@@ -512,7 +513,7 @@ fn merge_sprite_evolution(v: &serde_json::Value) -> Result<(), String> {
             }
         }
     }
-    let o = value.as_object_mut().expect("object");
+    let o = ensure_json_object(&mut value)?;
     o.insert("spriteEvolution".into(), sprite_evolution);
     let json = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
     fs::write(&p, json).map_err(|e| e.to_string())?;

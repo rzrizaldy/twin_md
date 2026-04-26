@@ -188,7 +188,9 @@ fn write_evolution_meta(path: &str, species: &str, mood: &str, env: &str) -> Res
     if !value.is_object() {
         value = json!({});
     }
-    let o = value.as_object_mut().expect("object");
+    let o = value
+        .as_object_mut()
+        .ok_or_else(|| anyhow!("expected config JSON object"))?;
     let mut se = o
         .get("spriteEvolution")
         .cloned()
@@ -196,7 +198,9 @@ fn write_evolution_meta(path: &str, species: &str, mood: &str, env: &str) -> Res
     if !se.is_object() {
         se = json!({});
     }
-    let m = se.as_object_mut().expect("obj");
+    let m = se
+        .as_object_mut()
+        .ok_or_else(|| anyhow!("expected spriteEvolution JSON object"))?;
     m.insert("currentPath".to_string(), json!(path));
     m.insert("lastSpecies".to_string(), json!(species));
     m.insert("lastMood".to_string(), json!(mood));

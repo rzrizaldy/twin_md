@@ -6,6 +6,7 @@
 // the root `@twin-md/core` entry for browser-safe types and helpers.
 
 export * from "./chat.js";
+export * from "./action-queue.js";
 export * from "./config.js";
 export * from "./context-reply.js";
 export * from "./harvest/index.js";

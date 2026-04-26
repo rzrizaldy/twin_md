@@ -34,7 +34,7 @@
     "assets"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/server.ts src/commands.ts src/chat-commands.ts --format esm --dts --no-splitting",
+    "build": "tsup src/index.ts src/server.ts src/action-queue.ts src/commands.ts src/chat-commands.ts --format esm --dts --no-splitting",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },

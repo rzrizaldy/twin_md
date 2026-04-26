@@ -9,6 +9,7 @@ import {
   getPendingReminders,
   getTwinMdPath,
   interpretTwinDocument,
+  listTwinActionsByStatus,
   readCurrentTwinDocument,
   readCurrentTwinState,
   readReminderLedger,
@@ -16,6 +17,7 @@ import {
   runReminderSweep,
   runTwinHarvest,
   speakWithTwin,
+  updateTwinAction,
   writePetState
 } from "@twin-md/core/server";
 import {
@@ -31,33 +33,6 @@ function resolveBrainPath(config: { brainPath?: string }): string {
 
 function isoDate(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-function twinActionQueuePath(): string {
-  return path.join(os.homedir(), ".claude", "twin", "action-requests.jsonl");
-}
-
-function readActionRequests(): Array<Record<string, unknown>> {
-  const queuePath = twinActionQueuePath();
-  if (!existsSync(queuePath)) return [];
-  return readFileSync(queuePath, "utf8")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line) as Record<string, unknown>;
-      } catch {
-        return null;
-      }
-    })
-    .filter((entry): entry is Record<string, unknown> => Boolean(entry));
-}
-
-function writeActionRequests(requests: Array<Record<string, unknown>>): void {
-  const queuePath = twinActionQueuePath();
-  mkdirSync(path.dirname(queuePath), { recursive: true });
-  writeFileSync(queuePath, requests.map((r) => JSON.stringify(r)).join("\n") + "\n", "utf8");
 }
 
 function safeAbsPath(brainPath: string, notePath: string): string | null {
@@ -140,8 +115,8 @@ export async function startTwinMcpServer(): Promise<void> {
           path.join(brainPath, "AGENTS.md")
         ],
         petState: state,
-        pendingTwinActions: readActionRequests().filter((a) => a.status === "pending"),
-        twinActionsNeedingApproval: readActionRequests().filter((a) => a.status === "needs_approval")
+        pendingTwinActions: listTwinActionsByStatus(["pending"]),
+        twinActionsNeedingApproval: listTwinActionsByStatus(["needs_approval"])
       };
       return {
         content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
@@ -375,7 +350,7 @@ export async function startTwinMcpServer(): Promise<void> {
       annotations: { readOnlyHint: true }
     },
     async () => {
-      const actions = readActionRequests().filter((a) => a.status === "pending");
+      const actions = listTwinActionsByStatus(["pending"]);
       return {
         content: [{ type: "text", text: JSON.stringify({ actions }, null, 2) }],
         structuredContent: { actions }
@@ -392,7 +367,7 @@ export async function startTwinMcpServer(): Promise<void> {
       annotations: { readOnlyHint: true }
     },
     async () => {
-      const actions = readActionRequests().filter((a) => a.status === "needs_approval");
+      const actions = listTwinActionsByStatus(["needs_approval"]);
       return {
         content: [{ type: "text", text: JSON.stringify({ actions }, null, 2) }],
         structuredContent: { actions }
@@ -414,26 +389,20 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ id, status, result, details }) => {
-      const requests = readActionRequests();
-      let found = false;
-      const updated = requests.map((request) => {
-        if (request.id !== id) return request;
-        found = true;
-        return {
+      try {
+        updateTwinAction(id, (request) => ({
           ...request,
           status,
           result,
           details: details ?? null,
           resolvedAt: new Date().toISOString()
-        };
-      });
-      if (!found) {
+        }));
+      } catch {
         return {
           content: [{ type: "text", text: `No pending twin action found for id ${id}` }],
           isError: true
         };
       }
-      writeActionRequests(updated);
       return {
         content: [{ type: "text", text: JSON.stringify({ id, status, result }, null, 2) }],
         structuredContent: { id, status, result }
@@ -462,8 +431,8 @@ export async function startTwinMcpServer(): Promise<void> {
         twinMdPath: getTwinMdPath(),
         state,
         pendingReminders,
-        pendingTwinActions: readActionRequests().filter((a) => a.status === "pending"),
-        twinActionsNeedingApproval: readActionRequests().filter((a) => a.status === "needs_approval")
+        pendingTwinActions: listTwinActionsByStatus(["pending"]),
+        twinActionsNeedingApproval: listTwinActionsByStatus(["needs_approval"])
       };
       return {
         content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
