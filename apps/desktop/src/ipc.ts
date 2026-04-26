@@ -71,6 +71,10 @@ export async function saveProviderCredentials(
   return invoke<ProviderCredentialsResult>("save_provider_credentials", { payload });
 }
 
+export async function logoutProviderSession(): Promise<void> {
+  await invoke("logout_provider_session");
+}
+
 export async function listModels(provider: AiProvider): Promise<ModelList> {
   return invoke<ModelList>("list_models", { provider });
 }
@@ -249,10 +253,49 @@ export interface ClaudeActionResult {
   queuePath: string;
 }
 
+export type TwinActionStatus =
+  | "needs_approval"
+  | "pending"
+  | "done"
+  | "failed"
+  | "needs_user"
+  | "cancelled";
+
+export interface TwinActionRequest {
+  id?: string;
+  request?: string;
+  status?: TwinActionStatus | string;
+  result?: string | null;
+  createdAt?: string;
+  approvedAt?: string;
+  resolvedAt?: string;
+  [key: string]: unknown;
+}
+
 export async function requestClaudeAction(request: string): Promise<ClaudeActionResult> {
   return invoke<ClaudeActionResult>("request_claude_action", {
     payload: { request }
   });
+}
+
+export async function listTwinActions(statuses?: TwinActionStatus[]): Promise<TwinActionRequest[]> {
+  return invoke<TwinActionRequest[]>("list_twin_actions", { statuses: statuses ?? null });
+}
+
+export async function clearTwinActions(mode: "resolved" | "cancel_open"): Promise<number> {
+  return invoke<number>("clear_twin_actions", { mode });
+}
+
+export async function approveTwinAction(id: string): Promise<TwinActionRequest> {
+  return invoke<TwinActionRequest>("approve_twin_action", { id });
+}
+
+export async function rejectTwinAction(id: string): Promise<TwinActionRequest> {
+  return invoke<TwinActionRequest>("reject_twin_action", { id });
+}
+
+export async function openClaudeActionRunner(id: string): Promise<void> {
+  await invoke("open_claude_action_runner", { id });
 }
 
 export async function openTerminalActionApproval(id: string): Promise<void> {
@@ -279,6 +322,32 @@ export interface ValidateKeyResult {
 
 export async function setVaultPath(path: string | null): Promise<void> {
   await invoke("set_vault_path", { payload: { path } });
+}
+
+export interface VaultProfileStatus {
+  canLoad: boolean;
+  vaultPath: string | null;
+  profilePath: string | null;
+  owner: string | null;
+  updatedAt: string | null;
+  spritePrompt: string | null;
+  chatBackground: unknown | null;
+}
+
+export async function getVaultProfileStatus(): Promise<VaultProfileStatus> {
+  return invoke<VaultProfileStatus>("get_vault_profile_status");
+}
+
+export async function deletePreviousSession(): Promise<boolean> {
+  return invoke<boolean>("delete_previous_session");
+}
+
+export async function loadPreviousSession(): Promise<{ ok: boolean; message: string }> {
+  return invoke("load_previous_session");
+}
+
+export async function saveVaultProfileUi(chatBackground: unknown): Promise<void> {
+  await invoke("save_vault_profile_ui", { chatBackground });
 }
 
 export async function validateProviderKey(
@@ -355,4 +424,8 @@ export function onCwSeed(cb: (msg: string) => void): Promise<UnlistenFn> {
 
 export function onCwIntro(cb: (msg: string) => void): Promise<UnlistenFn> {
   return listen<string>("twin://cw-intro", (event) => cb(event.payload));
+}
+
+export function onActionQueueChanged(cb: () => void): Promise<UnlistenFn> {
+  return listen("twin://action-queue-changed", () => cb());
 }

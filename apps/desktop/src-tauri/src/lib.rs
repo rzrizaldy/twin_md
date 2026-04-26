@@ -9,6 +9,7 @@ mod ipc;
 mod rembg;
 mod model;
 mod paths;
+mod profile;
 mod presence;
 mod provider;
 mod screentime;
@@ -52,6 +53,11 @@ pub fn run() {
             ipc::apply_custom_sprite_preview,
             ipc::apply_sprite_evolution_preview,
             ipc::request_claude_action,
+            ipc::list_twin_actions,
+            ipc::clear_twin_actions,
+            ipc::approve_twin_action,
+            ipc::reject_twin_action,
+            ipc::open_claude_action_runner,
             ipc::open_terminal_action_approval,
             ipc::dismiss_bubble,
             ipc::trigger_harvest,
@@ -60,10 +66,15 @@ pub fn run() {
             ipc::stream_slash_command,
             ipc::validate_provider_key,
             ipc::set_vault_path,
+            ipc::get_vault_profile_status,
+            ipc::delete_previous_session,
+            ipc::load_previous_session,
+            ipc::save_vault_profile_ui,
             ipc::run_onboarding,
             ipc::ensure_claude_dir,
             ipc::create_starter_vault,
             ipc::save_provider_credentials,
+            ipc::logout_provider_session,
             ipc::list_models,
             // Chat window (Dinoki-style panel)
             ipc::open_chat_window,

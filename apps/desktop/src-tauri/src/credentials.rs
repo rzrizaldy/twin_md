@@ -105,6 +105,22 @@ pub fn clear_keychain(provider: Provider) {
     }
 }
 
+pub fn logout_provider_session() -> Result<()> {
+    if let Some(cfg) = read_ai_config() {
+        if let Some(provider) = Provider::parse(&cfg.provider) {
+            if Storage::parse(&cfg.storage) == Storage::Keychain {
+                clear_keychain(provider);
+            }
+        }
+    }
+    let path = ai_config_path();
+    if path.exists() {
+        fs::remove_file(&path).context("remove twin-ai.json")?;
+    }
+    clear_credential_cache();
+    Ok(())
+}
+
 /// Persist the onboarding/settings choice. Writes `twin-ai.json` always
 /// (so we know provider + model + storage pref). The key itself goes either
 /// to the keychain or inline into the file, per `store_in_keychain`.

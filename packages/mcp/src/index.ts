@@ -55,7 +55,7 @@ export async function startTwinMcpServer(): Promise<void> {
   const brainPath = resolveBrainPath(config);
 
   const server = new McpServer(
-    { name: "twin-md", version: "0.5.0" },
+    { name: "twin-md", version: "0.9.0" },
     {
       instructions: [
         "Use brain_context to orient yourself — it returns recent notes, entity types, and pet state.",
@@ -363,7 +363,7 @@ export async function startTwinMcpServer(): Promise<void> {
     {
       title: "Get Twin Actions Needing Approval",
       description:
-        "List desktop pet action requests that exist but are blocked until the user approves them in terminal.",
+        "List desktop pet action requests that exist but are blocked until the user approves them in Twin or terminal.",
       annotations: { readOnlyHint: true }
     },
     async () => {
@@ -383,7 +383,7 @@ export async function startTwinMcpServer(): Promise<void> {
         "Mark a desktop pet action request done/failed/needs_user and attach the result Claude Desktop observed.",
       inputSchema: z.object({
         id: z.string().min(1),
-        status: z.enum(["done", "failed", "needs_user"]),
+        status: z.enum(["done", "failed", "needs_user", "cancelled"]),
         result: z.string().min(1).describe("Short user-facing result for the pet/chat UI"),
         details: z.record(z.string(), z.unknown()).optional()
       })

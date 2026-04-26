@@ -31,6 +31,21 @@
           claude sessions and your second brain, and occasionally tells you
           to take a break. everything stays on your machine.
         </p>
+        <div class="session-restore-card" id="session-restore-card" hidden>
+          <strong>previous session found</strong>
+          <span id="session-restore-copy">checking your vault profile…</span>
+          <div class="preview-actions">
+            <button id="load-previous-session" class="secondary-button" type="button">
+              load previous session
+            </button>
+            <button id="start-fresh-session" class="text-button" type="button">
+              start fresh
+            </button>
+            <button id="delete-previous-session" class="text-button danger-button" type="button">
+              delete previous session
+            </button>
+          </div>
+        </div>
       </section>
 
       <!-- Step 1 — owner + obsidian vault -->
@@ -212,6 +227,20 @@
           we'll harvest your second brain, seed your <code>twin.md</code>, and
           wake the companion window. this usually takes a few seconds.
         </p>
+        <div class="readiness-list" id="readiness-list" aria-label="readiness checklist">
+          <div class="detection-card" data-ready-item="vault">
+            <span class="detection-icon" aria-hidden="true">·</span>
+            <span class="detection-body">vault profile sync not checked yet</span>
+          </div>
+          <div class="detection-card" data-ready-item="ai">
+            <span class="detection-icon" aria-hidden="true">·</span>
+            <span class="detection-body">AI/local agent not checked yet</span>
+          </div>
+          <div class="detection-card" data-ready-item="approval">
+            <span class="detection-icon" aria-hidden="true">·</span>
+            <span class="detection-body">Claude bridge approvals run inside chat, with Terminal fallback.</span>
+          </div>
+        </div>
         <button
           id="open-chat-preview"
           class="text-button"

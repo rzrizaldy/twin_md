@@ -100,6 +100,39 @@ fn mcp_entrypoint() -> Option<PathBuf> {
     None
 }
 
+pub fn mcp_config_json() -> Result<String> {
+    let mcp_path = mcp_entrypoint()
+        .ok_or_else(|| anyhow!("twin-md MCP dist not found; run `npm run build -w @twin-md/mcp` first"))?;
+    Ok(serde_json::json!({
+        "mcpServers": {
+            "twin-md": {
+                "command": "node",
+                "args": [mcp_path.to_string_lossy()]
+            }
+        }
+    })
+    .to_string())
+}
+
+pub fn write_temp_mcp_config() -> Result<PathBuf> {
+    let dir = std::env::temp_dir().join("twin-md");
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join("mcp-config.json");
+    std::fs::write(&path, mcp_config_json()?)?;
+    Ok(path)
+}
+
+pub fn mcp_config_arg_for_cli() -> Result<PathBuf> {
+    write_temp_mcp_config()
+}
+
+pub fn detect_claude_cli() -> Option<PathBuf> {
+    match detect_cli_agent()? {
+        CliAgent::Claude(path) => Some(path),
+        CliAgent::Codex(_) => None,
+    }
+}
+
 /// Human-readable readiness for UI surfaces. A CLI alone is not enough; the
 /// chat path also needs the bundled twin-md MCP server entrypoint.
 pub fn cli_agent_status() -> Option<(String, PathBuf, bool)> {
@@ -117,23 +150,10 @@ pub async fn stream_via_cli(
     prompt: &str,
     on_token: impl Fn(String) + Send + 'static,
 ) -> Result<()> {
-    let mcp_path = mcp_entrypoint()
-        .ok_or_else(|| anyhow!("twin-md MCP dist not found; run `pnpm build` first"))?;
-
-    // Build the inline MCP config JSON that both `claude` and `codex` accept
-    // via their `--mcp-config` flag.
-    let mcp_json = serde_json::json!({
-        "mcpServers": {
-            "twin-md": {
-                "command": "node",
-                "args": [mcp_path.to_string_lossy()]
-            }
-        }
-    })
-    .to_string();
+    let mcp_config = mcp_config_arg_for_cli()?;
 
     let mut cmd = Command::new(agent.path());
-    cmd.arg("--mcp-config").arg(&mcp_json);
+    cmd.arg("--mcp-config").arg(mcp_config);
 
     match agent {
         CliAgent::Claude(_) => {

@@ -7,7 +7,8 @@ export type TwinActionStatus =
   | "pending"
   | "done"
   | "failed"
-  | "needs_user";
+  | "needs_user"
+  | "cancelled";
 
 export type TwinActionRequest = Record<string, unknown> & {
   id?: string;

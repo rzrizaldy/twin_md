@@ -24,7 +24,10 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
 import {
+  approveTwinAction,
+  clearTwinActions,
   getChatStatus,
+  getVaultProfileStatus,
   getSpriteEvolution,
   applySpriteEvolutionPreview,
   emitLastChat,
@@ -34,17 +37,24 @@ import {
   generateSpritePreviewFromPhoto,
   generatedAssetDataUrl,
   listModels,
+  listTwinActions,
+  onActionQueueChanged,
+  openClaudeActionRunner,
   openTerminalActionApproval,
   requestClaudeAction,
+  rejectTwinAction,
+  logoutProviderSession,
   runLocalCommand,
   saveProviderCredentials,
+  saveVaultProfileUi,
   validateProviderKey,
   onSpriteUpdated,
   onSpriteEvolving,
   onSpriteEvolveError,
   onSpriteEvolveCooldown,
-  regenerateSprite,
   type AiProvider,
+  type TwinActionRequest,
+  type TwinActionStatus,
 } from "./ipc.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -115,6 +125,12 @@ const SLASH_COMMANDS = [
     args: "",
     detail: "Clear this conversation without changing your pet."
   },
+  {
+    name: "/permissions",
+    blurb: "approval center",
+    args: "",
+    detail: "Review queued Claude/MCP actions and approve or reject them."
+  },
 ];
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
@@ -127,7 +143,6 @@ const cwSend = document.getElementById("cw-send") as HTMLButtonElement;
 const cwSpriteWrap = document.getElementById("cw-sprite-wrap") as HTMLDivElement | null;
 const cwSprite = document.getElementById("cw-sprite") as HTMLImageElement;
 const cwSubtitle = document.getElementById("cw-subtitle") as HTMLParagraphElement;
-const cwRegenBtn = document.getElementById("cw-regen") as HTMLButtonElement;
 const cwNewBtn = document.getElementById("cw-new") as HTMLButtonElement;
 const cwSettingsBtn = document.getElementById("cw-settings") as HTMLButtonElement;
 const cwAutoComplete = document.getElementById("cw-autocomplete") as HTMLDivElement;
@@ -143,6 +158,7 @@ const settingsModel = document.getElementById("settings-model") as HTMLSelectEle
 const settingsKey = document.getElementById("settings-key") as HTMLInputElement;
 const settingsTest = document.getElementById("settings-test") as HTMLButtonElement;
 const settingsSave = document.getElementById("settings-save") as HTMLButtonElement;
+const settingsLogout = document.getElementById("settings-logout") as HTMLButtonElement;
 const settingsStatus = document.getElementById("settings-status") as HTMLDivElement;
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -154,7 +170,6 @@ let isStreaming = false;
 let lastAssistantText = "";
 let evolutionSpritePath: string | null = null;
 let currentMood: TwinMood = "healthy";
-let customSpriteEvolutionEnabled = false;
 
 let settingsProvider: AiProvider = "anthropic";
 let currentProvider = "anthropic";
@@ -162,6 +177,8 @@ let currentModel = "";
 let settingsReturnFocus: HTMLElement | null = null;
 let activeAutocompleteIndex = 0;
 let introShown = false;
+const actionCards = new Map<string, HTMLDivElement>();
+const announcedActionResults = new Set<string>();
 
 // Font size (12–20px, stored in localStorage)
 const FONT_SIZE_KEY = "twin-cw-font-size";
@@ -222,26 +239,15 @@ async function swapChatSprite(path: string) {
     cwSpriteWrap?.classList.add("has-evolved-sprite");
     cwSpriteWrap?.classList.add("sprite-swap");
     cwSprite.src = url;
-    syncRegenerateButton();
     void refreshSubtitleFromState();
     setTimeout(() => cwSpriteWrap?.classList.remove("sprite-swap"), 280);
   };
   next.onerror = () => {
     cwSpriteWrap?.classList.remove("is-evolving");
-    syncRegenerateButton();
     void refreshSubtitleFromState();
     appendStatus("couldn't load new sprite", "error");
   };
   next.src = url;
-}
-
-function syncRegenerateButton(): void {
-  if (!cwRegenBtn) return;
-  const evolving = cwSpriteWrap?.classList.contains("is-evolving") === true;
-  cwRegenBtn.disabled = !customSpriteEvolutionEnabled || evolving;
-  cwRegenBtn.title = customSpriteEvolutionEnabled
-    ? "regenerate evolution sprite"
-    : "custom sprite mode required for AI evolution";
 }
 
 async function refreshSubtitleFromState() {
@@ -267,9 +273,11 @@ function scenePath(slug: SceneSlug): string {
 function persistChatBackground(value: ChatBackgroundValue | null): void {
   if (!value) {
     localStorage.removeItem(CHAT_BACKGROUND_KEY);
+    void saveVaultProfileUi(null).catch(() => {});
     return;
   }
   localStorage.setItem(CHAT_BACKGROUND_KEY, JSON.stringify(value));
+  void saveVaultProfileUi(value).catch(() => {});
 }
 
 function readPersistedChatBackground(): ChatBackgroundValue | null {
@@ -284,6 +292,30 @@ function readPersistedChatBackground(): ChatBackgroundValue | null {
     }
   }
   return null;
+}
+
+function parseChatBackground(value: unknown): ChatBackgroundValue | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<ChatBackgroundValue>;
+  if (candidate.type === "scene" && typeof (candidate as { slug?: unknown }).slug === "string") {
+    const slug = (candidate as { slug: string }).slug;
+    if (SCENES.some((scene) => scene.slug === slug)) {
+      return { type: "scene", slug: slug as SceneSlug };
+    }
+  }
+  if (candidate.type === "generated" && typeof (candidate as { path?: unknown }).path === "string") {
+    return { type: "generated", path: (candidate as { path: string }).path };
+  }
+  return null;
+}
+
+async function readProfileChatBackground(): Promise<ChatBackgroundValue | null> {
+  try {
+    const status = await getVaultProfileStatus();
+    return parseChatBackground(status.chatBackground);
+  } catch {
+    return null;
+  }
 }
 
 async function applyChatBackground(value: ChatBackgroundValue | null): Promise<void> {
@@ -339,36 +371,241 @@ function appendToolCard(html: string): void {
   cwLog.scrollTop = cwLog.scrollHeight;
 }
 
-function appendClaudeApprovalCard(id: string, request: string): void {
-  const card = document.createElement("div");
-  card.className = "cw-tool-card cw-tool-card--approval";
+function actionStatusLabel(status: string | undefined): string {
+  switch (status) {
+    case "needs_approval":
+      return "Needs approval";
+    case "pending":
+      return "Approved, waiting for Claude";
+    case "done":
+      return "Done";
+    case "failed":
+      return "Failed";
+    case "needs_user":
+      return "Needs you";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Queued";
+  }
+}
+
+function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void {
+  const id = String(action.id ?? "");
+  const status = String(action.status ?? "");
+  const request = String(action.request ?? "");
+  card.dataset.actionId = id;
+  card.dataset.actionStatus = status;
+  card.innerHTML = "";
 
   const copy = document.createElement("div");
   copy.className = "cw-tool-card-copy";
   copy.innerHTML = DOMPurify.sanitize(
-    `<span class="tool-icon">↔</span><span>queued · needs terminal approval · <code>${id}</code></span><small>${request}</small>`
+    `<span class="tool-icon">permission</span><span>${actionStatusLabel(status)} · <code>${id}</code></span><small>${request}</small>`
   );
+  if (action.result) {
+    const result = document.createElement("small");
+    result.textContent = String(action.result);
+    copy.appendChild(result);
+  }
 
-  const approve = document.createElement("button");
-  approve.type = "button";
-  approve.className = "secondary-button cw-approval-button";
-  approve.textContent = "approve in Terminal";
-  approve.addEventListener("click", async () => {
-    approve.disabled = true;
-    try {
-      await openTerminalActionApproval(id);
-      appendStatus(`opened Terminal approval for ${id}`);
-    } catch (e) {
-      const command = `twin-md action approve ${id}`;
-      await navigator.clipboard.writeText(command).catch(() => {});
-      appendStatus(`run in terminal: ${command}`, "error");
-    } finally {
+  const actions = document.createElement("div");
+  actions.className = "cw-approval-actions";
+
+  if (status === "needs_approval") {
+    const approve = document.createElement("button");
+    approve.type = "button";
+    approve.className = "secondary-button cw-approval-button";
+    approve.textContent = "approve + run Claude";
+    approve.dataset.primaryAction = "true";
+    approve.addEventListener("click", async () => {
+      approve.disabled = true;
+      try {
+        const updated = await approveTwinAction(id);
+        renderActionCard(card, updated);
+      } catch (e) {
+        appendStatus(`approval failed: ${String(e)}`, "error");
+        approve.disabled = false;
+        return;
+      }
+      try {
+        await openClaudeActionRunner(id);
+        appendStatus(`approved ${id} and opened Claude Code`);
+      } catch (e) {
+        appendStatus(`approved ${id}, but couldn't open Claude Code: ${String(e)}`, "error");
+      }
       approve.disabled = false;
-    }
-  });
+    });
 
-  card.append(copy, approve);
+    const approveOnly = document.createElement("button");
+    approveOnly.type = "button";
+    approveOnly.className = "text-button cw-approval-button";
+    approveOnly.textContent = "approve only";
+    approveOnly.addEventListener("click", async () => {
+      approveOnly.disabled = true;
+      try {
+        const updated = await approveTwinAction(id);
+        renderActionCard(card, updated);
+        appendStatus(`approved ${id}; Claude Desktop can pick it up`);
+      } catch (e) {
+        appendStatus(`approval failed: ${String(e)}`, "error");
+      }
+      approveOnly.disabled = false;
+    });
+
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "text-button cw-approval-button";
+    reject.textContent = "cancel";
+    reject.addEventListener("click", async () => {
+      reject.disabled = true;
+      try {
+        const updated = await rejectTwinAction(id);
+        renderActionCard(card, updated);
+        appendStatus(`cancelled ${id}`);
+      } catch (e) {
+        appendStatus(`cancel failed: ${String(e)}`, "error");
+      }
+      reject.disabled = false;
+    });
+
+    const terminal = document.createElement("button");
+    terminal.type = "button";
+    terminal.className = "text-button cw-approval-button";
+    terminal.textContent = "terminal";
+    terminal.addEventListener("click", async () => {
+      try {
+        await openTerminalActionApproval(id);
+        appendStatus(`opened Terminal fallback for ${id}`);
+      } catch {
+        const command = `twin-md action approve ${id}`;
+        await navigator.clipboard.writeText(command).catch(() => {});
+        appendStatus(`copied fallback: ${command}`, "error");
+      }
+    });
+    actions.append(approve, approveOnly, reject, terminal);
+  }
+
+  if (status === "pending") {
+    const run = document.createElement("button");
+    run.type = "button";
+    run.className = "secondary-button cw-approval-button";
+    run.textContent = "open Claude Code";
+    run.addEventListener("click", async () => {
+      run.disabled = true;
+      try {
+        await openClaudeActionRunner(id);
+        appendStatus(`opened Claude Code for ${id}`);
+      } catch (e) {
+        appendStatus(`couldn't open Claude Code: ${String(e)}`, "error");
+      }
+      run.disabled = false;
+    });
+    actions.append(run);
+  }
+
+  card.append(copy, actions);
+}
+
+function appendClaudeApprovalCard(id: string, request: string): void {
+  const card = document.createElement("div");
+  card.className = "cw-tool-card cw-tool-card--approval";
+  actionCards.set(id, card);
+  renderActionCard(card, { id, request, status: "needs_approval" });
   cwLog.appendChild(card);
+  cwLog.scrollTop = cwLog.scrollHeight;
+  window.requestAnimationFrame(() => {
+    card.querySelector<HTMLButtonElement>("[data-primary-action='true']")?.focus({ preventScroll: true });
+  });
+}
+
+function maybeAppendActionResult(action: TwinActionRequest): void {
+  const id = String(action.id ?? "");
+  const status = String(action.status ?? "");
+  const result = typeof action.result === "string" ? action.result.trim() : "";
+  if (!id || !result || announcedActionResults.has(id)) return;
+  if (!["done", "failed", "needs_user"].includes(status)) return;
+
+  announcedActionResults.add(id);
+  const prefix =
+    status === "done"
+      ? "Done"
+      : status === "needs_user"
+        ? "Needs your help"
+        : "Failed";
+  const message = `${prefix}: ${result}`;
+  appendMessage("assistant", message);
+  messages.push({ role: "assistant", content: message });
+  sessionTurns.push({ role: "assistant", content: message, ts: new Date().toISOString() });
+  void emitLastChat(message);
+  void persistSession();
+}
+
+async function refreshActionCards(): Promise<void> {
+  const actions = await listTwinActions();
+  for (const action of actions) {
+    const id = String(action.id ?? "");
+    const card = actionCards.get(id);
+    if (card) {
+      renderActionCard(card, action);
+      maybeAppendActionResult(action);
+    }
+  }
+}
+
+async function appendPermissionCenter(): Promise<void> {
+  const statuses: TwinActionStatus[] = ["needs_approval", "pending", "done", "failed", "needs_user", "cancelled"];
+  const actions = await listTwinActions(statuses);
+  const recent = actions.slice(-8).reverse();
+  const wrap = document.createElement("div");
+  wrap.className = "cw-tool-card cw-tool-card--approval cw-permission-center";
+  const title = document.createElement("div");
+  title.className = "cw-tool-card-copy";
+  title.innerHTML = DOMPurify.sanitize(
+    `<span class="tool-icon">permission</span><span>Permission Center</span><small>Approve Twin requests, run Claude Code with the exact request, or clear old backlog.</small>`
+  );
+  wrap.appendChild(title);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "cw-approval-actions";
+  const clearResolved = document.createElement("button");
+  clearResolved.type = "button";
+  clearResolved.className = "text-button cw-approval-button";
+  clearResolved.textContent = "clear resolved";
+  clearResolved.addEventListener("click", async () => {
+    const count = await clearTwinActions("resolved");
+    appendStatus(`cleared ${count} resolved action${count === 1 ? "" : "s"}`);
+    wrap.remove();
+    await appendPermissionCenter();
+  });
+  const cancelOpen = document.createElement("button");
+  cancelOpen.type = "button";
+  cancelOpen.className = "text-button cw-approval-button";
+  cancelOpen.textContent = "cancel open backlog";
+  cancelOpen.addEventListener("click", async () => {
+    const ok = window.confirm("Cancel all waiting/pending Twin actions? This will stop old backlog items from being picked up.");
+    if (!ok) return;
+    const count = await clearTwinActions("cancel_open");
+    appendStatus(`cancelled ${count} open action${count === 1 ? "" : "s"}`);
+    wrap.remove();
+    await appendPermissionCenter();
+  });
+  toolbar.append(clearResolved, cancelOpen);
+  wrap.appendChild(toolbar);
+
+  if (recent.length === 0) {
+    const empty = document.createElement("small");
+    empty.textContent = "No queued permissions right now.";
+    title.appendChild(empty);
+  }
+  for (const action of recent) {
+    const card = document.createElement("div");
+    card.className = "cw-tool-card cw-tool-card--approval cw-tool-card--nested";
+    if (action.id) actionCards.set(String(action.id), card);
+    renderActionCard(card, action);
+    wrap.appendChild(card);
+  }
+  cwLog.appendChild(wrap);
   cwLog.scrollTop = cwLog.scrollHeight;
 }
 
@@ -626,6 +863,7 @@ async function sendMessages() {
       messages.push({ role: "assistant", content: finalText });
       sessionTurns.push({ role: "assistant", content: finalText, ts: new Date().toISOString() });
       void emitLastChat(finalText);
+      void persistSession();
     }
     cwInput.focus();
   });
@@ -677,11 +915,24 @@ async function submitText(text: string) {
 
 function shouldBridgeToClaude(text: string): boolean {
   const lower = text.toLowerCase();
+  const explicitComputerUse =
+    lower.includes("computer use") ||
+    lower.includes("playwright") ||
+    lower.includes("browser automation") ||
+    lower.includes("buka x") ||
+    lower.includes("open x") ||
+    lower.includes("twitter") ||
+    lower.includes("x.com") ||
+    /https?:\/\//.test(lower) ||
+    lower.includes("applescript") ||
+    lower.includes("apple script") ||
+    lower.includes("desktop permission") ||
+    lower.includes("permission dulu");
   const desktopAction =
-    /\b(ganti|change|play|putar|skip|next|pause|resume|buka|open|klik|click|isi|fill|pilih|select)\b/.test(
+    /\b(cek|check|lihat|read|list|ganti|change|play|putar|skip|next|pause|resume|buka|open|klik|click|isi|fill|pilih|select)\b/.test(
       lower
     ) &&
-    /\b(spotify|apple music|music|browser|chrome|safari|finder|desktop|app)\b/.test(lower);
+    /\b(spotify|apple music|music|browser|chrome|safari|finder|desktop|app|reminder|reminders|apple reminder|apple reminders|calendar|mail|notes|playwright|twitter|x\.com)\b/.test(lower);
 
   return (
     lower.includes("use mcp claude") ||
@@ -689,6 +940,7 @@ function shouldBridgeToClaude(text: string): boolean {
     lower.includes("mcp computer use") ||
     lower.includes("claude desktop") ||
     lower.startsWith("minta claude ") ||
+    explicitComputerUse ||
     desktopAction
   );
 }
@@ -699,12 +951,37 @@ async function queueClaudeAction(request: string): Promise<void> {
     appendMessage("user", request);
     sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
     appendClaudeApprovalCard(result.id, request);
-    appendAssistantIntro(
-      `I queued this for Claude Desktop but it is blocked until you approve it. Click **approve in Terminal**, then Claude Desktop can pick it up via \`get_pending_twin_actions\` and report back with \`resolve_twin_action\`.`
-    );
+    appendStatus(`permission queued · ${result.id}`);
+    appendAssistantIntro(contextualPermissionMessage(request));
   } catch (e) {
     appendStatus(`couldn't queue Claude request: ${String(e)}`, "error");
   }
+}
+
+function contextualPermissionMessage(request: string): string {
+  const lower = request.toLowerCase();
+  const indonesian =
+    /\b(izin|buka|cek|apa aja|yang|pakai|dari|komputer|ingatkan)\b/.test(lower);
+  const target =
+    lower.includes("playwright") || lower.includes("x.com") || /\bbuka x\b/.test(lower)
+      ? indonesian
+        ? "buka X lewat Playwright"
+        : "open X with Playwright"
+      : lower.includes("reminder")
+        ? indonesian
+          ? "cek Apple Reminders"
+          : "check Apple Reminders"
+        : lower.includes("spotify")
+          ? indonesian
+            ? "kontrol Spotify"
+            : "control Spotify"
+          : indonesian
+            ? "jalanin aksi desktop itu"
+            : "run that desktop action";
+
+  return indonesian
+    ? `Aku butuh izin dulu untuk ${target}. Approve permission card-nya, nanti hasilnya aku balikin di chat ini.`
+    : `I need permission first to ${target}. Approve the permission card and I’ll return the result in this chat.`;
 }
 
 // ── Slash commands ────────────────────────────────────────────────────────
@@ -717,6 +994,15 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     await persistSession();
     startNewSession();
     appendStatus("new conversation started");
+    return true;
+  }
+
+  if (lower === "/permissions" || lower === "/permission") {
+    try {
+      await appendPermissionCenter();
+    } catch (e) {
+      appendStatus(`couldn't load permissions: ${String(e)}`, "error");
+    }
     return true;
   }
 
@@ -1134,6 +1420,24 @@ settingsSave.addEventListener("click", async () => {
   }
 });
 
+settingsLogout.addEventListener("click", async () => {
+  settingsLogout.disabled = true;
+  showSettingsStatus("logging out local provider session…");
+  try {
+    await logoutProviderSession();
+    settingsKey.value = "";
+    settingsKey.placeholder = "sk-ant-… / sk-… / AIza…";
+    pillProvider.textContent = "local first";
+    pillModel.textContent = "setup needed";
+    await persistSession();
+    showSettingsStatus("local provider session cleared. Claude Code/Desktop login is unchanged.", "ok");
+  } catch (e) {
+    showSettingsStatus(`logout failed: ${String(e)}`, "error");
+  } finally {
+    settingsLogout.disabled = false;
+  }
+});
+
 function showSettingsStatus(msg: string, kind: "ok" | "error" | "" = "") {
   settingsStatus.hidden = false;
   settingsStatus.className = `settings-status${kind ? " settings-status--" + kind : ""}`;
@@ -1198,28 +1502,6 @@ cwInput.addEventListener("input", () => {
   }
 });
 
-cwRegenBtn?.addEventListener("click", async () => {
-  try {
-    const path = await regenerateSprite();
-    evolutionSpritePath = path;
-    appendStatus("new evolution sprite");
-  } catch (e) {
-    const s = String(e);
-    if (s.includes("custom_sprite_required")) {
-      appendStatus("custom sprite mode required for AI evolution", "error");
-      return;
-    }
-    if (s.includes("rate_limited:")) {
-      const sec = parseInt(s.split("rate_limited:")[1]?.trim() ?? "0", 10);
-      const m = Math.floor(sec / 60);
-      const rest = sec % 60;
-      appendStatus(`evolution on cooldown — ${m}m ${rest}s left`, "error");
-      return;
-    }
-    appendStatus(`sprite: ${s}`, "error");
-  }
-});
-
 cwNewBtn.addEventListener("click", async () => {
   await persistSession();
   startNewSession();
@@ -1276,15 +1558,15 @@ document.addEventListener("keydown", async (e) => {
 
 async function init() {
   applyFontSize();
-  void applyChatBackground(readPersistedChatBackground());
+  void readProfileChatBackground().then((profileBackground) =>
+    applyChatBackground(profileBackground ?? readPersistedChatBackground())
+  );
 
   // Load current provider status and update pill
   await loadProviderStatus();
 
   try {
     const evo = await getSpriteEvolution();
-    customSpriteEvolutionEnabled = evo.customEnabled;
-    syncRegenerateButton();
     if (evo.currentPath) {
       evolutionSpritePath = evo.currentPath;
       void swapChatSprite(evo.currentPath);
@@ -1308,13 +1590,11 @@ async function init() {
 
   void onSpriteEvolving(() => {
     cwSpriteWrap?.classList.add("is-evolving");
-    syncRegenerateButton();
     cwSubtitle.textContent = "evolving…";
   });
 
   void onSpriteEvolveError((p) => {
     cwSpriteWrap?.classList.remove("is-evolving");
-    syncRegenerateButton();
     void refreshSubtitleFromState();
     const m = p.message;
     if (m.includes("rembg_missing")) {
@@ -1351,6 +1631,16 @@ async function init() {
   await listen<string>("twin://cw-intro", (event) => {
     appendAssistantIntro(event.payload);
   });
+
+  void onActionQueueChanged(() => {
+    void refreshActionCards();
+  });
+  window.setInterval(() => {
+    void refreshActionCards();
+  }, 3000);
+  window.setInterval(() => {
+    void persistSession();
+  }, 30000);
 
   // Persist session on window close
   const win = getCurrentWindow();

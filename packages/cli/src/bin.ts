@@ -22,7 +22,7 @@ const program = new Command();
 program
   .name("twin-md")
   .description("Local-first twin.md pet: CLI, MCP, and desktop companion")
-  .version("0.5.0");
+  .version("0.9.0");
 
 program
   .command("init")
@@ -145,6 +145,13 @@ action
   .description("approve one desktop action so Claude Desktop can execute it")
   .argument("<id>", "action id, e.g. act-1777176631398")
   .action((id: string) => runActionApproveCommand(id));
+
+action
+  .command("cancel")
+  .description("cancel one action from the terminal")
+  .argument("<id>", "action id")
+  .argument("[result]", "short result", "cancelled by user")
+  .action((id: string, result: string) => runActionResolveCommand(id, "cancelled", result));
 
 action
   .command("done")

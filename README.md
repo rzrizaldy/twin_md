@@ -90,8 +90,8 @@ npm run build
 
 ```bash
 npm run build
-git tag v0.5.0
-git push origin v0.5.0
+git tag v0.9.0
+git push origin v0.9.0
 ```
 
 Tauri app bundles: `./scripts/release.sh --tauri` (creates a GitHub Release when `gh` is installed).

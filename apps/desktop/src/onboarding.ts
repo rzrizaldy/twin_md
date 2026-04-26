@@ -4,13 +4,16 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   createStarterVault,
+  deletePreviousSession,
   ensureClaudeDir,
   generateSpritePreview,
   generateSpritePreviewFromPhoto,
   generatedAssetDataUrl,
   getChatStatus,
+  getVaultProfileStatus,
   installRembg,
   listModels,
+  loadPreviousSession,
   openChatWindow,
   runOnboarding,
   saveProviderCredentials,
@@ -95,8 +98,29 @@ const previewImg = document.getElementById("preview-img") as HTMLImageElement | 
 const summonHeroSprite = document.getElementById(
   "summon-hero-sprite"
 ) as HTMLImageElement | null;
+const sessionRestoreCard = document.getElementById(
+  "session-restore-card"
+) as HTMLDivElement | null;
+const sessionRestoreCopy = document.getElementById(
+  "session-restore-copy"
+) as HTMLSpanElement | null;
+const loadPreviousSessionBtn = document.getElementById(
+  "load-previous-session"
+) as HTMLButtonElement | null;
+const startFreshSessionBtn = document.getElementById(
+  "start-fresh-session"
+) as HTMLButtonElement | null;
+const deletePreviousSessionBtn = document.getElementById(
+  "delete-previous-session"
+) as HTMLButtonElement | null;
+const readinessItems = {
+  vault: document.querySelector<HTMLElement>('[data-ready-item="vault"]'),
+  ai: document.querySelector<HTMLElement>('[data-ready-item="ai"]'),
+  approval: document.querySelector<HTMLElement>('[data-ready-item="approval"]')
+};
 let lastPreviewAt = 0;
 let chatStatus: ChatStatus | null = null;
+let restoreDismissed = false;
 
 function localAgentReady(): boolean {
   return Boolean(chatStatus?.local_mcp_ready);
@@ -171,9 +195,72 @@ function setStep(requested: number) {
   nextBtn.textContent =
     state.step === TOTAL_STEPS - 1 ? "summon my twin" : "next";
   if (state.step < 4) setStatus("");
+  if (state.step === 0) void refreshSessionRestore();
   if (state.step === 2) runClaudeDirCheck();
   if (state.step === 4) void refreshLocalAgentStatus();
-  if (state.step === 6) void syncSummonHero();
+  if (state.step === 6) {
+    void syncSummonHero();
+    void refreshReadinessChecklist();
+  }
+}
+
+async function refreshSessionRestore(): Promise<void> {
+  if (!sessionRestoreCard || restoreDismissed) return;
+  try {
+    const status = await getVaultProfileStatus();
+    if (!status.canLoad) {
+      sessionRestoreCard.hidden = true;
+      return;
+    }
+    sessionRestoreCard.hidden = false;
+    const owner = status.owner ? `${status.owner}'s ` : "";
+    const updated = status.updatedAt ? ` · updated ${new Date(status.updatedAt).toLocaleString()}` : "";
+    const sprite = status.spritePrompt ? ` · ${status.spritePrompt}` : "";
+    if (sessionRestoreCopy) {
+      sessionRestoreCopy.textContent = `${owner}vault profile is ready${updated}${sprite}`;
+    }
+  } catch {
+    sessionRestoreCard.hidden = true;
+  }
+}
+
+function setReadyItem(
+  item: HTMLElement | null,
+  ok: boolean,
+  message: string
+): void {
+  if (!item) return;
+  item.classList.toggle("ok", ok);
+  item.classList.toggle("warn", !ok);
+  const icon = item.querySelector(".detection-icon");
+  const body = item.querySelector(".detection-body");
+  if (icon) icon.textContent = ok ? "✓" : "!";
+  if (body) body.textContent = message;
+}
+
+async function refreshReadinessChecklist(): Promise<void> {
+  const vaultReady = Boolean(state.vaultPath);
+  setReadyItem(
+    readinessItems.vault,
+    vaultReady,
+    vaultReady
+      ? `.twin-md profile will sync in ${state.vaultPath}`
+      : "no Obsidian vault selected; profile restore is local-only until you choose one"
+  );
+  if (!chatStatus) chatStatus = await getChatStatus();
+  const aiReady = Boolean(chatStatus?.local_mcp_ready || chatStatus?.has_api_key || state.apiKey.trim());
+  setReadyItem(
+    readinessItems.ai,
+    aiReady,
+    aiReady
+      ? "chat has local MCP or provider fallback ready"
+      : "no AI key/local MCP yet; chat setup can be finished later"
+  );
+  setReadyItem(
+    readinessItems.approval,
+    true,
+    "permission requests can be approved in chat; Terminal remains the fallback"
+  );
 }
 
 function validateStep(step: number): string | null {
@@ -326,6 +413,50 @@ document.querySelectorAll<HTMLInputElement>('input[name="sprite-mode"]').forEach
   });
 });
 syncSpriteDot();
+void refreshSessionRestore();
+
+loadPreviousSessionBtn?.addEventListener("click", async () => {
+  loadPreviousSessionBtn.disabled = true;
+  setStatus("loading previous vault session…");
+  try {
+    const result = await loadPreviousSession();
+    if (!result.ok) {
+      setStatus(result.message, "error");
+      loadPreviousSessionBtn.disabled = false;
+      return;
+    }
+    setStatus(result.message, "ok");
+    await getCurrentWindow().close();
+  } catch (e) {
+    setStatus(`couldn't load previous session: ${String(e)}`, "error");
+    loadPreviousSessionBtn.disabled = false;
+  }
+});
+
+startFreshSessionBtn?.addEventListener("click", () => {
+  restoreDismissed = true;
+  if (sessionRestoreCard) sessionRestoreCard.hidden = true;
+  setStep(1);
+});
+
+deletePreviousSessionBtn?.addEventListener("click", async () => {
+  const confirmed = window.confirm(
+    "Delete the synced twin.md previous session from this vault? This removes .twin-md/profile.json and synced chat snapshots, but keeps your Obsidian notes and local secrets."
+  );
+  if (!confirmed) return;
+  deletePreviousSessionBtn.disabled = true;
+  setStatus("deleting previous vault session…");
+  try {
+    const deleted = await deletePreviousSession();
+    restoreDismissed = true;
+    if (sessionRestoreCard) sessionRestoreCard.hidden = true;
+    setStatus(deleted ? "previous vault session deleted." : "no previous vault session found.", "ok");
+  } catch (e) {
+    setStatus(`couldn't delete previous session: ${String(e)}`, "error");
+  } finally {
+    deletePreviousSessionBtn.disabled = false;
+  }
+});
 
 const vaultStatusEl = $<HTMLElement>("#vault-status");
 

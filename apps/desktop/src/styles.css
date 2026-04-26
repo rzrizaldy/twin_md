@@ -980,6 +980,36 @@ body.window-onboarding {
   overflow-wrap: anywhere;
 }
 
+.session-restore-card,
+.readiness-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.session-restore-card {
+  padding: 12px;
+  border: 1.5px solid rgba(71, 54, 67, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 250, 234, 0.82);
+  box-shadow: 0 8px 24px rgba(71, 54, 67, 0.08);
+}
+
+.session-restore-card[hidden] {
+  display: none;
+}
+
+.session-restore-card strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+.session-restore-card span {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1774,6 +1804,41 @@ body.window-onboarding {
   font-size: 10.5px;
 }
 
+.cw-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cw-tool-card--nested {
+  width: 100%;
+  background: rgba(255, 250, 234, 0.72);
+  box-shadow: none;
+}
+
+.cw-permission-center {
+  display: grid;
+  gap: 8px;
+}
+
+.cw-tool-card--approval[data-action-status="pending"] {
+  border-color: rgba(70, 111, 184, 0.28);
+}
+
+.cw-tool-card--approval[data-action-status="done"] {
+  border-color: rgba(46, 113, 57, 0.3);
+}
+
+.cw-tool-card--approval[data-action-status="failed"] {
+  border-color: rgba(155, 35, 53, 0.28);
+}
+
+.cw-tool-card--approval[data-action-status="cancelled"] {
+  opacity: 0.72;
+}
+
 .cw-tool-card code {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -2008,6 +2073,24 @@ body.window-onboarding {
   display: flex;
   gap: 8px;
   margin-top: 2px;
+}
+
+.settings-danger {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(71, 54, 67, 0.1);
+}
+
+.settings-danger small {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: rgba(71, 54, 67, 0.62);
+}
+
+.danger-button {
+  justify-self: start;
+  color: #9b2335;
 }
 
 .settings-status {

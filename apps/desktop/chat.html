@@ -27,6 +27,7 @@
         <div class="settings-section">
           <p id="settings-description" class="settings-description">
             Local Claude/Codex + MCP is preferred. Save a provider key only when you want direct API fallback or image/sprite generation.
+            Vault sync writes non-secret profile changes immediately and chat/session snapshots every 30 seconds, on new chat, and on close.
           </p>
           <div class="provider-tabs" role="tablist" aria-label="provider">
             <button class="ptab is-active" data-provider="anthropic" role="tab" aria-selected="true" tabindex="0">anthropic</button>
@@ -55,6 +56,12 @@
             <button id="settings-test" class="secondary-button" type="button">test connection</button>
             <button id="settings-save" class="primary-button" type="button">save</button>
           </div>
+          <div class="settings-danger">
+            <button id="settings-logout" class="text-button danger-button" type="button">
+              logout local provider session
+            </button>
+            <small>Clears twin.md's saved provider key/model. Claude Code/Desktop login stays managed by Claude.</small>
+          </div>
           <div id="settings-status" class="settings-status" hidden></div>
         </div>
       </div>
@@ -73,7 +80,6 @@
           <p id="cw-subtitle" class="cw-subtitle">your desk creature</p>
         </div>
         <div class="cw-header-actions">
-          <button id="cw-regen" class="icon-button" type="button" title="regenerate evolution sprite">↻</button>
           <button id="cw-new" class="icon-button" type="button" title="new conversation">✦</button>
           <button id="cw-settings" class="icon-button" type="button" title="settings (provider · model · key)">⚙</button>
         </div>

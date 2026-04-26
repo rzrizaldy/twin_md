@@ -262,8 +262,29 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         return Err("tell me what Claude Desktop should do".to_string());
     }
 
+    if let Some(existing) = read_action_requests()?.into_iter().rev().find(|action| {
+        let same_request = action
+            .get("request")
+            .and_then(|value| value.as_str())
+            .map(|candidate| candidate.trim() == request)
+            .unwrap_or(false);
+        let open = action
+            .get("status")
+            .and_then(|value| value.as_str())
+            .map(|status| matches!(status, "needs_approval" | "pending"))
+            .unwrap_or(false);
+        same_request && open
+    }) {
+        if let Some(id) = existing.get("id").and_then(|value| value.as_str()) {
+            return Ok(ClaudeActionResult {
+                id: id.to_string(),
+                queue_path: action_queue_path().display().to_string(),
+            });
+        }
+    }
+
     let id = format!("act-{}", chrono::Utc::now().timestamp_millis());
-    let queue_path = claude_dir().join("twin").join("action-requests.jsonl");
+    let queue_path = action_queue_path();
     if let Some(parent) = queue_path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -286,6 +307,273 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         id,
         queue_path: queue_path.display().to_string(),
     })
+}
+
+fn action_queue_path() -> PathBuf {
+    claude_dir().join("twin").join("action-requests.jsonl")
+}
+
+fn read_action_requests() -> Result<Vec<serde_json::Value>, String> {
+    let queue_path = action_queue_path();
+    if !queue_path.exists() {
+        return Ok(Vec::new());
+    }
+    let raw = fs::read_to_string(queue_path).map_err(|e| e.to_string())?;
+    Ok(raw
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                return None;
+            }
+            serde_json::from_str::<serde_json::Value>(trimmed).ok()
+        })
+        .collect())
+}
+
+fn write_action_requests(requests: &[serde_json::Value]) -> Result<(), String> {
+    let queue_path = action_queue_path();
+    if let Some(parent) = queue_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let mut buf = String::new();
+    for request in requests {
+        buf.push_str(&serde_json::to_string(request).map_err(|e| e.to_string())?);
+        buf.push('\n');
+    }
+    fs::write(queue_path, buf).map_err(|e| e.to_string())
+}
+
+fn update_action_status(
+    id: &str,
+    mut updater: impl FnMut(&mut serde_json::Map<String, serde_json::Value>),
+) -> Result<serde_json::Value, String> {
+    let mut requests = read_action_requests()?;
+    let mut found: Option<serde_json::Value> = None;
+    for request in &mut requests {
+        let matches = request
+            .get("id")
+            .and_then(|value| value.as_str())
+            .map(|candidate| candidate == id)
+            .unwrap_or(false);
+        if !matches {
+            continue;
+        }
+        let obj = request
+            .as_object_mut()
+            .ok_or_else(|| "queued action is malformed".to_string())?;
+        updater(obj);
+        found = Some(serde_json::Value::Object(obj.clone()));
+    }
+    let Some(updated) = found else {
+        return Err(format!("No twin action found for {id}"));
+    };
+    write_action_requests(&requests)?;
+    Ok(updated)
+}
+
+#[tauri::command]
+pub fn list_twin_actions(statuses: Option<Vec<String>>) -> Result<Vec<serde_json::Value>, String> {
+    let requests = read_action_requests()?;
+    let Some(statuses) = statuses else {
+        return Ok(requests);
+    };
+    Ok(requests
+        .into_iter()
+        .filter(|request| {
+            request
+                .get("status")
+                .and_then(|value| value.as_str())
+                .map(|status| statuses.iter().any(|wanted| wanted == status))
+                .unwrap_or(false)
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub fn clear_twin_actions(app: AppHandle, mode: String) -> Result<usize, String> {
+    let mode = mode.trim();
+    let mut requests = read_action_requests()?;
+    let before = requests.len();
+    match mode {
+        "resolved" => {
+            requests.retain(|request| {
+                !request
+                    .get("status")
+                    .and_then(|value| value.as_str())
+                    .map(|status| matches!(status, "done" | "failed" | "cancelled"))
+                    .unwrap_or(false)
+            });
+        }
+        "cancel_open" => {
+            for request in &mut requests {
+                let open = request
+                    .get("status")
+                    .and_then(|value| value.as_str())
+                    .map(|status| matches!(status, "needs_approval" | "pending"))
+                    .unwrap_or(false);
+                if open {
+                    if let Some(obj) = request.as_object_mut() {
+                        obj.insert("status".to_string(), serde_json::json!("cancelled"));
+                        obj.insert("result".to_string(), serde_json::json!("cleared from backlog in twin.md"));
+                        obj.insert("resolvedAt".to_string(), serde_json::json!(chrono::Utc::now().to_rfc3339()));
+                    }
+                }
+            }
+        }
+        _ => return Err("unknown clear mode".to_string()),
+    }
+    let changed = match mode {
+        "resolved" => before.saturating_sub(requests.len()),
+        "cancel_open" => requests
+            .iter()
+            .filter(|request| {
+                request
+                    .get("result")
+                    .and_then(|value| value.as_str())
+                    == Some("cleared from backlog in twin.md")
+            })
+            .count(),
+        _ => 0,
+    };
+    write_action_requests(&requests)?;
+    let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "mode": mode }));
+    Ok(changed)
+}
+
+#[tauri::command]
+pub fn approve_twin_action(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    let id = id.trim().to_string();
+    if id.is_empty() {
+        return Err("missing twin action id".to_string());
+    }
+    let updated = update_action_status(&id, |obj| {
+        obj.insert("status".to_string(), serde_json::json!("pending"));
+        obj.insert("approvedAt".to_string(), serde_json::json!(chrono::Utc::now().to_rfc3339()));
+    })?;
+    let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "id": id }));
+    Ok(updated)
+}
+
+#[tauri::command]
+pub fn reject_twin_action(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    let id = id.trim().to_string();
+    if id.is_empty() {
+        return Err("missing twin action id".to_string());
+    }
+    let updated = update_action_status(&id, |obj| {
+        obj.insert("status".to_string(), serde_json::json!("cancelled"));
+        obj.insert("result".to_string(), serde_json::json!("cancelled by user in twin.md"));
+        obj.insert("resolvedAt".to_string(), serde_json::json!(chrono::Utc::now().to_rfc3339()));
+    })?;
+    let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "id": id }));
+    Ok(updated)
+}
+
+fn shell_quote(input: &str) -> String {
+    format!("'{}'", input.replace('\'', "'\\''"))
+}
+
+fn write_text_file(path: &std::path::Path, body: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(path, body).map_err(|e| e.to_string())
+}
+
+fn claude_runner_allowed_tools() -> &'static str {
+    "mcp__twin-md__get_pending_twin_actions,mcp__twin-md__resolve_twin_action,\
+mcp__plugin_playwright_playwright__browser_tabs,\
+mcp__plugin_playwright_playwright__browser_navigate,\
+mcp__plugin_playwright_playwright__browser_snapshot,\
+mcp__plugin_playwright_playwright__browser_wait_for,\
+mcp__plugin_playwright_playwright__browser_click,\
+mcp__plugin_playwright_playwright__browser_type,\
+mcp__plugin_playwright_playwright__browser_fill_form,\
+mcp__plugin_playwright_playwright__browser_press_key,\
+mcp__plugin_playwright_playwright__browser_take_screenshot,\
+mcp__plugin_playwright_playwright__browser_console_messages,\
+mcp__plugin_playwright_playwright__browser_network_requests,\
+Bash(osascript *),Bash(open *)"
+}
+
+fn action_request_by_id(id: &str) -> Result<serde_json::Value, String> {
+    read_action_requests()?
+        .into_iter()
+        .find(|request| {
+            request
+                .get("id")
+                .and_then(|value| value.as_str())
+                .map(|candidate| candidate == id)
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| format!("No twin action found for {id}"))
+}
+
+fn approved_action_prompt(id: &str, request: &str) -> String {
+    format!(
+        "You are executing one approved twin.md desktop action.\n\
+Do not create or queue a new twin action.\n\
+Action id: {id}\n\
+User request: {request}\n\
+\n\
+Execute the user request now using your available desktop tools. For macOS desktop apps, AppleScript via osascript is appropriate.\n\
+Use get_pending_twin_actions only to confirm this action still exists if needed; do not ask the user what this action means.\n\
+When finished, call resolve_twin_action with status done, failed, or needs_user and a short user-facing result.\n\
+If permissions, login, or manual control are required, resolve with needs_user and explain exactly what the user must do."
+    )
+}
+
+#[tauri::command]
+pub fn open_claude_action_runner(id: String) -> Result<(), String> {
+    let id = id.trim();
+    if id.is_empty() || !id.starts_with("act-") {
+        return Err("invalid twin action id".to_string());
+    }
+    let claude = ai_agents::detect_claude_cli()
+        .ok_or_else(|| "Claude Code CLI not found. Install/login to Claude Code, or use Claude Desktop MCP polling.".to_string())?;
+    let action = action_request_by_id(id)?;
+    let request = action
+        .get("request")
+        .and_then(|value| value.as_str())
+        .unwrap_or("approved twin.md action");
+    let mcp_config = ai_agents::mcp_config_arg_for_cli().map_err(|e| e.to_string())?;
+    let prompt = approved_action_prompt(id, request);
+    let runner_dir = std::env::temp_dir().join("twin-md").join("actions");
+    let prompt_path = runner_dir.join(format!("{id}.prompt.txt"));
+    let script_path = runner_dir.join(format!("run-{id}.zsh"));
+    write_text_file(&prompt_path, &prompt)?;
+    let script = format!(
+        "#!/bin/zsh -f\nset -e\ncat {} | {} --mcp-config {} --print --permission-mode auto --allowedTools {}\n",
+        shell_quote(&prompt_path.display().to_string()),
+        shell_quote(&claude.display().to_string()),
+        shell_quote(&mcp_config.display().to_string()),
+        shell_quote(claude_runner_allowed_tools())
+    );
+    write_text_file(&script_path, &script)?;
+    let command = format!("zsh -f {}", shell_quote(&script_path.display().to_string()));
+
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            r#"tell application "Terminal"
+    activate
+    do script "{}"
+end tell"#,
+            command.replace('\\', "\\\\").replace('"', "\\\"")
+        );
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err(format!("run this in your terminal: {command}"))
+    }
 }
 
 #[tauri::command]
@@ -389,6 +677,68 @@ pub fn set_vault_path(payload: VaultPayload) -> Result<(), String> {
 
     fs::write(&cfg_path, serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_vault_profile_status() -> crate::profile::VaultProfileStatus {
+    crate::profile::status()
+}
+
+#[tauri::command]
+pub fn delete_previous_session() -> Result<bool, String> {
+    crate::profile::delete_vault_profile()
+}
+
+#[tauri::command]
+pub fn save_vault_profile_ui(chat_background: Option<serde_json::Value>) -> Result<(), String> {
+    crate::profile::update_profile(|profile| {
+        profile.ui.chat_background = chat_background;
+    })?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn load_previous_session(
+    app: AppHandle,
+    shared: State<'_, SharedState>,
+) -> Result<OnboardingResult, String> {
+    let Some(vault_root) = crate::profile::resolve_vault_root() else {
+        return Ok(OnboardingResult {
+            ok: false,
+            message: "no vault configured yet".to_string(),
+        });
+    };
+    let Some(profile) = crate::profile::read_profile_from(&vault_root)? else {
+        return Ok(OnboardingResult {
+            ok: false,
+            message: "no previous twin.md profile found in this vault".to_string(),
+        });
+    };
+    crate::profile::apply_profile_to_config(&profile)?;
+    if let Ok(Some(next)) = crate::state::read_state_file() {
+        shared.set(next.clone());
+        let _ = app.emit("twin://state-changed", next);
+    }
+    let snapshot = crate::sprite::current_snapshot();
+    if let Some(path) = snapshot.current_path.clone() {
+        let _ = app.emit(
+            "twin://sprite-updated",
+            serde_json::json!({
+                "path": path,
+                "isSvg": snapshot.is_svg
+            }),
+        );
+    }
+    windows::show_companion(&app).map_err(|e| e.to_string())?;
+    let owner = profile.owner.as_deref().unwrap_or("there");
+    let intro = format!(
+        "Welcome back, {owner}. I loaded the previous twin.md session from your vault profile."
+    );
+    let _ = windows::show_chat_with_intro(&app, &intro);
+    Ok(OnboardingResult {
+        ok: true,
+        message: "loaded previous session".to_string(),
+    })
 }
 
 #[derive(Deserialize)]
@@ -607,8 +957,11 @@ pub async fn run_onboarding(
             );
         }
         shared.set(next.clone());
+        crate::profile::sync_state_hint(&next);
         let _ = app.emit("twin://state-changed", next);
     }
+
+    let _ = crate::profile::save_profile_from_config();
 
     if let Err(err) = windows::show_companion(&app) {
         return Ok(OnboardingResult {
@@ -742,6 +1095,11 @@ pub fn save_provider_credentials(
     })
 }
 
+#[tauri::command]
+pub fn logout_provider_session() -> Result<(), String> {
+    credentials::logout_provider_session().map_err(|e| e.to_string())
+}
+
 #[derive(serde::Serialize)]
 pub struct ModelList {
     pub provider: String,
@@ -807,7 +1165,8 @@ pub fn save_chat_session(session_id: String, turns: Vec<ChatTurn>) -> Result<(),
         buf.push_str(&line);
         buf.push('\n');
     }
-    fs::write(&path, buf).map_err(|e| e.to_string())?;
+    fs::write(&path, &buf).map_err(|e| e.to_string())?;
+    let _ = crate::profile::write_session_copy(&session_id, &buf);
     Ok(())
 }
 

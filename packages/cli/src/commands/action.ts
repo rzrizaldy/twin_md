@@ -21,12 +21,12 @@ export async function runActionApproveCommand(id: string): Promise<void> {
     status: "pending",
     approvedAt: new Date().toISOString()
   }));
-  console.log(`Approved ${id}. Claude Desktop can now pick it up with get_pending_twin_actions.`);
+  console.log(`Approved ${id}. Claude Desktop or Claude Code can now pick it up with get_pending_twin_actions.`);
 }
 
 export async function runActionResolveCommand(
   id: string,
-  status: Extract<TwinActionStatus, "done" | "failed" | "needs_user">,
+  status: Extract<TwinActionStatus, "done" | "failed" | "needs_user" | "cancelled">,
   result: string
 ): Promise<void> {
   updateTwinAction(id, (request) => ({
