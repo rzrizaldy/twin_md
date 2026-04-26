@@ -11,6 +11,14 @@ use anyhow::{anyhow, Result};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
+#[derive(Debug, Clone)]
+pub struct LocalMcpWireResult {
+    pub agent_name: Option<String>,
+    pub agent_path: Option<PathBuf>,
+    pub mcp_path: PathBuf,
+    pub mcp_config_path: PathBuf,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CliAgent {
     Claude(PathBuf),
@@ -100,6 +108,32 @@ fn mcp_entrypoint() -> Option<PathBuf> {
     None
 }
 
+fn find_monorepo_root() -> Option<PathBuf> {
+    let mut starts = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        starts.push(exe);
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        starts.push(cwd);
+    }
+
+    for start in starts {
+        let mut cursor = start.as_path();
+        for _ in 0..14 {
+            if cursor.join("packages").join("mcp").join("package.json").exists()
+                && cursor.join("packages").join("core").join("package.json").exists()
+            {
+                return Some(cursor.to_path_buf());
+            }
+            let Some(parent) = cursor.parent() else {
+                break;
+            };
+            cursor = parent;
+        }
+    }
+    None
+}
+
 pub fn mcp_config_json() -> Result<String> {
     let mcp_path = mcp_entrypoint()
         .ok_or_else(|| anyhow!("twin-md MCP dist not found; run `npm run build -w @twin-md/mcp` first"))?;
@@ -124,6 +158,58 @@ pub fn write_temp_mcp_config() -> Result<PathBuf> {
 
 pub fn mcp_config_arg_for_cli() -> Result<PathBuf> {
     write_temp_mcp_config()
+}
+
+async fn run_npm_build(root: &PathBuf, package: &str) -> Result<()> {
+    let output = Command::new("npm")
+        .arg("run")
+        .arg("build")
+        .arg("-w")
+        .arg(package)
+        .current_dir(root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| anyhow!("spawn npm build for {package}: {e}"))?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let detail = if !stderr.is_empty() {
+        stderr
+    } else if !stdout.is_empty() {
+        stdout
+    } else {
+        format!("exit {}", output.status)
+    };
+    Err(anyhow!("npm build failed for {package}: {detail}"))
+}
+
+pub async fn build_and_wire_local_mcp() -> Result<LocalMcpWireResult> {
+    let root = find_monorepo_root().ok_or_else(|| {
+        anyhow!("couldn't find the twin-md monorepo root from the desktop app")
+    })?;
+
+    run_npm_build(&root, "@twin-md/core").await?;
+    run_npm_build(&root, "@twin-md/brain").await?;
+    run_npm_build(&root, "@twin-md/mcp").await?;
+
+    let mcp_path = mcp_entrypoint().ok_or_else(|| {
+        anyhow!("MCP build finished but packages/mcp/dist/server.js was not found")
+    })?;
+    let mcp_config_path = write_temp_mcp_config()?;
+    let agent = detect_cli_agent();
+
+    Ok(LocalMcpWireResult {
+        agent_name: agent.as_ref().map(|a| a.name().to_string()),
+        agent_path: agent.as_ref().map(|a| a.path().clone()),
+        mcp_path,
+        mcp_config_path,
+    })
 }
 
 pub fn detect_claude_cli() -> Option<PathBuf> {

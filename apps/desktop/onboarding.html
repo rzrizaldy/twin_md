@@ -117,11 +117,19 @@
       <section class="wizard-step" data-step="4">
         <h2>local intelligence</h2>
         <p class="muted model-tier-hint">
-          twin prefers your local Claude/Codex + MCP setup. Provider keys are optional fallback power tools for image generation, sprite evolution, and direct API chat.
+          twin prefers your local Claude/Codex bridge. Provider keys are optional fallback tools for image generation, sprite evolution, and direct API chat.
         </p>
         <div class="detection-card" id="local-agent-status" data-detection="local-agent">
           <span class="detection-icon" aria-hidden="true">·</span>
           <span class="detection-body">checking local agent…</span>
+        </div>
+        <div class="local-wire-actions">
+          <button id="wire-local-mcp" class="secondary-button" type="button" hidden>
+            build &amp; wire local MCP
+          </button>
+          <span id="local-agent-help" class="wire-help" hidden>
+            builds the bundled MCP server and prepares the Claude/Codex config for local chat.
+          </span>
         </div>
         <div class="rembg-hint" id="rembg-hint">
           <strong>sprites &amp; /image</strong> (openai &amp; google) use

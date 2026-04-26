@@ -47,6 +47,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::get_state,
             ipc::get_chat_status,
+            ipc::wire_local_mcp,
             ipc::analyze_vault_knowledge,
             ipc::retrieve_vault_knowledge,
             ipc::install_rembg,

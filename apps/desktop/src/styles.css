@@ -1139,6 +1139,27 @@ body.window-onboarding {
   margin-top: 4px;
 }
 
+.local-wire-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.wire-help {
+  flex: 1 1 190px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(71, 54, 67, 0.68);
+}
+
+.wire-help[hidden],
+#wire-local-mcp[hidden] {
+  display: none;
+}
+
 .provider-note {
   font-size: 12px;
   margin: 0 0 8px;
@@ -1555,6 +1576,9 @@ body.window-onboarding {
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cw-subtitle {

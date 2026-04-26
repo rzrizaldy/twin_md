@@ -147,6 +147,7 @@ const cwInput = document.getElementById("cw-input") as HTMLTextAreaElement;
 const cwSend = document.getElementById("cw-send") as HTMLButtonElement;
 const cwSpriteWrap = document.getElementById("cw-sprite-wrap") as HTMLDivElement | null;
 const cwSprite = document.getElementById("cw-sprite") as HTMLImageElement;
+const cwTitle = document.getElementById("cw-title") as HTMLHeadingElement;
 const cwSubtitle = document.getElementById("cw-subtitle") as HTMLParagraphElement;
 const cwNewBtn = document.getElementById("cw-new") as HTMLButtonElement;
 const cwSettingsBtn = document.getElementById("cw-settings") as HTMLButtonElement;
@@ -179,6 +180,8 @@ let currentMood: TwinMood = "healthy";
 let settingsProvider: AiProvider = "anthropic";
 let currentProvider = "anthropic";
 let currentModel = "";
+let currentOwnerName = "you";
+let currentCharacterName = "Axiotyl";
 let settingsReturnFocus: HTMLElement | null = null;
 let activeAutocompleteIndex = 0;
 let introShown = false;
@@ -223,9 +226,6 @@ function updateSprite(state: PetState) {
   if (!evolutionSpritePath) {
     cwSprite.src = `/pets/${species}/${mood}/breath-a.png`;
   }
-  if (!cwSpriteWrap?.classList.contains("is-evolving")) {
-    cwSubtitle.textContent = state.caption.toLowerCase();
-  }
 }
 
 async function resolveGeneratedSpriteUrl(path: string): Promise<string> {
@@ -244,23 +244,35 @@ async function swapChatSprite(path: string) {
     cwSpriteWrap?.classList.add("has-evolved-sprite");
     cwSpriteWrap?.classList.add("sprite-swap");
     cwSprite.src = url;
-    void refreshSubtitleFromState();
+    void refreshIdentityHeader();
     setTimeout(() => cwSpriteWrap?.classList.remove("sprite-swap"), 280);
   };
   next.onerror = () => {
     cwSpriteWrap?.classList.remove("is-evolving");
-    void refreshSubtitleFromState();
+    void refreshIdentityHeader();
     appendStatus("couldn't load new sprite", "error");
   };
   next.src = url;
 }
 
-async function refreshSubtitleFromState() {
+function cleanDisplayName(value: string | null | undefined, fallback: string): string {
+  const cleaned = (value ?? "").replace(/\s+/g, " ").trim();
+  return cleaned || fallback;
+}
+
+function setIdentityHeader(owner: string | null | undefined, characterName: string | null | undefined) {
+  currentOwnerName = cleanDisplayName(owner, currentOwnerName);
+  currentCharacterName = cleanDisplayName(characterName, currentCharacterName);
+  cwTitle.textContent = `twin.md for ${currentOwnerName}`;
+  cwSubtitle.textContent = currentCharacterName;
+}
+
+async function refreshIdentityHeader() {
   try {
-    const st = await invoke<PetState | null>("get_state");
-    if (st) cwSubtitle.textContent = st.caption.toLowerCase();
+    const status = await getChatStatus();
+    if (status) setIdentityHeader(status.owner, status.character_name);
   } catch {
-    /* ignore */
+    setIdentityHeader(currentOwnerName, currentCharacterName);
   }
 }
 
@@ -691,6 +703,7 @@ async function appendCharacterPreview(
         await applySpriteEvolutionPreview(filePath);
       } else {
         await invoke("apply_custom_sprite_preview", { prompt, path: filePath });
+        setIdentityHeader(currentOwnerName, prompt);
       }
       evolutionSpritePath = filePath;
       await swapChatSprite(filePath);
@@ -1546,6 +1559,7 @@ async function loadProviderStatus() {
     settingsProvider = status.provider as AiProvider;
     currentProvider = status.provider;
     currentModel = status.model;
+    setIdentityHeader(status.owner, status.character_name);
     updateProviderTabs(settingsProvider);
     await refreshModelList(settingsProvider);
     settingsModel.value = status.model;
@@ -1835,12 +1849,11 @@ async function init() {
 
   void onSpriteEvolving(() => {
     cwSpriteWrap?.classList.add("is-evolving");
-    cwSubtitle.textContent = "evolving…";
   });
 
   void onSpriteEvolveError((p) => {
     cwSpriteWrap?.classList.remove("is-evolving");
-    void refreshSubtitleFromState();
+    void refreshIdentityHeader();
     const m = p.message;
     if (m.includes("rembg_missing")) {
       appendStatus(

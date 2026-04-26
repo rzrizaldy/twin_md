@@ -20,7 +20,16 @@ export interface ChatStatus {
   notes_available: number;
   provider: string;
   model: string;
+  owner: string | null;
+  character_name: string | null;
   rembgInstalled: boolean;
+}
+
+export interface LocalMcpWireStatus {
+  agentName: string | null;
+  agentPath: string | null;
+  mcpPath: string;
+  mcpConfigPath: string;
 }
 
 export interface VaultFolderStat {
@@ -132,6 +141,10 @@ export async function getChatStatus(): Promise<ChatStatus | null> {
   } catch {
     return null;
   }
+}
+
+export async function wireLocalMcp(): Promise<LocalMcpWireStatus> {
+  return invoke<LocalMcpWireStatus>("wire_local_mcp");
 }
 
 export async function analyzeVaultKnowledge(): Promise<VaultKnowledgeAnalysis> {

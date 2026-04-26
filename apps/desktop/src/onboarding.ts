@@ -19,6 +19,7 @@ import {
   saveProviderCredentials,
   setVaultPath,
   validateProviderKey,
+  wireLocalMcp,
   type AiProvider,
   type ChatStatus,
   type ClaudeDirStatus
@@ -543,6 +544,8 @@ const whereLink = $<HTMLAnchorElement>("#where-link");
 const storeKeychain = $<HTMLInputElement>("#store-keychain");
 const skipProvider = $<HTMLInputElement>("#skip-provider");
 const installRembgBtn = document.getElementById("install-rembg") as HTMLButtonElement | null;
+const wireLocalMcpBtn = document.getElementById("wire-local-mcp") as HTMLButtonElement | null;
+const localAgentHelp = document.getElementById("local-agent-help");
 
 function updateRembgInstallButton(): void {
   if (!installRembgBtn) return;
@@ -552,11 +555,17 @@ function updateRembgInstallButton(): void {
 }
 const localAgentCard = $<HTMLElement>("#local-agent-status");
 
+function setWireLocalMcpVisible(visible: boolean): void {
+  if (wireLocalMcpBtn) wireLocalMcpBtn.hidden = !visible;
+  if (localAgentHelp) localAgentHelp.hidden = !visible;
+}
+
 async function refreshLocalAgentStatus() {
   const body = localAgentCard.querySelector(".detection-body");
   const icon = localAgentCard.querySelector(".detection-icon");
   if (!body || !icon) return;
   localAgentCard.classList.remove("ok", "warn");
+  setWireLocalMcpVisible(false);
   icon.textContent = "·";
   body.textContent = "checking local agent…";
   chatStatus = await getChatStatus();
@@ -571,13 +580,14 @@ async function refreshLocalAgentStatus() {
     localAgentCard.classList.add("ok");
     icon.textContent = "✓";
     const agent = chatStatus.local_agent ?? "local agent";
-    body.textContent = `${agent} detected — chat can run locally with twin MCP context.`;
+    body.textContent = `${agent} is connected to twin MCP. Local chat is ready; provider keys can stay optional.`;
     return;
   }
   if (chatStatus.local_agent) {
     localAgentCard.classList.add("warn");
     icon.textContent = "!";
-    body.textContent = `${chatStatus.local_agent} is installed, but twin MCP is not built yet. run npm run build or add a provider key.`;
+    body.textContent = `${chatStatus.local_agent} is installed. Build the local twin MCP bridge once so chat can use it.`;
+    setWireLocalMcpVisible(true);
     return;
   }
   if (chatStatus.has_api_key) {
@@ -590,6 +600,22 @@ async function refreshLocalAgentStatus() {
   icon.textContent = "!";
   body.textContent = "no local agent or provider key yet — add a key below, or skip and configure later.";
 }
+
+wireLocalMcpBtn?.addEventListener("click", async () => {
+  wireLocalMcpBtn.disabled = true;
+  setStatus("building twin MCP and wiring local chat… this can take a minute.");
+  try {
+    const result = await wireLocalMcp();
+    chatStatus = await getChatStatus();
+    await refreshLocalAgentStatus();
+    const agent = result.agentName ?? "local agent";
+    setStatus(`${agent} is wired to ${result.mcpConfigPath}`, "ok");
+  } catch (e) {
+    setStatus(`local MCP wiring failed: ${String(e)}`, "error");
+  } finally {
+    wireLocalMcpBtn.disabled = false;
+  }
+});
 
 async function loadModels(provider: AiProvider) {
   state.provider = provider;

@@ -46,8 +46,19 @@ pub struct ChatStatus {
     pub notes_available: usize,
     pub provider: String,
     pub model: String,
+    pub owner: Option<String>,
+    pub character_name: Option<String>,
     #[serde(rename = "rembgInstalled")]
     pub rembg_installed: bool,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMcpWireStatus {
+    pub agent_name: Option<String>,
+    pub agent_path: Option<String>,
+    pub mcp_path: String,
+    pub mcp_config_path: String,
 }
 
 #[tauri::command]
@@ -70,8 +81,37 @@ pub fn get_chat_status() -> ChatStatus {
         notes_available: ctx.notes.len(),
         provider: provider.slug().to_string(),
         model,
+        owner: ctx.owner,
+        character_name: read_character_name_from_config(),
         rembg_installed: rembg::is_available(),
     }
+}
+
+fn read_character_name_from_config() -> Option<String> {
+    let cfg_path = claude_dir().join("twin.config.json");
+    let bytes = fs::read(cfg_path).ok()?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    value
+        .get("spriteEvolution")
+        .and_then(|v| v.get("customPrompt"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+#[tauri::command]
+pub async fn wire_local_mcp() -> Result<LocalMcpWireStatus, String> {
+    let result = ai_agents::build_and_wire_local_mcp()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(LocalMcpWireStatus {
+        agent_name: result.agent_name,
+        agent_path: result.agent_path.map(|p| p.display().to_string()),
+        mcp_path: result.mcp_path.display().to_string(),
+        mcp_config_path: result.mcp_config_path.display().to_string(),
+    })
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1849,4 +1889,3 @@ pub async fn generate_chat_background(prompt: String) -> Result<image_gen::Image
         .await
         .map_err(|e| e.to_string())
 }
-
