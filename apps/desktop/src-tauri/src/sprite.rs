@@ -104,24 +104,32 @@ pub fn build_preview_prompt(user_baseline: &str) -> String {
         svg: String::new(),
         color: "#8b5cf6".into(),
     };
-    build_evolutionary_prompt_with_baseline(&state, user_baseline.trim())
+    build_evolutionary_prompt_with_baseline(&state, user_baseline.trim(), true)
 }
 
 /// Full evolutionary prompt for the active image route.
 pub fn build_evolutionary_prompt(state: &PetState) -> String {
     let base = baseline_description();
-    build_evolutionary_prompt_with_baseline(state, &base)
+    build_evolutionary_prompt_with_baseline(state, &base, custom_evolution_enabled())
 }
 
-fn build_evolutionary_prompt_with_baseline(state: &PetState, base: &str) -> String {
+fn build_evolutionary_prompt_with_baseline(state: &PetState, base: &str, custom_identity: bool) -> String {
     let out_fmt = "full-body sprite on a clean solid white or pastel background; single character; rembg will remove the background — do not use transparency / checkerboard patterns in raster image routes.";
     let mood = mood_key(&state.state);
     let env = env_key(&state.environment);
-    let species = species_key(&state.species);
-    let species_cue = match state.species {
-        Species::Axolotl => "axolotl silhouette: frilled external gills, soft rounded body, curious eyes",
-        Species::Cat => "cat silhouette: clear triangle ears, compact body, self-contained expression",
-        Species::Slime => "slime silhouette: rounded dome body, bouncy droop, goofy low-ego face",
+    let (species, species_cue) = if custom_identity {
+        (
+            "custom companion",
+            "follow BASELINE exactly; do not reinterpret it as an axolotl/cat/slime unless the baseline explicitly says so",
+        )
+    } else {
+        let species = species_key(&state.species);
+        let species_cue = match state.species {
+            Species::Axolotl => "axolotl silhouette: frilled external gills, soft rounded body, curious eyes",
+            Species::Cat => "cat silhouette: clear triangle ears, compact body, self-contained expression",
+            Species::Slime => "slime silhouette: rounded dome body, bouncy droop, goofy low-ego face",
+        };
+        (species, species_cue)
     };
     format!(
         r#"You are generating a single sprite of a persistent desktop companion.
@@ -238,6 +246,7 @@ fn write_evolution_meta(path: &str, species: &str, mood: &str, env: &str) -> Res
 pub struct SpriteEvolutionSnapshot {
     pub current_path: Option<String>,
     pub is_svg: bool,
+    pub custom_enabled: bool,
 }
 
 pub fn current_snapshot() -> SpriteEvolutionSnapshot {
@@ -245,6 +254,7 @@ pub fn current_snapshot() -> SpriteEvolutionSnapshot {
         return SpriteEvolutionSnapshot {
             current_path: None,
             is_svg: false,
+            custom_enabled: false,
         };
     }
 
@@ -262,6 +272,7 @@ pub fn current_snapshot() -> SpriteEvolutionSnapshot {
     SpriteEvolutionSnapshot {
         current_path: path,
         is_svg,
+        custom_enabled: true,
     }
 }
 
@@ -318,6 +329,12 @@ pub async fn on_pet_state_changed(app: &AppHandle, state: PetState) -> Result<()
 
 /// Manual "regenerate" from UI.
 pub async fn regenerate(app: &AppHandle) -> Result<String> {
+    if !custom_evolution_enabled() {
+        return Err(anyhow!(
+            "custom_sprite_required: choose custom prompt mode in onboarding to use AI sprite evolution"
+        ));
+    }
+
     if let Some(wait) = rate_limit_wait_secs() {
         return Err(anyhow!("rate_limited:{wait}"));
     }

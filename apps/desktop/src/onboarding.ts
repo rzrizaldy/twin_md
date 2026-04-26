@@ -41,6 +41,7 @@ interface WizardState {
   step: number;
   spriteMode: SpriteMode;
   customSprite: string;
+  customSpritePreviewPath: string | null;
   owner: string;
   vaultChoice: VaultChoice;
   vaultPath: string | null;
@@ -56,6 +57,7 @@ const state: WizardState = {
   step: 0,
   spriteMode: "default",
   customSprite: "",
+  customSpritePreviewPath: null,
   owner: "",
   vaultChoice: null,
   vaultPath: null,
@@ -170,6 +172,9 @@ function validateStep(step: number): string | null {
     case 5:
       if (state.spriteMode === "custom" && !state.customSprite.trim()) {
         return "describe your creature, or go back to default axolotl.";
+      }
+      if (state.spriteMode === "custom" && !state.customSpritePreviewPath) {
+        return "generate a preview first so summon starts from your custom sprite.";
       }
       return null;
     default:
@@ -513,6 +518,7 @@ installRembgBtn?.addEventListener("click", async () => {
 if (previewPrompt) {
   previewPrompt.addEventListener("input", () => {
     state.customSprite = previewPrompt.value;
+    state.customSpritePreviewPath = null;
   });
 }
 
@@ -532,6 +538,7 @@ btnGenPreview?.addEventListener("click", async () => {
   if (previewStatus) previewStatus.textContent = "generating…";
   try {
     const path = await generateSpritePreview(p);
+    state.customSpritePreviewPath = path;
     if (previewImg) {
       previewImg.style.display = "block";
       try {
@@ -563,7 +570,9 @@ async function runSummon() {
     obsidianVault: state.vaultPath,
     spriteEvolution: {
       kind: state.spriteMode,
-      customPrompt: state.spriteMode === "custom" ? state.customSprite.trim() : null
+      customPrompt: state.spriteMode === "custom" ? state.customSprite.trim() : null,
+      currentPath:
+        state.spriteMode === "custom" ? state.customSpritePreviewPath : null
     }
   };
   try {

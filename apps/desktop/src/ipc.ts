@@ -133,6 +133,7 @@ export type SpriteEvolvingReason = "auto" | "manual";
 export interface SpriteEvolutionSnapshot {
   currentPath: string | null;
   isSvg: boolean;
+  customEnabled: boolean;
 }
 
 export async function getSpriteEvolution(): Promise<SpriteEvolutionSnapshot> {

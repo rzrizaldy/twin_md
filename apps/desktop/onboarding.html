@@ -83,17 +83,17 @@
       <!-- Step 3 — axolotl vs custom (prompt comes later) -->
       <section class="wizard-step" data-step="3">
         <h2>how should your twin look?</h2>
-        <p class="muted">default is the classic chibi axolotl. custom = you describe a creature; you'll preview it if you add a provider key.</p>
+        <p class="muted">default Axiotyl uses the handcrafted bundled mood sprites. custom = you describe a creature and unlock AI sprite evolution.</p>
         <div class="choice-grid choice-grid--wide">
           <label class="choice-card choice-card--label">
             <input type="radio" name="sprite-mode" value="default" checked />
             <strong>axolotl (default)</strong>
-            <span>classic twin.md axolotl</span>
+            <span>stable handcrafted moods, no AI generation</span>
           </label>
           <label class="choice-card choice-card--label">
             <input type="radio" name="sprite-mode" value="custom" />
             <strong>custom prompt</strong>
-            <span>you'll write &amp; preview the look in the next steps</span>
+            <span>preview it, then let it evolve with mood changes</span>
           </label>
         </div>
       </section>
@@ -173,7 +173,7 @@
       <!-- Step 5 — custom preview (key already saved) -->
       <section class="wizard-step" data-step="5" id="step-preview">
         <h2>craft your look</h2>
-        <p class="muted">generate as many previews as you like. when it feels right, continue to summon.</p>
+        <p class="muted">generate previews for your custom creature. after summon, this custom baseline can evolve when mood or scene changes.</p>
         <label class="field">
           <span>creature prompt</span>
           <textarea

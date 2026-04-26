@@ -9,7 +9,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/mcp && npm run build -w twin-md",
+    "build": "npm run build -w @twin-md/core && npm run build -w @twin-md/brain && npm run build -w @twin-md/mcp && npm run build -w twin-md",
     "build:landing": "npm run build -w @twin-md/landing",
     "build:desktop": "npm run build -w @twin-md/desktop",
     "dev:landing": "npm run dev -w @twin-md/landing",

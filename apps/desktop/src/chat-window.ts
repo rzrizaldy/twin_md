@@ -107,6 +107,7 @@ let isStreaming = false;
 let lastAssistantText = "";
 let evolutionSpritePath: string | null = null;
 let currentMood: TwinMood = "healthy";
+let customSpriteEvolutionEnabled = false;
 
 let settingsProvider: AiProvider = "anthropic";
 let currentProvider = "anthropic";
@@ -154,17 +155,26 @@ function swapChatSprite(path: string) {
     cwSpriteWrap?.classList.add("has-evolved-sprite");
     cwSpriteWrap?.classList.add("sprite-swap");
     cwSprite.src = url;
-    if (cwRegenBtn) cwRegenBtn.disabled = false;
+    syncRegenerateButton();
     void refreshSubtitleFromState();
     setTimeout(() => cwSpriteWrap?.classList.remove("sprite-swap"), 280);
   };
   next.onerror = () => {
     cwSpriteWrap?.classList.remove("is-evolving");
-    if (cwRegenBtn) cwRegenBtn.disabled = false;
+    syncRegenerateButton();
     void refreshSubtitleFromState();
     appendStatus("couldn't load new sprite", "error");
   };
   next.src = url;
+}
+
+function syncRegenerateButton(): void {
+  if (!cwRegenBtn) return;
+  const evolving = cwSpriteWrap?.classList.contains("is-evolving") === true;
+  cwRegenBtn.disabled = !customSpriteEvolutionEnabled || evolving;
+  cwRegenBtn.title = customSpriteEvolutionEnabled
+    ? "regenerate evolution sprite"
+    : "custom sprite mode required for AI evolution";
 }
 
 async function refreshSubtitleFromState() {
@@ -715,6 +725,10 @@ cwRegenBtn?.addEventListener("click", async () => {
     appendStatus("new evolution sprite");
   } catch (e) {
     const s = String(e);
+    if (s.includes("custom_sprite_required")) {
+      appendStatus("custom sprite mode required for AI evolution", "error");
+      return;
+    }
     if (s.includes("rate_limited:")) {
       const sec = parseInt(s.split("rate_limited:")[1]?.trim() ?? "0", 10);
       const m = Math.floor(sec / 60);
@@ -788,6 +802,8 @@ async function init() {
 
   try {
     const evo = await getSpriteEvolution();
+    customSpriteEvolutionEnabled = evo.customEnabled;
+    syncRegenerateButton();
     if (evo.currentPath) {
       evolutionSpritePath = evo.currentPath;
       swapChatSprite(evo.currentPath);
@@ -811,13 +827,13 @@ async function init() {
 
   void onSpriteEvolving(() => {
     cwSpriteWrap?.classList.add("is-evolving");
-    if (cwRegenBtn) cwRegenBtn.disabled = true;
+    syncRegenerateButton();
     cwSubtitle.textContent = "evolving…";
   });
 
   void onSpriteEvolveError((p) => {
     cwSpriteWrap?.classList.remove("is-evolving");
-    if (cwRegenBtn) cwRegenBtn.disabled = false;
+    syncRegenerateButton();
     void refreshSubtitleFromState();
     const m = p.message;
     if (m.includes("rembg_missing")) {
