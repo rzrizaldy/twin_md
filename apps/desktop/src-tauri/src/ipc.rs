@@ -246,6 +246,7 @@ pub fn apply_sprite_evolution_preview(app: AppHandle, path: String) -> Result<()
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeActionPayload {
     pub request: String,
+    pub capability: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -253,6 +254,9 @@ pub struct ClaudeActionPayload {
 pub struct ClaudeActionResult {
     pub id: String,
     pub queue_path: String,
+    pub status: String,
+    pub capability: Option<String>,
+    pub trusted: bool,
 }
 
 #[tauri::command]
@@ -276,13 +280,38 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         same_request && open
     }) {
         if let Some(id) = existing.get("id").and_then(|value| value.as_str()) {
+            let status = existing
+                .get("status")
+                .and_then(|value| value.as_str())
+                .unwrap_or("needs_approval")
+                .to_string();
             return Ok(ClaudeActionResult {
                 id: id.to_string(),
                 queue_path: action_queue_path().display().to_string(),
+                status,
+                capability: existing
+                    .get("capability")
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string),
+                trusted: existing
+                    .get("trustedApproval")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(false),
             });
         }
     }
 
+    let capability = payload
+        .capability
+        .as_deref()
+        .map(str::trim)
+        .filter(|candidate| !candidate.is_empty())
+        .map(str::to_string);
+    let trusted = capability
+        .as_deref()
+        .map(crate::profile::is_action_capability_approved)
+        .unwrap_or(false);
+    let status = if trusted { "pending" } else { "needs_approval" };
     let id = format!("act-{}", chrono::Utc::now().timestamp_millis());
     let queue_path = action_queue_path();
     if let Some(parent) = queue_path.parent() {
@@ -290,11 +319,17 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
     }
     let event = serde_json::json!({
         "id": id,
-        "status": "needs_approval",
+        "status": status,
         "source": "twin-desktop",
         "request": request,
+        "capability": capability,
+        "trustedApproval": trusted,
         "createdAt": chrono::Utc::now().to_rfc3339(),
-        "hint": "User must approve this first, for example: twin-md action approve <id>. After approval, Claude Desktop should read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+        "hint": if trusted {
+            "This action matched a saved twin.md capability approval. Claude should read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+        } else {
+            "User must approve this first, for example: twin-md action approve <id>. After approval, Claude Desktop should read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+        }
     });
     let mut file = OpenOptions::new()
         .create(true)
@@ -306,6 +341,9 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
     Ok(ClaudeActionResult {
         id,
         queue_path: queue_path.display().to_string(),
+        status: status.to_string(),
+        capability,
+        trusted,
     })
 }
 
@@ -451,6 +489,9 @@ pub fn approve_twin_action(app: AppHandle, id: String) -> Result<serde_json::Val
         obj.insert("status".to_string(), serde_json::json!("pending"));
         obj.insert("approvedAt".to_string(), serde_json::json!(chrono::Utc::now().to_rfc3339()));
     })?;
+    if let Some(capability) = updated.get("capability").and_then(|value| value.as_str()) {
+        crate::profile::approve_action_capability(capability)?;
+    }
     let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "id": id }));
     Ok(updated)
 }

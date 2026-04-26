@@ -251,7 +251,19 @@ export async function runLocalCommand(
 export interface ClaudeActionResult {
   id: string;
   queuePath: string;
+  status: TwinActionStatus | string;
+  capability: ActionCapability | string | null;
+  trusted: boolean;
 }
+
+export type ActionCapability =
+  | "playwright"
+  | "spotify"
+  | "reminders"
+  | "calendar"
+  | "mail"
+  | "notes"
+  | "desktop";
 
 export type TwinActionStatus =
   | "needs_approval"
@@ -264,6 +276,7 @@ export type TwinActionStatus =
 export interface TwinActionRequest {
   id?: string;
   request?: string;
+  capability?: ActionCapability | string | null;
   status?: TwinActionStatus | string;
   result?: string | null;
   createdAt?: string;
@@ -272,9 +285,12 @@ export interface TwinActionRequest {
   [key: string]: unknown;
 }
 
-export async function requestClaudeAction(request: string): Promise<ClaudeActionResult> {
+export async function requestClaudeAction(
+  request: string,
+  capability?: ActionCapability | null
+): Promise<ClaudeActionResult> {
   return invoke<ClaudeActionResult>("request_claude_action", {
-    payload: { request }
+    payload: { request, capability: capability ?? null }
   });
 }
 
@@ -332,6 +348,7 @@ export interface VaultProfileStatus {
   updatedAt: string | null;
   spritePrompt: string | null;
   chatBackground: unknown | null;
+  approvedActionCapabilities: ActionCapability[] | string[];
 }
 
 export async function getVaultProfileStatus(): Promise<VaultProfileStatus> {

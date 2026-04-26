@@ -52,6 +52,7 @@ import {
   onSpriteEvolving,
   onSpriteEvolveError,
   onSpriteEvolveCooldown,
+  type ActionCapability,
   type AiProvider,
   type TwinActionRequest,
   type TwinActionStatus,
@@ -394,14 +395,16 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
   const id = String(action.id ?? "");
   const status = String(action.status ?? "");
   const request = String(action.request ?? "");
+  const capability = typeof action.capability === "string" ? action.capability : null;
   card.dataset.actionId = id;
   card.dataset.actionStatus = status;
   card.innerHTML = "";
 
   const copy = document.createElement("div");
   copy.className = "cw-tool-card-copy";
+  const capabilityLabel = capability ? `${capabilityDisplayName(capability)} · ` : "";
   copy.innerHTML = DOMPurify.sanitize(
-    `<span class="tool-icon">permission</span><span>${actionStatusLabel(status)} · <code>${id}</code></span><small>${request}</small>`
+    `<span class="tool-icon">permission</span><span>${capabilityLabel}${actionStatusLabel(status)} · <code>${id}</code></span><small>${request}</small>`
   );
   if (action.result) {
     const result = document.createElement("small");
@@ -507,11 +510,12 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
   card.append(copy, actions);
 }
 
-function appendClaudeApprovalCard(id: string, request: string): void {
+function appendClaudeActionCard(action: TwinActionRequest): void {
+  const id = String(action.id ?? "");
   const card = document.createElement("div");
   card.className = "cw-tool-card cw-tool-card--approval";
   actionCards.set(id, card);
-  renderActionCard(card, { id, request, status: "needs_approval" });
+  renderActionCard(card, action);
   cwLog.appendChild(card);
   cwLog.scrollTop = cwLog.scrollHeight;
   window.requestAnimationFrame(() => {
@@ -556,13 +560,18 @@ async function refreshActionCards(): Promise<void> {
 async function appendPermissionCenter(): Promise<void> {
   const statuses: TwinActionStatus[] = ["needs_approval", "pending", "done", "failed", "needs_user", "cancelled"];
   const actions = await listTwinActions(statuses);
+  const profile = await getVaultProfileStatus().catch(() => null);
+  const savedApprovals = profile?.approvedActionCapabilities ?? [];
   const recent = actions.slice(-8).reverse();
   const wrap = document.createElement("div");
   wrap.className = "cw-tool-card cw-tool-card--approval cw-permission-center";
   const title = document.createElement("div");
   title.className = "cw-tool-card-copy";
+  const saved = savedApprovals.length
+    ? `Saved approvals: ${savedApprovals.map((capability) => capabilityDisplayName(String(capability))).join(", ")}.`
+    : "No saved capability approvals yet.";
   title.innerHTML = DOMPurify.sanitize(
-    `<span class="tool-icon">permission</span><span>Permission Center</span><small>Approve Twin requests, run Claude Code with the exact request, or clear old backlog.</small>`
+    `<span class="tool-icon">permission</span><span>Permission Center</span><small>${saved} Approve once per capability, then future matching requests skip manual approval.</small>`
   );
   wrap.appendChild(title);
 
@@ -913,17 +922,65 @@ async function submitText(text: string) {
   await sendMessages();
 }
 
-function shouldBridgeToClaude(text: string): boolean {
+function capabilityDisplayName(capability: string): string {
+  switch (capability) {
+    case "playwright":
+      return "Playwright";
+    case "spotify":
+      return "Spotify";
+    case "reminders":
+      return "Reminders";
+    case "calendar":
+      return "Calendar";
+    case "mail":
+      return "Mail";
+    case "notes":
+      return "Notes";
+    default:
+      return "Desktop";
+  }
+}
+
+function inferActionCapability(text: string): ActionCapability | null {
   const lower = text.toLowerCase();
-  const explicitComputerUse =
-    lower.includes("computer use") ||
+  const mentionsBrowser =
     lower.includes("playwright") ||
     lower.includes("browser automation") ||
-    lower.includes("buka x") ||
-    lower.includes("open x") ||
+    lower.includes("chrome") ||
+    lower.includes("safari") ||
     lower.includes("twitter") ||
     lower.includes("x.com") ||
-    /https?:\/\//.test(lower) ||
+    /\bbuka\s+x\b/.test(lower) ||
+    /\bopen\s+x\b/.test(lower) ||
+    /https?:\/\//.test(lower);
+  if (mentionsBrowser) return "playwright";
+
+  const musicIntent =
+    lower.includes("spotify") ||
+    lower.includes("apple music") ||
+    /\b(main|putar|play|setel|nyalain)\s+(lagu|musik|music|song)\b/.test(lower) ||
+    /\b(next|skip|pause|resume|lanjut|jeda)\s+(lagu|musik|music|song)?\b/.test(lower) ||
+    /\b(lagu|song|music|musik)\s+.+\b(play|putar|main)\b/.test(lower);
+  if (musicIntent) return "spotify";
+
+  const reminderIntent =
+    /\b(reminder|reminders|apple reminder|apple reminders|ingatkan|pengingat|to-?do|todo)\b/.test(lower) ||
+    /\b(ingatkan|remind me)\b/.test(lower);
+  if (reminderIntent) return "reminders";
+
+  if (/\b(calendar|kalender|jadwal|schedule|meeting)\b/.test(lower)) return "calendar";
+  if (/\b(mail|email|inbox)\b/.test(lower)) return "mail";
+  if (/\b(notes|catatan|note app|apple notes)\b/.test(lower)) return "notes";
+  if (/\b(finder|desktop|app|applescript|apple script|klik|click)\b/.test(lower)) return "desktop";
+
+  return null;
+}
+
+function shouldBridgeToClaude(text: string): boolean {
+  const lower = text.toLowerCase();
+  const capability = inferActionCapability(text);
+  const explicitComputerUse =
+    lower.includes("computer use") ||
     lower.includes("applescript") ||
     lower.includes("apple script") ||
     lower.includes("desktop permission") ||
@@ -935,6 +992,7 @@ function shouldBridgeToClaude(text: string): boolean {
     /\b(spotify|apple music|music|browser|chrome|safari|finder|desktop|app|reminder|reminders|apple reminder|apple reminders|calendar|mail|notes|playwright|twitter|x\.com)\b/.test(lower);
 
   return (
+    capability !== null ||
     lower.includes("use mcp claude") ||
     lower.includes("pakai mcp claude") ||
     lower.includes("mcp computer use") ||
@@ -947,41 +1005,69 @@ function shouldBridgeToClaude(text: string): boolean {
 
 async function queueClaudeAction(request: string): Promise<void> {
   try {
-    const result = await requestClaudeAction(request);
+    const capability = inferActionCapability(request);
+    const result = await requestClaudeAction(request, capability);
     appendMessage("user", request);
     sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
-    appendClaudeApprovalCard(result.id, request);
+    appendClaudeActionCard({
+      id: result.id,
+      request,
+      status: result.status,
+      capability: result.capability ?? capability
+    });
+    if (result.status === "pending" || result.trusted) {
+      appendStatus(`trusted ${capabilityDisplayName(String(result.capability ?? capability ?? "desktop"))} · ${result.id}`);
+      appendAssistantIntro(contextualPermissionMessage(request, result.capability ?? capability, true));
+      try {
+        await openClaudeActionRunner(result.id);
+        appendStatus(`opened Claude Code for ${result.id}`);
+      } catch (e) {
+        appendStatus(`trusted approval saved, but couldn't open Claude Code: ${String(e)}`, "error");
+      }
+      return;
+    }
     appendStatus(`permission queued · ${result.id}`);
-    appendAssistantIntro(contextualPermissionMessage(request));
+    appendAssistantIntro(contextualPermissionMessage(request, result.capability ?? capability, false));
   } catch (e) {
     appendStatus(`couldn't queue Claude request: ${String(e)}`, "error");
   }
 }
 
-function contextualPermissionMessage(request: string): string {
+function contextualPermissionMessage(
+  request: string,
+  capability: ActionCapability | string | null,
+  trusted: boolean
+): string {
   const lower = request.toLowerCase();
   const indonesian =
-    /\b(izin|buka|cek|apa aja|yang|pakai|dari|komputer|ingatkan)\b/.test(lower);
-  const target =
-    lower.includes("playwright") || lower.includes("x.com") || /\bbuka x\b/.test(lower)
-      ? indonesian
-        ? "buka X lewat Playwright"
-        : "open X with Playwright"
-      : lower.includes("reminder")
-        ? indonesian
-          ? "cek Apple Reminders"
-          : "check Apple Reminders"
-        : lower.includes("spotify")
-          ? indonesian
-            ? "kontrol Spotify"
-            : "control Spotify"
-          : indonesian
-            ? "jalanin aksi desktop itu"
-            : "run that desktop action";
+    /\b(izin|buka|cek|apa aja|yang|pakai|dari|komputer|ingatkan|main|putar|lagu|musik|jadwal|catatan)\b/.test(lower);
+  const target = (() => {
+    switch (capability) {
+      case "playwright":
+        return indonesian ? "aksi browser lewat Playwright" : "browser action through Playwright";
+      case "spotify":
+        return indonesian ? "kontrol Spotify atau musik" : "control Spotify or music";
+      case "reminders":
+        return indonesian ? "akses Reminders" : "access Reminders";
+      case "calendar":
+        return indonesian ? "akses Calendar" : "access Calendar";
+      case "mail":
+        return indonesian ? "akses Mail" : "access Mail";
+      case "notes":
+        return indonesian ? "akses Notes" : "access Notes";
+      default:
+        return indonesian ? "jalanin aksi desktop itu" : "run that desktop action";
+    }
+  })();
 
+  if (trusted) {
+    return indonesian
+      ? `${capabilityDisplayName(String(capability ?? "desktop"))} sudah pernah kamu approve, jadi aku langsung lempar ke Claude Code. Hasilnya akan balik di chat ini.`
+      : `${capabilityDisplayName(String(capability ?? "desktop"))} is already approved, so I’m sending it straight to Claude Code. I’ll return the result in this chat.`;
+  }
   return indonesian
-    ? `Aku butuh izin dulu untuk ${target}. Approve permission card-nya, nanti hasilnya aku balikin di chat ini.`
-    : `I need permission first to ${target}. Approve the permission card and I’ll return the result in this chat.`;
+    ? `Aku butuh izin sekali untuk ${target}. Setelah kamu approve, ${capabilityDisplayName(String(capability ?? "desktop"))} akan tersimpan sebagai approval, jadi request berikutnya bisa langsung jalan.`
+    : `I need one approval for ${target}. After you approve it, ${capabilityDisplayName(String(capability ?? "desktop"))} will be saved as trusted so future matching requests can run directly.`;
 }
 
 // ── Slash commands ────────────────────────────────────────────────────────

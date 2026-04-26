@@ -6,13 +6,14 @@ A **local desktop companion** for **Obsidian + Claude Desktop**. It reads and wr
 
 ## Current release
 
-`v0.5` focuses on the desktop companion:
+`v0.9` focuses on making the desktop companion feel launch-ready:
 
 - custom characters from prompts or uploaded photos
 - `/change-char` for a brand-new sprite identity
 - `/evolution` for image-to-image iterations from the current sprite
 - chat backgrounds from built-in scenes or generated prompts
-- Claude Desktop handoff queue with terminal approval
+- Claude Code/Desktop handoff queue with in-app approval, Enter-to-approve, and saved approvals per capability
+- vault-backed session restore in `.twin-md/`, including UI prefs, chat snapshots, and non-secret state
 - English-by-default chat that mirrors Indonesian only when the latest message does
 
 ## Install (CLI + MCP)
@@ -59,7 +60,15 @@ twin-md action list
 twin-md action approve <id>
 ```
 
-Desktop action handoff is explicit: chat queues an action as `needs_approval`, Terminal approval flips it to `pending`, and Claude Desktop can then call `get_pending_twin_actions` through MCP.
+Desktop action handoff is explicit and capability-based: the first Spotify, Playwright, Reminders, Calendar, Mail, Notes, or Desktop action queues as `needs_approval`. Approving it once stores that capability in the vault profile, so future matching requests can go straight to `pending` and open Claude Code/Desktop without another click.
+
+Natural language routing understands context, so phrases like `main lagu ...`, `putar lagu ...`, or `next song` map to Spotify even if the user does not say “Spotify.”
+
+## Session Sync
+
+Non-secret state is saved in the configured Obsidian vault under `.twin-md/`. API keys stay local-only.
+
+Chat sessions are saved after each assistant reply, before starting a new chat, when the chat window closes, and every 30 seconds while the chat window is open. A normal exit should load the latest saved chat/profile state on the next start. If the app is force-killed between autosaves, it may fall back to the last successful save, at most about 30 seconds behind.
 
 ## Chat commands
 
