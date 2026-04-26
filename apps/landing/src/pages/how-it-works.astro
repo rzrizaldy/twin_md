@@ -3,9 +3,10 @@ import CozyLayout from '../layouts/CozyLayout.astro';
 
 const integrations = [
   { name: 'Obsidian', role: 'Markdown vault', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]' },
-  { name: 'Claude', role: 'Desktop + MCP', tone: 'bg-[#d97706]/10 text-[#92400e]' },
-  { name: 'OpenAI', role: 'optional API', tone: 'bg-[#10a37f]/10 text-[#047857]' },
-  { name: 'Gemini', role: 'optional API', tone: 'bg-[#4285f4]/10 text-[#1d4ed8]' },
+  { name: 'Claude Code', role: 'local chat · CLI + twin MCP', tone: 'bg-[#d97706]/10 text-[#92400e]' },
+  { name: 'Claude Desktop', role: 'optional · MCP + actions', tone: 'bg-[#ea580c]/10 text-[#9a3412]' },
+  { name: 'OpenAI', role: 'optional · sprites & backgrounds', tone: 'bg-[#10a37f]/10 text-[#047857]' },
+  { name: 'Gemini', role: 'optional · sprites & backgrounds', tone: 'bg-[#4285f4]/10 text-[#1d4ed8]' },
   { name: 'Spotify', role: 'after approve', tone: 'bg-[#1db954]/10 text-[#15803d]' },
   { name: 'Playwright', role: 'after approve', tone: 'bg-[#2563eb]/10 text-[#1e40af]' },
   { name: 'Reminders', role: 'after approve', tone: 'bg-[var(--color-pink)] text-[var(--color-ink)]' },
@@ -14,14 +15,14 @@ const integrations = [
 
 <CozyLayout
   title="how it works"
-  description="How twin.md connects an Obsidian vault, local desktop app, AI providers, and approved actions without turning into a cloud dashboard."
+  description="twin.md: local-first chat via Claude Code or Codex CLI with twin MCP; optional API keys for sprites and backgrounds; optional Claude Desktop for MCP actions."
   active="how"
 >
   <header class="mt-10 max-w-3xl">
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">architecture</p>
     <h1 class="mt-2 font-display text-4xl sm:text-5xl">your vault stays the center</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Twin.md is a <strong>macOS desktop app</strong> (Tauri + Rust). Follow the diagram—everything stays on your machine.
+      <strong>Everyday chat is local-first.</strong> The app prefers your installed <strong>Claude Code</strong> or <strong>Codex</strong> CLI, injects the bundled <strong>twin MCP</strong> server, and streams the reply into Twin—no Claude <em>Desktop</em> window required for typing in the app. Provider <strong>API keys are optional</strong>: use them for <strong>custom sprites</strong>, <strong>chat backgrounds</strong>, and (if you skip the CLI) <strong>in-app chat over HTTPS</strong> to Anthropic, OpenAI, or Gemini.
     </p>
   </header>
 
@@ -31,7 +32,7 @@ const integrations = [
   >
     <div class="flex flex-wrap items-end justify-between gap-3">
       <h2 class="font-display text-2xl sm:text-3xl">system map</h2>
-      <p class="text-xs text-[var(--color-ink-soft)]">Solid lines: always. Dashed: optional Claude Desktop path.</p>
+      <p class="text-xs text-[var(--color-ink-soft)]">Solid: main path. Dashed: optional Claude Desktop for queued actions.</p>
     </div>
 
     <div class="how-flow__diagram mt-8">
@@ -65,9 +66,9 @@ const integrations = [
         </div>
         <div class="how-branch">
           <div class="how-box">
-            <p class="how-box__title">Model APIs</p>
-            <p class="how-box__sub">Anthropic · OpenAI · Gemini</p>
-            <p class="how-box__pill">optional API keys</p>
+            <p class="how-box__title">Local chat</p>
+            <p class="how-box__sub">Claude Code or Codex CLI on your Mac, with twin MCP wired in—answers stay in the subprocess, not in a browser tab.</p>
+            <p class="how-box__pill">default for conversation</p>
           </div>
         </div>
         <div class="how-branch">
@@ -77,6 +78,17 @@ const integrations = [
             <p class="how-box__pill">Spotify · Playwright · Reminders…</p>
           </div>
         </div>
+      </div>
+
+      <div class="how-flow__spine" aria-hidden="true">
+        <span class="how-flow__chev">↓</span>
+      </div>
+
+      <div class="how-box how-box--wide how-box--note">
+        <p class="how-box__title">Optional provider keys</p>
+        <p class="how-box__sub">
+          Add Anthropic, OpenAI, or Gemini in settings when you want <strong>AI-generated sprites</strong>, <strong>scene wallpapers</strong>, or <strong>cloud API chat</strong> without installing the CLI. Keys are not required to use vault tools or the local CLI path.
+        </p>
       </div>
 
       <div class="how-flow__spine" aria-hidden="true">
@@ -97,9 +109,9 @@ const integrations = [
 
       <!-- 4: Claude optional -->
       <div class="how-box how-box--wide how-box--dashed">
-        <p class="how-box__title">Claude Desktop + twin MCP</p>
+        <p class="how-box__title">Claude Desktop (separate app)</p>
         <p class="how-box__sub">
-          Optional: <code class="rounded bg-[var(--color-cream)] px-1 text-[11px]">npx twin-md init</code> registers MCP so Claude can pull pending actions, run computer-use, then resolve them.
+          Optional parallel setup: <code class="rounded bg-[var(--color-cream)] px-1 text-[11px]">npx twin-md init</code> registers the same twin MCP in <strong>Anthropic’s Claude Desktop</strong> so that app can poll the action queue, run computer-use, and resolve items. This does <em>not</em> replace in-app chat—it is an extra surface for power workflows.
         </p>
       </div>
 
@@ -282,6 +294,11 @@ const integrations = [
 
   .how-box--muted {
     background: var(--color-paper);
+  }
+
+  .how-box--note {
+    background: color-mix(in srgb, var(--color-mint) 22%, var(--color-cream));
+    border-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
   }
 
   .how-box__title {

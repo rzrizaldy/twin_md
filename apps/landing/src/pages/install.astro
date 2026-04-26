@@ -115,7 +115,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
   <section class="mt-12" id="api-keys">
     <h2 class="font-display text-2xl">Optional provider keys</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      Claude Desktop MCP can handle local context. Add Anthropic/OpenAI/Gemini keys when you want direct in-app chat, generated backgrounds, or custom sprites.
+      Regular chat in the app is <strong>local-first</strong> when <strong>Claude Code</strong> or <strong>Codex</strong> is installed (Twin injects the bundled twin MCP). Add Anthropic, OpenAI, or Gemini keys only if you want <strong>custom sprites</strong>, <strong>generated chat backgrounds</strong>, or <strong>API-based chat</strong> without the CLI.
     </p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       <div class="flex gap-2 mb-6 border-b border-[var(--color-ink)]/10 pb-4" role="tablist" aria-label="provider tabs">
