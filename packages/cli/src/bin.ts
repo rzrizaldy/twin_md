@@ -22,7 +22,7 @@ const program = new Command();
 program
   .name("twin-md")
   .description("Local-first twin.md pet: CLI, MCP, and desktop companion")
-  .version("0.1.0");
+  .version("0.5.0");
 
 program
   .command("init")

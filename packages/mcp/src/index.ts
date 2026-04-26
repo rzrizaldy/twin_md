@@ -80,7 +80,7 @@ export async function startTwinMcpServer(): Promise<void> {
   const brainPath = resolveBrainPath(config);
 
   const server = new McpServer(
-    { name: "twin-md", version: "0.1.0" },
+    { name: "twin-md", version: "0.5.0" },
     {
       instructions: [
         "Use brain_context to orient yourself — it returns recent notes, entity types, and pet state.",
