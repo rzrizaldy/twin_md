@@ -13,17 +13,17 @@ const steps = [
   {
     k: '01 · harvest',
     t: 'local sources → one file',
-    b: 'Five adapters (health, calendar, claude, obsidian, location) are merged into ~/.claude/twin.md. One readable, editable, portable markdown file.',
+    b: 'Health, calendar, Claude files, Obsidian, and optional location signals merge into ~/.claude/twin.md.',
   },
   {
     k: '02 · interpret',
     t: 'twin.md → twin-state.json',
-    b: 'A heuristic pass computes energy, stress, glow. An optional Anthropic pass refines the scene. Either way, the output is the same shape.',
+    b: 'A local interpreter writes energy, stress, mood, scene, caption, and sprite state to one JSON file.',
   },
   {
-    k: '03 · render',
-    t: 'state → scene',
-    b: 'Every surface — terminal, phone, MCP, desktop companion — reads the same twin-state.json. No surface re-derives the mood.',
+    k: '03 · act',
+    t: 'desktop + MCP',
+    b: 'The Tauri companion queues desktop actions as local JSONL. Terminal approval flips them from needs_approval to pending, then Claude Desktop can execute through MCP.',
   },
 ];
 ---
@@ -31,9 +31,9 @@ const steps = [
 <CozyLayout title="how it works" active="how">
   <header class="mt-10 max-w-3xl">
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">architecture</p>
-    <h1 class="mt-2 font-display text-4xl sm:text-5xl">one file, every surface</h1>
+    <h1 class="mt-2 font-display text-4xl sm:text-5xl">local files, small surfaces</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Everything important resolves through <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/twin.md</code>. Sources flow in, a scene flows out, and every surface renders from the same local state.
+      twin.md is a monorepo: TypeScript packages for CLI/core/MCP, an Astro landing page, and a Tauri desktop app with a Rust backend. The shared contract is still plain files under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>.
     </p>
   </header>
 
@@ -76,9 +76,10 @@ const steps = [
         <p class="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">every surface</p>
         <ul class="mt-2 space-y-1 text-xs text-[var(--color-ink)]">
           <li>Terminal pet (<code class="text-[10px]">twin watch</code>)</li>
-          <li>Phone mirror (Next.js)</li>
+          <li>Action approval (<code class="text-[10px]">twin-md action approve</code>)</li>
+          <li>Tauri desktop companion</li>
           <li>Claude Desktop (MCP)</li>
-          <li>Desktop companion (Tauri, soon)</li>
+          <li>Astro landing page</li>
         </ul>
       </div>
     </div>

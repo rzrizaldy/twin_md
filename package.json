@@ -1,7 +1,7 @@
 {
   "name": "twin-md-workspace",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "twin-md monorepo: local-first sprite that reads your second brain.",
   "packageManager": "pnpm@10.33.0",
   "workspaces": [

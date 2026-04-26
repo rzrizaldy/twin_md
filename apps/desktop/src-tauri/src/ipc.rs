@@ -169,6 +169,74 @@ pub fn apply_custom_sprite_preview(app: AppHandle, prompt: String, path: String)
     Ok(())
 }
 
+#[tauri::command]
+pub fn apply_sprite_evolution_preview(app: AppHandle, path: String) -> Result<(), String> {
+    let raw = PathBuf::from(path.trim());
+    let canonical = raw.canonicalize().map_err(|e| e.to_string())?;
+    let sprite_root = claude_dir()
+        .join("twin")
+        .join("sprites")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    if !canonical.starts_with(&sprite_root) {
+        return Err("refusing to summon sprite outside generated sprites folder".to_string());
+    }
+
+    let ext = canonical
+        .extension()
+        .and_then(|x| x.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "svg") {
+        return Err(format!("unsupported sprite type: {ext}"));
+    }
+
+    let cfg_path = claude_dir().join("twin.config.json");
+    fs::create_dir_all(claude_dir()).map_err(|e| e.to_string())?;
+    let mut value: serde_json::Value = match fs::read(&cfg_path) {
+        Ok(bytes) if !bytes.is_empty() => {
+            serde_json::from_slice(&bytes).unwrap_or_else(|_| serde_json::json!({}))
+        }
+        _ => serde_json::json!({}),
+    };
+    if !value.is_object() {
+        value = serde_json::json!({});
+    }
+    let obj = value.as_object_mut().expect("object");
+    let mut sprite_evolution = obj
+        .get("spriteEvolution")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({ "kind": "custom" }));
+    if !sprite_evolution.is_object() {
+        sprite_evolution = serde_json::json!({ "kind": "custom" });
+    }
+    let se = sprite_evolution.as_object_mut().expect("object");
+    se.insert("kind".to_string(), serde_json::Value::String("custom".to_string()));
+    se.insert(
+        "currentPath".to_string(),
+        serde_json::Value::String(canonical.display().to_string()),
+    );
+    se.insert(
+        "updatedAt".to_string(),
+        serde_json::Value::String(chrono::Local::now().to_rfc3339()),
+    );
+    obj.insert("spriteEvolution".into(), sprite_evolution);
+    fs::write(
+        &cfg_path,
+        serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let _ = app.emit(
+        "twin://sprite-updated",
+        serde_json::json!({
+            "path": canonical.display().to_string(),
+            "isSvg": ext == "svg"
+        }),
+    );
+    Ok(())
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeActionPayload {
@@ -196,11 +264,11 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
     }
     let event = serde_json::json!({
         "id": id,
-        "status": "pending",
+        "status": "needs_approval",
         "source": "twin-desktop",
         "request": request,
         "createdAt": chrono::Utc::now().to_rfc3339(),
-        "hint": "Claude Desktop should read this through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+        "hint": "User must approve this first, for example: twin-md action approve <id>. After approval, Claude Desktop should read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
     });
     let mut file = OpenOptions::new()
         .create(true)
@@ -213,6 +281,36 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         id,
         queue_path: queue_path.display().to_string(),
     })
+}
+
+#[tauri::command]
+pub fn open_terminal_action_approval(id: String) -> Result<(), String> {
+    let id = id.trim();
+    if id.is_empty() || !id.starts_with("act-") {
+        return Err("invalid twin action id".to_string());
+    }
+    let command = format!("twin-md action approve {id}");
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            r#"tell application "Terminal"
+    activate
+    do script "{}"
+end tell"#,
+            command.replace('\\', "\\\\").replace('"', "\\\"")
+        );
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err(format!("run this in your terminal: {command}"))
+    }
 }
 
 #[tauri::command]
@@ -430,9 +528,9 @@ pub struct OnboardingResult {
 fn onboarding_intro(owner: &str, sprite_evolution: Option<&serde_json::Value>) -> String {
     let name = owner.trim();
     let greeting = if name.is_empty() {
-        "Hai".to_string()
+        "Hi".to_string()
     } else {
-        format!("Hai {name}")
+        format!("Hi {name}")
     };
 
     let custom = sprite_evolution
@@ -448,13 +546,13 @@ fn onboarding_intro(owner: &str, sprite_evolution: Option<&serde_json::Value>) -
     if custom {
         if let Some(prompt) = prompt {
             return format!(
-                "{greeting}, aku udah kebangun. Aku twin kamu yang bentuknya dari ide: **{prompt}**. Aku bakal nemenin kamu dengan gaya karakter ini, baca konteksmu pelan-pelan, dan bantu jagain mood kerja kamu tanpa ribut."
+                "{greeting}, I'm awake. I'm your twin shaped from the idea: **{prompt}**. I'll keep this character identity stable, read your context gently, and help you notice patterns without making noise."
             );
         }
     }
 
     format!(
-        "{greeting}, aku Axiotyl. Aku twin kecil kamu di desktop: baca konteksmu, bantu catat hal penting, dan ngingetin pelan-pelan kalau energi mulai turun."
+        "{greeting}, I'm Axiotyl. I'm your small desktop twin: I read your context, help capture important things, and nudge softly when your energy starts dipping."
     )
 }
 
@@ -881,6 +979,35 @@ pub async fn generate_sprite_preview_from_photo(
         return Err(rembg::rembg_install_hint_err());
     }
     let img = image_gen::render_sprite_from_photo(p, photo_path.trim())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(img.saved_path)
+}
+
+#[tauri::command]
+pub async fn generate_sprite_evolution_preview(prompt: String) -> Result<String, String> {
+    let p = prompt.trim();
+    if p.is_empty() {
+        return Err("describe the evolution you want first".to_string());
+    }
+    if !rembg::is_available() {
+        return Err(rembg::rembg_install_hint_err());
+    }
+    let current_path = crate::sprite::current_snapshot()
+        .current_path
+        .ok_or_else(|| "summon a custom character first, then use /evolution".to_string())?;
+    let ext = Path::new(&current_path)
+        .extension()
+        .and_then(|x| x.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+        return Err("image-to-image evolution needs a raster sprite; create a new character first".to_string());
+    }
+    let full = format!(
+        "Iterate the uploaded current sprite, do not create a new character. Preserve the exact identity, silhouette, face, hair, clothing family, body proportions, and color family. Apply only this requested change: {p}. Keep it as a clean full-body desktop sprite."
+    );
+    let img = image_gen::render_sprite_from_photo(&full, current_path.trim())
         .await
         .map_err(|e| e.to_string())?;
     Ok(img.saved_path)

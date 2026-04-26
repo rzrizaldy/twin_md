@@ -1,7 +1,7 @@
 {
   "name": "@twin-md/landing",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "stage-assets": "node scripts/stage-assets.mjs",

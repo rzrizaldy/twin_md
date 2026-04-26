@@ -1345,34 +1345,48 @@ body.window-onboarding {
   height: 100vh;
   overflow: hidden;
   isolation: isolate;
+  background: var(--cream);
+  background-size: cover;
+  background-position: center;
 }
 
 .cw-layout::before {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -2;
-  background-image: var(--chat-bg-image);
+  z-index: 0;
   background-size: cover;
   background-position: center;
   opacity: 0;
   transition: opacity 220ms ease;
+  pointer-events: none;
 }
 
 .cw-layout::after {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: rgba(255, 250, 234, 0.78);
-  backdrop-filter: blur(10px) saturate(0.9);
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 234, 0.68),
+    rgba(255, 250, 234, 0.42) 45%,
+    rgba(255, 250, 234, 0.74)
+  );
+  backdrop-filter: blur(2px) saturate(0.95);
   opacity: 0;
   transition: opacity 220ms ease;
   pointer-events: none;
 }
 
+.cw-layout > * {
+  position: relative;
+  z-index: 1;
+}
+
 .cw-layout[data-chat-background]::before {
-  opacity: 0.72;
+  background-image: var(--chat-bg-image);
+  opacity: 1;
 }
 
 .cw-layout[data-chat-background]::after {
@@ -1382,8 +1396,12 @@ body.window-onboarding {
 .cw-layout[data-chat-background] .cw-header,
 .cw-layout[data-chat-background] .cw-provider-bar,
 .cw-layout[data-chat-background] .cw-footer {
-  background: rgba(255, 250, 234, 0.76);
+  background: rgba(255, 250, 234, 0.68);
   backdrop-filter: blur(14px);
+}
+
+.cw-layout[data-chat-background] .cw-log {
+  background: transparent;
 }
 
 /* Header */
@@ -1729,6 +1747,31 @@ body.window-onboarding {
   gap: 8px;
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.cw-tool-card--approval {
+  align-items: stretch;
+  justify-content: space-between;
+  width: min(430px, 100%);
+}
+
+.cw-tool-card-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cw-tool-card-copy small {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(71, 54, 67, 0.66);
+  line-height: 1.25;
+}
+
+.cw-approval-button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 10.5px;
 }
 
 .cw-tool-card code {

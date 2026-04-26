@@ -2,7 +2,18 @@
 
 **Live site:** [rzrizaldy.github.io/twin_md/](https://rzrizaldy.github.io/twin_md/)
 
-A **cute desktop companion** wired to your **Obsidian vault**, able to **retrieve and write** notes, and to **harvest context from your Claude Desktop sessions** via the bundled **MCP** server. State lives in `~/.claude/twin.md` and `~/.claude/twin-state.json` on your machine.
+A **local desktop companion** for **Obsidian + Claude Desktop**. It reads and writes notes, harvests local context into `~/.claude/twin.md`, renders a floating pet/chat window, and can queue approved actions for Claude Desktop through the bundled **MCP** server. State, sprites, action queues, and config live on your machine.
+
+## Current release
+
+`v0.5` focuses on the desktop companion:
+
+- custom characters from prompts or uploaded photos
+- `/change-char` for a brand-new sprite identity
+- `/evolution` for image-to-image iterations from the current sprite
+- chat backgrounds from built-in scenes or generated prompts
+- Claude Desktop handoff queue with terminal approval
+- English-by-default chat that mirrors Indonesian only when the latest message does
 
 ## Install (CLI + MCP)
 
@@ -44,6 +55,20 @@ twin-md init       # config, twin.md seed, Claude Desktop MCP wiring
 twin-md harvest    # refresh twin.md from vault + local sources
 twin-md watch      # terminal pet + reminders
 twin-md mcp        # stdio MCP server (for Claude Desktop config)
+twin-md action list
+twin-md action approve <id>
+```
+
+Desktop action handoff is explicit: chat queues an action as `needs_approval`, Terminal approval flips it to `pending`, and Claude Desktop can then call `get_pending_twin_actions` through MCP.
+
+## Chat commands
+
+```text
+/change-char <description>      # new character from scratch
+/change-char-photo <style>      # upload a photo, redraw as sprite
+/evolution <small change>       # iterate current sprite, preserve identity
+/change-background <scene|prompt>
+/claude <desktop action>        # queue for Claude Desktop after approval
 ```
 
 ## More
@@ -65,7 +90,8 @@ npm run build
 
 ```bash
 npm run build
-./scripts/release.sh --dry-run
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 Tauri app bundles: `./scripts/release.sh --tauri` (creates a GitHub Release when `gh` is installed).

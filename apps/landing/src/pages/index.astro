@@ -11,26 +11,40 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 <CozyLayout title="twin.md — desk companion for Obsidian + Claude (MCP)" active="home">
   <IslandHero />
 
-  <!-- Axiotyle -->
+  <!-- Current app -->
   <section class="mt-16">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">character bible</p>
-        <h2 class="mt-1 font-display text-3xl sm:text-4xl">one axolotl, four moods</h2>
+        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">desktop app</p>
+        <h2 class="mt-1 font-display text-3xl sm:text-4xl">chat, companion, character</h2>
       </div>
       <a
-        href={`${base}meet`}
+        href={`${base}install`}
         class="text-sm text-[var(--color-ink-soft)] underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]"
       >
-        meet the cast →
+        install →
       </a>
     </div>
 
-    <div class="mt-8 max-w-2xl rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
-      <p class="text-sm text-[var(--color-ink)]">
-        Start with Axiotyl or describe your own creature. Custom pets preview first, then evolve
-        when mood and scene actually change.
-      </p>
+    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">new character</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Use <code class="rounded bg-[var(--color-cream)] px-1 text-xs">/change-char</code> or upload a photo to create a fresh sprite identity.
+        </p>
+      </article>
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">safe evolution</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Use <code class="rounded bg-[var(--color-cream)] px-1 text-xs">/evolution</code> to iterate from the current sprite without silently redesigning it.
+        </p>
+      </article>
+      <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
+        <h3 class="font-display text-lg">Claude bridge</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+          Desktop chat queues actions, opens terminal approval, then Claude Desktop picks them up through twin MCP.
+        </p>
+      </article>
     </div>
   </section>
 
@@ -39,7 +53,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">mood map</p>
     <h2 class="mt-1 font-display text-3xl sm:text-4xl">what your twin mirrors back</h2>
     <p class="mt-2 max-w-2xl text-[var(--color-ink-soft)]">
-      No dashboards, no numbers — just a small living thing reflecting the day you’re having.
+      The state model is intentionally small: enough to color the companion, not enough to become a dashboard.
     </p>
 
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -80,8 +94,8 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">no upsells, no notifications yelling at you. closer to Animal Crossing than Clippy.</p>
       </div>
       <div>
-        <h3 class="font-display text-lg">Claude bridge</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">twin can queue requests for Claude Desktop to handle with its MCP/tools.</p>
+        <h3 class="font-display text-lg">not a cloud pet</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">config, queue files, sprites, and state live on your machine.</p>
       </div>
     </div>
   </section>

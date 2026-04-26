@@ -193,6 +193,10 @@ export async function generateSpritePreviewFromPhoto(
   return invoke<string>("generate_sprite_preview_from_photo", { prompt, photoPath });
 }
 
+export async function generateSpriteEvolutionPreview(prompt: string): Promise<string> {
+  return invoke<string>("generate_sprite_evolution_preview", { prompt });
+}
+
 export async function generateChatBackground(prompt: string): Promise<ImageGenResult> {
   return invoke<ImageGenResult>("generate_chat_background", { prompt });
 }
@@ -249,6 +253,14 @@ export async function requestClaudeAction(request: string): Promise<ClaudeAction
   return invoke<ClaudeActionResult>("request_claude_action", {
     payload: { request }
   });
+}
+
+export async function openTerminalActionApproval(id: string): Promise<void> {
+  await invoke("open_terminal_action_approval", { id });
+}
+
+export async function applySpriteEvolutionPreview(path: string): Promise<void> {
+  await invoke("apply_sprite_evolution_preview", { path });
 }
 
 export async function streamSlashCommand(

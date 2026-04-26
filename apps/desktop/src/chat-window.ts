@@ -26,12 +26,15 @@ import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
 import {
   getChatStatus,
   getSpriteEvolution,
+  applySpriteEvolutionPreview,
   emitLastChat,
   generateChatBackground,
+  generateSpriteEvolutionPreview,
   generateSpritePreview,
   generateSpritePreviewFromPhoto,
   generatedAssetDataUrl,
   listModels,
+  openTerminalActionApproval,
   requestClaudeAction,
   runLocalCommand,
   saveProviderCredentials,
@@ -90,9 +93,15 @@ const SLASH_COMMANDS = [
   },
   {
     name: "/change-char",
-    blurb: "preview a new pet",
+    blurb: "new character from scratch",
     args: "<description>",
-    detail: "Preview first in chat, then summon or revert."
+    detail: "Create a brand-new identity. Preview first, then summon or revert."
+  },
+  {
+    name: "/evolution",
+    blurb: "iterate current pet",
+    args: "<small change>",
+    detail: "Use the current sprite as reference; preserve identity."
   },
   {
     name: "/change-background",
@@ -330,6 +339,39 @@ function appendToolCard(html: string): void {
   cwLog.scrollTop = cwLog.scrollHeight;
 }
 
+function appendClaudeApprovalCard(id: string, request: string): void {
+  const card = document.createElement("div");
+  card.className = "cw-tool-card cw-tool-card--approval";
+
+  const copy = document.createElement("div");
+  copy.className = "cw-tool-card-copy";
+  copy.innerHTML = DOMPurify.sanitize(
+    `<span class="tool-icon">↔</span><span>queued · needs terminal approval · <code>${id}</code></span><small>${request}</small>`
+  );
+
+  const approve = document.createElement("button");
+  approve.type = "button";
+  approve.className = "secondary-button cw-approval-button";
+  approve.textContent = "approve in Terminal";
+  approve.addEventListener("click", async () => {
+    approve.disabled = true;
+    try {
+      await openTerminalActionApproval(id);
+      appendStatus(`opened Terminal approval for ${id}`);
+    } catch (e) {
+      const command = `twin-md action approve ${id}`;
+      await navigator.clipboard.writeText(command).catch(() => {});
+      appendStatus(`run in terminal: ${command}`, "error");
+    } finally {
+      approve.disabled = false;
+    }
+  });
+
+  card.append(copy, approve);
+  cwLog.appendChild(card);
+  cwLog.scrollTop = cwLog.scrollHeight;
+}
+
 async function appendImageBlock(filePath: string, prompt: string, providerUsed: string): Promise<void> {
   const wrap = document.createElement("div");
   wrap.className = "cw-image-block";
@@ -355,7 +397,13 @@ async function appendImageBlock(filePath: string, prompt: string, providerUsed: 
   }
 }
 
-async function appendCharacterPreview(filePath: string, prompt: string): Promise<void> {
+type CharacterPreviewMode = "new" | "evolution";
+
+async function appendCharacterPreview(
+  filePath: string,
+  prompt: string,
+  mode: CharacterPreviewMode = "new"
+): Promise<void> {
   const wrap = document.createElement("div");
   wrap.className = "cw-character-card";
 
@@ -368,7 +416,7 @@ async function appendCharacterPreview(filePath: string, prompt: string): Promise
   body.className = "cw-character-body";
 
   const title = document.createElement("strong");
-  title.textContent = "preview new character";
+  title.textContent = mode === "evolution" ? "preview evolution" : "preview new character";
 
   const desc = document.createElement("p");
   desc.textContent = prompt;
@@ -389,22 +437,34 @@ async function appendCharacterPreview(filePath: string, prompt: string): Promise
   summon.addEventListener("click", async () => {
     summon.disabled = true;
     try {
-      await invoke("apply_custom_sprite_preview", { prompt, path: filePath });
+      if (mode === "evolution") {
+        await applySpriteEvolutionPreview(filePath);
+      } else {
+        await invoke("apply_custom_sprite_preview", { prompt, path: filePath });
+      }
       evolutionSpritePath = filePath;
       await swapChatSprite(filePath);
-      const intro = `Oke, aku ganti bentuk. Sekarang aku hadir sebagai **${prompt}**. Kalau rasanya belum pas, pakai \`/change-char\` lagi dan kita preview dulu sebelum summon.`;
+      const intro =
+        mode === "evolution"
+          ? `Evolution applied: **${prompt}**. Same character, small iteration. If you want a totally new identity, use \`/change-char\`.`
+          : `New character summoned: **${prompt}**. If it is not right, use \`/change-char\` again for a fresh identity, or \`/evolution\` for a small iteration.`;
       appendAssistantIntro(intro);
-      appendStatus("character summoned");
+      appendStatus(mode === "evolution" ? "evolution applied" : "character summoned");
       wrap.remove();
     } catch (e) {
       summon.disabled = false;
-      appendStatus(`couldn't summon character: ${String(e)}`, "error");
+      appendStatus(
+        mode === "evolution"
+          ? `couldn't apply evolution: ${String(e)}`
+          : `couldn't summon character: ${String(e)}`,
+        "error"
+      );
     }
   });
 
   revert.addEventListener("click", () => {
     wrap.remove();
-    appendStatus("character preview discarded");
+    appendStatus(mode === "evolution" ? "evolution preview discarded" : "character preview discarded");
   });
 
   actions.append(summon, revert);
@@ -427,7 +487,7 @@ async function uploadPhotoForCharacter(prompt: string): Promise<void> {
   }
   appendStatus("generating sprite from uploaded photo…");
   const path = await generateSpritePreviewFromPhoto(prompt, selected);
-  await appendCharacterPreview(path, prompt);
+  await appendCharacterPreview(path, prompt, "new");
   appendStatus("photo sprite preview ready — summon or revert");
 }
 
@@ -617,12 +677,19 @@ async function submitText(text: string) {
 
 function shouldBridgeToClaude(text: string): boolean {
   const lower = text.toLowerCase();
+  const desktopAction =
+    /\b(ganti|change|play|putar|skip|next|pause|resume|buka|open|klik|click|isi|fill|pilih|select)\b/.test(
+      lower
+    ) &&
+    /\b(spotify|apple music|music|browser|chrome|safari|finder|desktop|app)\b/.test(lower);
+
   return (
     lower.includes("use mcp claude") ||
     lower.includes("pakai mcp claude") ||
     lower.includes("mcp computer use") ||
     lower.includes("claude desktop") ||
-    lower.startsWith("minta claude ")
+    lower.startsWith("minta claude ") ||
+    desktopAction
   );
 }
 
@@ -631,11 +698,9 @@ async function queueClaudeAction(request: string): Promise<void> {
     const result = await requestClaudeAction(request);
     appendMessage("user", request);
     sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
-    appendToolCard(
-      `<span class="tool-icon">↔</span> queued for Claude Desktop · <code>${result.id}</code>`
-    );
+    appendClaudeApprovalCard(result.id, request);
     appendAssistantIntro(
-      `Aku sudah queue request ini untuk Claude Desktop via twin MCP: "${request}". Claude Desktop bisa ambil lewat \`get_pending_twin_actions\`, pakai tool/computer-use yang dia punya, lalu balikin hasilnya via \`resolve_twin_action\`.`
+      `I queued this for Claude Desktop but it is blocked until you approve it. Click **approve in Terminal**, then Claude Desktop can pick it up via \`get_pending_twin_actions\` and report back with \`resolve_twin_action\`.`
     );
   } catch (e) {
     appendStatus(`couldn't queue Claude request: ${String(e)}`, "error");
@@ -677,7 +742,26 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     return true;
   }
 
-  // /change-char <description> — generate a preview before applying.
+  // /evolution <small change> — iterate from the current summoned sprite.
+  if (lower.startsWith("/evolution") || lower.startsWith("/evolve")) {
+    const command = lower.startsWith("/evolution") ? "/evolution" : "/evolve";
+    const prompt = cmd.slice(command.length).trim();
+    if (!prompt) {
+      appendStatus("usage: /evolution add a tiny backpack / make the pose happier", "error");
+      return true;
+    }
+    try {
+      appendStatus(`previewing evolution from current character: "${prompt}"…`);
+      const path = await generateSpriteEvolutionPreview(prompt);
+      await appendCharacterPreview(path, prompt, "evolution");
+      appendStatus("evolution preview ready — summon or revert");
+    } catch (e) {
+      appendStatus(`evolution preview failed: ${String(e)}`, "error");
+    }
+    return true;
+  }
+
+  // /change-char <description> — create a new character from scratch.
   if (
     lower.startsWith("/change-char-photo") ||
     lower.startsWith("/change-char") ||
@@ -694,9 +778,9 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
       if (fromPhoto) {
         await uploadPhotoForCharacter(prompt);
       } else {
-        appendStatus(`previewing new character: "${prompt}"…`);
+        appendStatus(`creating new character from scratch: "${prompt}"…`);
         const path = await generateSpritePreview(prompt);
-        await appendCharacterPreview(path, prompt);
+        await appendCharacterPreview(path, prompt, "new");
         appendStatus("preview ready — summon or revert");
       }
     } catch (e) {

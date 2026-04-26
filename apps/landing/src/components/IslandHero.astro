@@ -32,11 +32,11 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
         local-first · no accounts · MIT
       </p>
       <h1 class="mt-4 font-display text-4xl leading-[1.05] sm:text-6xl">
-        a cute desktop companion<br />
-        <span class="wobble text-[var(--color-axolotl-accent)]">wired to your Obsidian vault</span>
+        a local desktop companion<br />
+        <span class="wobble text-[var(--color-axolotl-accent)]">for Obsidian + Claude</span>
       </h1>
       <p class="mt-5 max-w-xl text-[var(--color-ink-soft)] sm:text-lg">
-        It reads and writes in your second brain, pulls <code class="rounded bg-[var(--color-paper)] px-1.5 py-0.5 text-sm">twin.md</code> on disk, and harvests from Claude Desktop sessions over MCP — then mirrors how you&rsquo;re doing in a tiny pet on your screen.
+        twin.md turns your local notes, Claude context, and lightweight daily signals into a small pet on your desktop. Customize the character, chat with it, and hand off approved actions to Claude Desktop through MCP.
       </p>
 
       <div class="mt-7 flex flex-wrap items-center gap-3">
@@ -57,7 +57,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
       <div class="mt-6 inline-flex flex-col gap-2 sm:flex-row sm:items-center">
         <div class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-xs text-[var(--color-ink)]">
           <span class="text-[var(--color-ink-soft)]">$</span>
-          <span>npm install -g twin-md &amp;&amp; twin-md init</span>
+          <span>npx twin-md init</span>
         </div>
         <a
           href="https://github.com/rzrizaldy/twin_md/releases"

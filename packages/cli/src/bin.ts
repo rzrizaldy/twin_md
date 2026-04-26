@@ -11,6 +11,11 @@ import {
   runPulseCommand,
   runDoctorCommand
 } from "./commands/brain.js";
+import {
+  runActionApproveCommand,
+  runActionListCommand,
+  runActionResolveCommand
+} from "./commands/action.js";
 
 const program = new Command();
 
@@ -125,6 +130,35 @@ program
   .command("doctor")
   .description("check health of all twin.md sources and the brain vault, print fixes")
   .action(runDoctorCommand);
+
+const action = program
+  .command("action")
+  .description("inspect and approve desktop action requests");
+
+action
+  .command("list")
+  .description("list twin action requests waiting for approval or execution")
+  .action(runActionListCommand);
+
+action
+  .command("approve")
+  .description("approve one desktop action so Claude Desktop can execute it")
+  .argument("<id>", "action id, e.g. act-1777176631398")
+  .action((id: string) => runActionApproveCommand(id));
+
+action
+  .command("done")
+  .description("mark one action done from the terminal")
+  .argument("<id>", "action id")
+  .argument("<result>", "short result")
+  .action((id: string, result: string) => runActionResolveCommand(id, "done", result));
+
+action
+  .command("fail")
+  .description("mark one action failed from the terminal")
+  .argument("<id>", "action id")
+  .argument("<result>", "short result")
+  .action((id: string, result: string) => runActionResolveCommand(id, "failed", result));
 
 program.parseAsync().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));

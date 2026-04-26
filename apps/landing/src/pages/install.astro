@@ -7,13 +7,13 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">install</p>
     <h1 class="mt-2 font-display text-4xl sm:text-5xl">get your twin running</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Node 20+ on macOS, Linux, or Windows. Everything stays under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>. The cloud is optional — you need an API key only for chat.
+      Node 20+ for the CLI/MCP server. The desktop app is Tauri (Rust + Vite). Everything important stays under <code class="rounded bg-[var(--color-cream)] px-1.5 py-0.5 text-sm">~/.claude/</code>; API keys are only needed for direct chat fallback or image generation.
     </p>
   </header>
 
   <!-- Section 1: One-liner -->
   <section class="mt-10" id="quick-start">
-    <h2 class="font-display text-2xl">1. one-liner</h2>
+    <h2 class="font-display text-2xl">1. CLI + MCP</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">The fastest path. Scaffolds config, seeds twin.md, registers the MCP server.</p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
@@ -26,7 +26,19 @@ import CozyLayout from '../layouts/CozyLayout.astro';
         >copy</button>
       </div>
       <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
-        Writes <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin.config.json</code>, creates <code class="rounded bg-[var(--color-paper)] px-1 text-xs">~/.claude/twin.md</code>, registers the MCP server in Claude Desktop.
+        Writes <code class="rounded bg-[var(--color-paper)] px-1 text-xs">twin.config.json</code>, creates <code class="rounded bg-[var(--color-paper)] px-1 text-xs">~/.claude/twin.md</code>, and registers the twin MCP server for Claude Desktop.
+      </p>
+      <div class="mt-4 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+        <span class="text-[var(--color-ink-soft)]">$</span>
+        <code>twin-md action approve &lt;id&gt;</code>
+        <button
+          type="button"
+          class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+          data-copy="twin-md action approve <id>"
+        >copy</button>
+      </div>
+      <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+        Desktop handoffs start as <code class="rounded bg-[var(--color-paper)] px-1 text-xs">needs_approval</code>. Approve in Terminal; Claude Desktop then sees the action through MCP.
       </p>
     </div>
   </section>
@@ -35,7 +47,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
   <section class="mt-12" id="local-dev">
     <h2 class="font-display text-2xl">2. local dev from source</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      Hacking the repo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri companion + chat), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/mcp</code> (Claude Desktop), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/cli</code> (init, harvest, watch).
+      Hacking the repo: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> (Tauri + Rust IPC + Vite UI), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/landing</code> (Astro), <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/core</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/brain</code>, <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/mcp</code>, and <code class="rounded bg-[var(--color-cream)] px-1 text-xs">packages/cli</code>.
     </p>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
       Prebuilt desktop: <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline decoration-[var(--color-ink)]/30 hover:decoration-[var(--color-ink)]" target="_blank" rel="noreferrer">GitHub Releases</a> (look for <code class="rounded bg-[var(--color-cream)] px-1 text-xs">desktop-v*</code> tags).
@@ -63,11 +75,11 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     </div>
   </section>
 
-  <!-- Section 3: Wire a Flash/Mini key -->
+  <!-- Section 3: Wire a provider key -->
   <section class="mt-12" id="api-keys">
-    <h2 class="font-display text-2xl">3. wire a flash / mini key</h2>
+    <h2 class="font-display text-2xl">3. optional provider keys</h2>
     <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-      The pet doesn't need heavy reasoning — a flash or mini model is faster, cheaper, and just as warm.
+      Claude Desktop MCP can handle local context. Add Anthropic/OpenAI/Gemini keys when you want direct in-app chat, generated backgrounds, or custom sprites.
     </p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       <div class="flex gap-2 mb-6 border-b border-[var(--color-ink)]/10 pb-4" role="tablist" aria-label="provider tabs">
@@ -151,12 +163,20 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     </div>
   </section>
 
-  <!-- Section 5: Quickstart video placeholder -->
-  <section class="mt-12 mb-16" id="quickstart-video">
-    <h2 class="font-display text-2xl">5. see it in action</h2>
-    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">A guided walkthrough — coming soon.</p>
-    <div class="mt-4 flex h-48 items-center justify-center rounded-[2rem] border-2 border-dashed border-[var(--color-ink)]/15 bg-[var(--color-fog)]">
-      <p class="text-sm text-[var(--color-ink-soft)]">video / GIF placeholder</p>
+  <section class="mt-12 mb-16" id="sprite-deps">
+    <h2 class="font-display text-2xl">5. custom sprites</h2>
+    <p class="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
+      Prompt and photo sprites use image generation plus optional background removal. The desktop onboarding can guide installation, or you can install it yourself:
+    </p>
+    <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
+      <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
+        <span class="text-[var(--color-ink-soft)]">$</span>
+        <code>pipx install "rembg[cpu,cli]"</code>
+        <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy='pipx install "rembg[cpu,cli]"'>copy</button>
+      </div>
+      <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
+        <code class="rounded bg-[var(--color-paper)] px-1 text-xs">/change-char</code> creates a new character. <code class="rounded bg-[var(--color-paper)] px-1 text-xs">/evolution</code> iterates from the current sprite.
+      </p>
     </div>
   </section>
 </CozyLayout>

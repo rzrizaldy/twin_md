@@ -84,7 +84,9 @@ export async function startTwinMcpServer(): Promise<void> {
     {
       instructions: [
         "Use brain_context to orient yourself — it returns recent notes, entity types, and pet state.",
-        "Use get_twin_status to inspect the pet and see pending reminders.",
+        "Use get_twin_status to inspect the pet and see pending reminders/actions.",
+        "If brain_context or get_twin_status returns pendingTwinActions, execute them with your tools and then call resolve_twin_action.",
+        "If it returns twinActionsNeedingApproval, tell the user to approve from terminal first; do not execute those yet.",
         "Surface pending reminders to the user in plain language when relevant.",
         "Use acknowledge_reminder(id) when the user agrees to act on a reminder.",
         "Use dismiss_reminder(id) when the user waves one off.",
@@ -137,7 +139,9 @@ export async function startTwinMcpServer(): Promise<void> {
           path.join(os.homedir(), ".claude", "twin.config.json"),
           path.join(brainPath, "AGENTS.md")
         ],
-        petState: state
+        petState: state,
+        pendingTwinActions: readActionRequests().filter((a) => a.status === "pending"),
+        twinActionsNeedingApproval: readActionRequests().filter((a) => a.status === "needs_approval")
       };
       return {
         content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
@@ -380,6 +384,23 @@ export async function startTwinMcpServer(): Promise<void> {
   );
 
   server.registerTool(
+    "get_twin_actions_needing_approval",
+    {
+      title: "Get Twin Actions Needing Approval",
+      description:
+        "List desktop pet action requests that exist but are blocked until the user approves them in terminal.",
+      annotations: { readOnlyHint: true }
+    },
+    async () => {
+      const actions = readActionRequests().filter((a) => a.status === "needs_approval");
+      return {
+        content: [{ type: "text", text: JSON.stringify({ actions }, null, 2) }],
+        structuredContent: { actions }
+      };
+    }
+  );
+
+  server.registerTool(
     "resolve_twin_action",
     {
       title: "Resolve Twin Action",
@@ -437,7 +458,13 @@ export async function startTwinMcpServer(): Promise<void> {
       const sweep = await runReminderSweep(document, state);
       const pendingReminders = getPendingReminders(sweep.all);
 
-      const output = { twinMdPath: getTwinMdPath(), state, pendingReminders };
+      const output = {
+        twinMdPath: getTwinMdPath(),
+        state,
+        pendingReminders,
+        pendingTwinActions: readActionRequests().filter((a) => a.status === "pending"),
+        twinActionsNeedingApproval: readActionRequests().filter((a) => a.status === "needs_approval")
+      };
       return {
         content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
         structuredContent: output
