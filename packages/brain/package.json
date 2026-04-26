@@ -1,7 +1,7 @@
 {
   "name": "@twin-md/brain",
-  "version": "0.9.0",
-  "description": "twin-md brain vault — git-first markdown store with Tolaria-compatible scan, cache, and git shell-outs.",
+  "version": "0.9.1",
+  "description": "twin-md brain vault \u2014 git-first markdown store with Tolaria-compatible scan, cache, and git shell-outs.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

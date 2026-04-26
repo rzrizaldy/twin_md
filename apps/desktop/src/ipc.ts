@@ -23,6 +23,49 @@ export interface ChatStatus {
   rembgInstalled: boolean;
 }
 
+export interface VaultFolderStat {
+  path: string;
+  files: number;
+  words: number;
+}
+
+export interface VaultTopicFile {
+  path: string;
+  score: number;
+  words: number;
+}
+
+export interface VaultTopicStat {
+  topic: string;
+  score: number;
+  topFiles: VaultTopicFile[];
+}
+
+export interface VaultKnowledgeAnalysis {
+  vaultPath: string;
+  totalMarkdown: number;
+  wikiMarkdown: number;
+  sourceMarkdown: number;
+  topFoldersByFiles: VaultFolderStat[];
+  topFoldersByWords: VaultFolderStat[];
+  topTopics: VaultTopicStat[];
+}
+
+export interface VaultKnowledgeHit {
+  path: string;
+  title: string;
+  score: number;
+  words: number;
+  snippet: string;
+}
+
+export interface VaultKnowledgeRetrieval {
+  vaultPath: string;
+  query: string;
+  totalMarkdown: number;
+  hits: VaultKnowledgeHit[];
+}
+
 export type AiProvider = "anthropic" | "openai" | "gemini";
 
 export interface ClaudeDirStatus {
@@ -85,6 +128,19 @@ export async function getChatStatus(): Promise<ChatStatus | null> {
   } catch {
     return null;
   }
+}
+
+export async function analyzeVaultKnowledge(): Promise<VaultKnowledgeAnalysis> {
+  return invoke<VaultKnowledgeAnalysis>("analyze_vault_knowledge");
+}
+
+export async function retrieveVaultKnowledge(
+  query: string,
+  limit = 8
+): Promise<VaultKnowledgeRetrieval> {
+  return invoke<VaultKnowledgeRetrieval>("retrieve_vault_knowledge", {
+    payload: { query, limit }
+  });
 }
 
 export async function installRembg(): Promise<string> {

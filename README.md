@@ -64,6 +64,14 @@ Desktop action handoff is explicit and capability-based: the first Spotify, Play
 
 Natural language routing understands context, so phrases like `main lagu ...`, `putar lagu ...`, or `next song` map to Spotify even if the user does not say “Spotify.”
 
+## Native Vault Tools
+
+Twin reads the Obsidian vault selected during onboarding directly from disk. It should not need external MCP permission to answer vault questions.
+
+- Inventory questions such as “how many markdown notes are in my vault?” use a read-only vault scan tool.
+- Knowledge questions such as “what do I know about EVPI?” or “retrieve my notes about ML final” use a read-only retrieval tool over the vault markdown files.
+- Results are shown in chat with a small tool-use pill and a tool card, so it is clear when Twin used vault context instead of guessing.
+
 ## Session Sync
 
 Non-secret state is saved in the configured Obsidian vault under `.twin-md/`. API keys stay local-only.
@@ -99,8 +107,8 @@ npm run build
 
 ```bash
 npm run build
-git tag v0.9.0
-git push origin v0.9.0
+git tag v0.9.1
+git push origin v0.9.1
 ```
 
 Tauri app bundles: `./scripts/release.sh --tauri` (creates a GitHub Release when `gh` is installed).

@@ -24,6 +24,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
 import {
+  analyzeVaultKnowledge,
   approveTwinAction,
   clearTwinActions,
   getChatStatus,
@@ -42,6 +43,7 @@ import {
   openClaudeActionRunner,
   openTerminalActionApproval,
   requestClaudeAction,
+  retrieveVaultKnowledge,
   rejectTwinAction,
   logoutProviderSession,
   runLocalCommand,
@@ -56,6 +58,8 @@ import {
   type AiProvider,
   type TwinActionRequest,
   type TwinActionStatus,
+  type VaultKnowledgeAnalysis,
+  type VaultKnowledgeRetrieval,
 } from "./ipc.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -910,6 +914,16 @@ async function submitText(text: string) {
     if (handled) return;
   }
 
+  if (shouldUseVaultKnowledgeTool(trimmed)) {
+    await answerWithVaultKnowledgeTool(trimmed);
+    return;
+  }
+
+  if (shouldUseVaultRetrievalTool(trimmed)) {
+    await answerWithVaultRetrievalTool(trimmed);
+    return;
+  }
+
   if (shouldBridgeToClaude(trimmed)) {
     await queueClaudeAction(trimmed);
     return;
@@ -920,6 +934,146 @@ async function submitText(text: string) {
   sessionTurns.push({ role: "user", content: trimmed, ts: new Date().toISOString() });
 
   await sendMessages();
+}
+
+function shouldUseVaultKnowledgeTool(text: string): boolean {
+  const lower = text.toLowerCase();
+  const asksAboutVault =
+    /\b(vault|obisidian|obsidian|knowledge|second brain|notes?|catatan|folder)\b/.test(lower);
+  const asksForInventory =
+    /\b(berapa|how many|jumlah|count|scan|list|paling banyak|dominant|terbanyak|konteks|context|md|markdown)\b/.test(
+      lower
+    );
+  return asksAboutVault && asksForInventory;
+}
+
+function shouldUseVaultRetrievalTool(text: string): boolean {
+  const lower = text.toLowerCase();
+  const explicitVault =
+    /\b(vault|obisidian|obsidian|second brain|my notes|notes|catatan|knowledge base|wiki)\b/.test(lower);
+  const asksPersonalKnowledge =
+    /\b(what do i know|apa yang aku tahu|aku tahu apa|what have i written|pernah bahas|pernah nulis|from my notes|di notes|di catatan|retrieve|search)\b/.test(
+      lower
+    );
+  const courseOrKnowledgeTopic =
+    /\b(optimization|econometrics|causal|ml|machine learning|policy|governance|gis|oai|cpm|evpi|rdd|did|2sls|mcdm|newsvendor|hackathon|career|goals)\b/.test(
+      lower
+    );
+  return (explicitVault && !shouldUseVaultKnowledgeTool(text)) || (asksPersonalKnowledge && courseOrKnowledgeTopic);
+}
+
+function formatFolderStat(stat: { path: string; files: number; words: number }): string {
+  return `${stat.path}: ${stat.files} md, ~${stat.words.toLocaleString()} words`;
+}
+
+function formatVaultKnowledgeAnswer(analysis: VaultKnowledgeAnalysis): string {
+  const byFiles = analysis.topFoldersByFiles.slice(0, 5).map(formatFolderStat).join("\n");
+  const byWords = analysis.topFoldersByWords.slice(0, 5).map(formatFolderStat).join("\n");
+  const topics = analysis.topTopics
+    .slice(0, 5)
+    .map((topic) => {
+      const examples = topic.topFiles
+        .slice(0, 2)
+        .map((file) => file.path)
+        .join("; ");
+      return `${topic.topic}: score ${topic.score}${examples ? ` (${examples})` : ""}`;
+    })
+    .join("\n");
+
+  return [
+    `I scanned the vault directly with Twin's local vault tool.`,
+    ``,
+    `Vault: ${analysis.vaultPath}`,
+    `Markdown files: ${analysis.totalMarkdown}`,
+    `Wiki knowledge pages: ${analysis.wikiMarkdown}`,
+    `Source markdown files: ${analysis.sourceMarkdown}`,
+    ``,
+    `Most files:`,
+    byFiles || "- none",
+    ``,
+    `Most text/context:`,
+    byWords || "- none",
+    ``,
+    `Dominant topics by keyword signal:`,
+    topics || "- none",
+  ].join("\n");
+}
+
+async function answerWithVaultKnowledgeTool(request: string): Promise<void> {
+  appendMessage("user", request);
+  messages.push({ role: "user", content: request });
+  sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
+  appendStatus("using vault scan tool");
+  try {
+    const analysis = await analyzeVaultKnowledge();
+    appendToolCard(
+      `<span class="tool-icon">tool</span> scanned vault · <code>${analysis.totalMarkdown} markdown</code> · <code>${analysis.wikiMarkdown} wiki</code>`
+    );
+    const answer = formatVaultKnowledgeAnswer(analysis);
+    appendMessage("assistant", answer);
+    messages.push({ role: "assistant", content: answer });
+    sessionTurns.push({ role: "assistant", content: answer, ts: new Date().toISOString() });
+    lastAssistantText = answer;
+    void emitLastChat(answer);
+    void persistSession();
+  } catch (e) {
+    const answer = `I tried to use the local vault scan tool, but it failed: ${String(e)}`;
+    appendMessage("assistant", answer);
+    messages.push({ role: "assistant", content: answer });
+    sessionTurns.push({ role: "assistant", content: answer, ts: new Date().toISOString() });
+    appendStatus("vault scan failed", "error");
+  }
+}
+
+function formatVaultRetrievalAnswer(retrieval: VaultKnowledgeRetrieval): string {
+  if (retrieval.hits.length === 0) {
+    return `I searched the onboarding vault but did not find strong markdown matches for: "${retrieval.query}".`;
+  }
+
+  const hits = retrieval.hits
+    .slice(0, 6)
+    .map((hit, index) => {
+      const snippet = hit.snippet ? `\n   ${hit.snippet}` : "";
+      return `${index + 1}. ${hit.title}\n   ${hit.path}\n   score ${hit.score}, ~${hit.words.toLocaleString()} words${snippet}`;
+    })
+    .join("\n\n");
+
+  return [
+    `I retrieved relevant notes from the onboarding vault before answering.`,
+    ``,
+    `Vault: ${retrieval.vaultPath}`,
+    `Query: ${retrieval.query}`,
+    `Markdown searched: ${retrieval.totalMarkdown}`,
+    ``,
+    `Top matches:`,
+    hits,
+  ].join("\n");
+}
+
+async function answerWithVaultRetrievalTool(request: string): Promise<void> {
+  appendMessage("user", request);
+  messages.push({ role: "user", content: request });
+  sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
+  appendStatus("using vault retrieval tool");
+  try {
+    const retrieval = await retrieveVaultKnowledge(request, 8);
+    appendToolCard(
+      `<span class="tool-icon">tool</span> retrieved vault context · <code>${retrieval.hits.length} hits</code> · <code>${retrieval.totalMarkdown} markdown searched</code>`
+    );
+    const answer = formatVaultRetrievalAnswer(retrieval);
+    appendMessage("assistant", answer);
+    messages.push({ role: "assistant", content: answer });
+    sessionTurns.push({ role: "assistant", content: answer, ts: new Date().toISOString() });
+    lastAssistantText = answer;
+    void emitLastChat(answer);
+    void persistSession();
+  } catch (e) {
+    const answer = `I tried to retrieve from the onboarding vault, but it failed: ${String(e)}`;
+    appendMessage("assistant", answer);
+    messages.push({ role: "assistant", content: answer });
+    sessionTurns.push({ role: "assistant", content: answer, ts: new Date().toISOString() });
+    appendStatus("vault retrieval failed", "error");
+  }
 }
 
 function capabilityDisplayName(capability: string): string {

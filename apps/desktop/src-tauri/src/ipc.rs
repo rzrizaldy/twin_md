@@ -1,5 +1,6 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -71,6 +72,418 @@ pub fn get_chat_status() -> ChatStatus {
         model,
         rembg_installed: rembg::is_available(),
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultFolderStat {
+    pub path: String,
+    pub files: usize,
+    pub words: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultTopicStat {
+    pub topic: String,
+    pub score: usize,
+    pub top_files: Vec<VaultTopicFile>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultTopicFile {
+    pub path: String,
+    pub score: usize,
+    pub words: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultKnowledgeAnalysis {
+    pub vault_path: String,
+    pub total_markdown: usize,
+    pub wiki_markdown: usize,
+    pub source_markdown: usize,
+    pub top_folders_by_files: Vec<VaultFolderStat>,
+    pub top_folders_by_words: Vec<VaultFolderStat>,
+    pub top_topics: Vec<VaultTopicStat>,
+}
+
+fn collect_markdown_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(err) => return Err(err.to_string()),
+    };
+    for entry in entries {
+        let entry = entry.map_err(|err| err.to_string())?;
+        let path = entry.path();
+        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        if file_name == ".git" || file_name == ".obsidian" || file_name == "node_modules" {
+            continue;
+        }
+        if path.is_dir() {
+            collect_markdown_files(&path, out)?;
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("md") {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn count_words(text: &str) -> usize {
+    text.split_whitespace()
+        .filter(|word| word.chars().any(|ch| ch.is_alphanumeric()))
+        .count()
+}
+
+fn count_occurrences(haystack: &str, needle: &str) -> usize {
+    if needle.is_empty() {
+        return 0;
+    }
+    haystack.match_indices(needle).count()
+}
+
+fn folder_bucket(rel: &Path) -> String {
+    let parts: Vec<String> = rel
+        .components()
+        .take(3)
+        .map(|component| component.as_os_str().to_string_lossy().to_string())
+        .collect();
+    if parts.is_empty() {
+        ".".to_string()
+    } else {
+        parts.join("/")
+    }
+}
+
+fn folder_stats(map: BTreeMap<String, (usize, usize)>, by_words: bool) -> Vec<VaultFolderStat> {
+    let mut stats: Vec<VaultFolderStat> = map
+        .into_iter()
+        .map(|(path, (files, words))| VaultFolderStat { path, files, words })
+        .collect();
+    if by_words {
+        stats.sort_by(|a, b| b.words.cmp(&a.words).then_with(|| b.files.cmp(&a.files)));
+    } else {
+        stats.sort_by(|a, b| b.files.cmp(&a.files).then_with(|| b.words.cmp(&a.words)));
+    }
+    stats.truncate(8);
+    stats
+}
+
+#[tauri::command]
+pub fn analyze_vault_knowledge() -> Result<VaultKnowledgeAnalysis, String> {
+    let vault_root =
+        resolve_vault_root().ok_or_else(|| "no vault configured — set a vault path in onboarding".to_string())?;
+    let mut files = Vec::new();
+    collect_markdown_files(&vault_root, &mut files)?;
+
+    let topics: [(&str, &[&str]); 7] = [
+        (
+            "ML / data science",
+            &[
+                "machine learning",
+                "classification",
+                "feature",
+                "precision",
+                "recall",
+                "roc",
+                "auc",
+                "broadband",
+                "random forest",
+                "xgboost",
+            ],
+        ),
+        (
+            "Optimization / decision analysis",
+            &[
+                "optimization",
+                "decision",
+                "evpi",
+                "evsi",
+                "monte carlo",
+                "newsvendor",
+                "mcdm",
+                "linear programming",
+                "critical path",
+                "cpm",
+                "crashing",
+            ],
+        ),
+        (
+            "Econometrics / causal inference",
+            &[
+                "econometrics",
+                "causal",
+                "difference-in-differences",
+                "did",
+                "instrumental variable",
+                "2sls",
+                "rdd",
+                "ovb",
+                "treatment effect",
+                "regression discontinuity",
+            ],
+        ),
+        (
+            "Policy / AI governance",
+            &[
+                "policy",
+                "governance",
+                "surveillance",
+                "civil liberties",
+                "china",
+                "rwanda",
+                "india",
+                "pakistan",
+                "ai act",
+                "algorithmic fairness",
+            ],
+        ),
+        (
+            "OAI / AI apps / strategy",
+            &[
+                "operationalizing ai",
+                "fastapi",
+                "ai roi",
+                "assistant",
+                "agent",
+                "mcp",
+                "claude",
+                "desktop app",
+                "hackathon",
+                "twin.md",
+            ],
+        ),
+        (
+            "GIS / spatial analysis",
+            &["gis", "qgis", "spatial", "choropleth", "map", "cartography", "equity"],
+        ),
+        (
+            "Career / goals / life ops",
+            &["career", "goals", "resume", "interview", "handshake", "job", "okr", "graduation"],
+        ),
+    ];
+
+    let mut folders: BTreeMap<String, (usize, usize)> = BTreeMap::new();
+    let mut topic_scores: BTreeMap<String, usize> = BTreeMap::new();
+    let mut topic_files: BTreeMap<String, Vec<VaultTopicFile>> = BTreeMap::new();
+    let mut wiki_markdown = 0;
+    let mut source_markdown = 0;
+
+    for path in &files {
+        let rel = path.strip_prefix(&vault_root).unwrap_or(path);
+        if rel.starts_with("2. 🧠 Wiki") {
+            wiki_markdown += 1;
+        }
+        if rel.starts_with("0. 📦 Sources") || rel.starts_with("sources") {
+            source_markdown += 1;
+        }
+
+        let text = fs::read_to_string(path).unwrap_or_default();
+        let words = count_words(&text);
+        let folder = folder_bucket(rel);
+        let entry = folders.entry(folder).or_insert((0, 0));
+        entry.0 += 1;
+        entry.1 += words;
+
+        let lower = text.to_lowercase();
+        for (topic, needles) in topics {
+            let score: usize = needles
+                .iter()
+                .map(|needle| count_occurrences(&lower, needle))
+                .sum();
+            if score == 0 {
+                continue;
+            }
+            *topic_scores.entry(topic.to_string()).or_insert(0) += score;
+            topic_files
+                .entry(topic.to_string())
+                .or_default()
+                .push(VaultTopicFile {
+                    path: rel.display().to_string(),
+                    score,
+                    words,
+                });
+        }
+    }
+
+    let mut top_topics: Vec<VaultTopicStat> = topic_scores
+        .into_iter()
+        .map(|(topic, score)| {
+            let mut top_files = topic_files.remove(&topic).unwrap_or_default();
+            top_files.sort_by(|a, b| b.score.cmp(&a.score).then_with(|| b.words.cmp(&a.words)));
+            top_files.truncate(3);
+            VaultTopicStat {
+                topic,
+                score,
+                top_files,
+            }
+        })
+        .collect();
+    top_topics.sort_by(|a, b| b.score.cmp(&a.score));
+
+    Ok(VaultKnowledgeAnalysis {
+        vault_path: vault_root.display().to_string(),
+        total_markdown: files.len(),
+        wiki_markdown,
+        source_markdown,
+        top_folders_by_files: folder_stats(folders.clone(), false),
+        top_folders_by_words: folder_stats(folders, true),
+        top_topics,
+    })
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultKnowledgeQuery {
+    pub query: String,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultKnowledgeHit {
+    pub path: String,
+    pub title: String,
+    pub score: usize,
+    pub words: usize,
+    pub snippet: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultKnowledgeRetrieval {
+    pub vault_path: String,
+    pub query: String,
+    pub total_markdown: usize,
+    pub hits: Vec<VaultKnowledgeHit>,
+}
+
+fn query_terms(query: &str) -> Vec<String> {
+    let stop = [
+        "about", "apa", "atau", "bisa", "can", "context", "dari", "dong", "from", "in", "ini",
+        "itu", "knowledge", "me", "notes", "obsidian", "please", "tentang", "the", "vault",
+        "what", "yang",
+    ];
+    let mut terms = Vec::new();
+    for raw in query
+        .to_lowercase()
+        .split(|ch: char| !ch.is_alphanumeric())
+        .filter(|term| term.len() >= 3)
+    {
+        if stop.contains(&raw) || terms.iter().any(|term| term == raw) {
+            continue;
+        }
+        terms.push(raw.to_string());
+    }
+    terms
+}
+
+fn markdown_title(text: &str, fallback: &Path) -> String {
+    text.lines()
+        .find_map(|line| line.trim().strip_prefix("# ").map(str::trim))
+        .filter(|title| !title.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            fallback
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "Untitled note".to_string())
+}
+
+fn snippet_for_terms(text: &str, terms: &[String]) -> String {
+    let lower = text.to_lowercase();
+    let first_match = terms
+        .iter()
+        .filter_map(|term| lower.find(term))
+        .min()
+        .unwrap_or(0);
+    let start = text[..first_match.min(text.len())]
+        .char_indices()
+        .rev()
+        .nth(260)
+        .map(|(idx, _)| idx)
+        .unwrap_or(0);
+    let end = text[first_match.min(text.len())..]
+        .char_indices()
+        .nth(520)
+        .map(|(idx, _)| first_match + idx)
+        .unwrap_or_else(|| text.len());
+    text[start..end]
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("---"))
+        .take(8)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn score_vault_note(rel: &Path, lower: &str, terms: &[String]) -> usize {
+    if terms.is_empty() {
+        return 0;
+    }
+    let mut score = 0;
+    for term in terms {
+        score += count_occurrences(lower, term) * 8;
+    }
+    let path_lower = rel.display().to_string().to_lowercase();
+    for term in terms {
+        if path_lower.contains(term) {
+            score += 18;
+        }
+    }
+    if rel.starts_with("2. 🧠 Wiki") {
+        score += 12;
+    }
+    if path_lower.contains("/concept") || path_lower.contains("/summary") {
+        score += 8;
+    }
+    score
+}
+
+#[tauri::command]
+pub fn retrieve_vault_knowledge(payload: VaultKnowledgeQuery) -> Result<VaultKnowledgeRetrieval, String> {
+    let vault_root =
+        resolve_vault_root().ok_or_else(|| "no vault configured — set a vault path in onboarding".to_string())?;
+    let query = payload.query.trim().to_string();
+    if query.is_empty() {
+        return Err("ask what to retrieve from the vault".to_string());
+    }
+    let limit = payload.limit.unwrap_or(8).clamp(1, 16);
+    let terms = query_terms(&query);
+    let mut files = Vec::new();
+    collect_markdown_files(&vault_root, &mut files)?;
+    let total_markdown = files.len();
+
+    let mut hits = Vec::new();
+    for path in files {
+        let rel = path.strip_prefix(&vault_root).unwrap_or(&path);
+        let text = fs::read_to_string(&path).unwrap_or_default();
+        let lower = text.to_lowercase();
+        let score = score_vault_note(rel, &lower, &terms);
+        if score == 0 {
+            continue;
+        }
+        hits.push(VaultKnowledgeHit {
+            path: rel.display().to_string(),
+            title: markdown_title(&text, rel),
+            score,
+            words: count_words(&text),
+            snippet: snippet_for_terms(&text, &terms),
+        });
+    }
+    hits.sort_by(|a, b| b.score.cmp(&a.score).then_with(|| b.words.cmp(&a.words)));
+    hits.truncate(limit);
+
+    Ok(VaultKnowledgeRetrieval {
+        vault_path: vault_root.display().to_string(),
+        query,
+        total_markdown,
+        hits,
+    })
 }
 
 #[tauri::command]
