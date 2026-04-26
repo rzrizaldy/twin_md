@@ -1,6 +1,7 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -106,6 +107,111 @@ pub fn generated_asset_data_url(path: String) -> Result<String, String> {
     let bytes = fs::read(&canonical).map_err(|e| e.to_string())?;
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     Ok(format!("data:{mime};base64,{encoded}"))
+}
+
+#[tauri::command]
+pub fn apply_custom_sprite_preview(app: AppHandle, prompt: String, path: String) -> Result<(), String> {
+    let raw = PathBuf::from(path.trim());
+    let canonical = raw.canonicalize().map_err(|e| e.to_string())?;
+    let sprite_root = claude_dir()
+        .join("twin")
+        .join("sprites")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    if !canonical.starts_with(&sprite_root) {
+        return Err("refusing to summon sprite outside generated sprites folder".to_string());
+    }
+
+    let ext = canonical
+        .extension()
+        .and_then(|x| x.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "svg") {
+        return Err(format!("unsupported sprite type: {ext}"));
+    }
+
+    let cfg_path = claude_dir().join("twin.config.json");
+    fs::create_dir_all(claude_dir()).map_err(|e| e.to_string())?;
+    let mut value: serde_json::Value = match fs::read(&cfg_path) {
+        Ok(bytes) if !bytes.is_empty() => {
+            serde_json::from_slice(&bytes).unwrap_or_else(|_| serde_json::json!({}))
+        }
+        _ => serde_json::json!({}),
+    };
+    if !value.is_object() {
+        value = serde_json::json!({});
+    }
+    let obj = value.as_object_mut().expect("object");
+    obj.insert(
+        "spriteEvolution".into(),
+        serde_json::json!({
+            "kind": "custom",
+            "customPrompt": prompt.trim(),
+            "currentPath": canonical.display().to_string(),
+            "updatedAt": chrono::Local::now().to_rfc3339()
+        }),
+    );
+    fs::write(
+        &cfg_path,
+        serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let _ = app.emit(
+        "twin://sprite-updated",
+        serde_json::json!({
+            "path": canonical.display().to_string(),
+            "isSvg": ext == "svg"
+        }),
+    );
+    Ok(())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeActionPayload {
+    pub request: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeActionResult {
+    pub id: String,
+    pub queue_path: String,
+}
+
+#[tauri::command]
+pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActionResult, String> {
+    let request = payload.request.trim();
+    if request.is_empty() {
+        return Err("tell me what Claude Desktop should do".to_string());
+    }
+
+    let id = format!("act-{}", chrono::Utc::now().timestamp_millis());
+    let queue_path = claude_dir().join("twin").join("action-requests.jsonl");
+    if let Some(parent) = queue_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let event = serde_json::json!({
+        "id": id,
+        "status": "pending",
+        "source": "twin-desktop",
+        "request": request,
+        "createdAt": chrono::Utc::now().to_rfc3339(),
+        "hint": "Claude Desktop should read this through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+    });
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&queue_path)
+        .map_err(|e| e.to_string())?;
+    writeln!(file, "{event}").map_err(|e| e.to_string())?;
+
+    Ok(ClaudeActionResult {
+        id,
+        queue_path: queue_path.display().to_string(),
+    })
 }
 
 #[tauri::command]
@@ -298,6 +404,37 @@ pub struct OnboardingResult {
     pub message: String,
 }
 
+fn onboarding_intro(owner: &str, sprite_evolution: Option<&serde_json::Value>) -> String {
+    let name = owner.trim();
+    let greeting = if name.is_empty() {
+        "Hai".to_string()
+    } else {
+        format!("Hai {name}")
+    };
+
+    let custom = sprite_evolution
+        .and_then(|v| v.get("kind"))
+        .and_then(|v| v.as_str())
+        == Some("custom");
+    let prompt = sprite_evolution
+        .and_then(|v| v.get("customPrompt"))
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
+
+    if custom {
+        if let Some(prompt) = prompt {
+            return format!(
+                "{greeting}, aku udah kebangun. Aku twin kamu yang bentuknya dari ide: **{prompt}**. Aku bakal nemenin kamu dengan gaya karakter ini, baca konteksmu pelan-pelan, dan bantu jagain mood kerja kamu tanpa ribut."
+            );
+        }
+    }
+
+    format!(
+        "{greeting}, aku Axiotyl. Aku twin kecil kamu di desktop: baca konteksmu, bantu catat hal penting, dan ngingetin pelan-pelan kalau energi mulai turun."
+    )
+}
+
 #[tauri::command]
 pub async fn run_onboarding(
     app: AppHandle,
@@ -336,6 +473,17 @@ pub async fn run_onboarding(
     }
 
     if let Ok(Some(next)) = crate::state::read_state_file() {
+        let _ = crate::sprite::pin_current_sprite_to_state(&next);
+        let snapshot = crate::sprite::current_snapshot();
+        if let Some(path) = snapshot.current_path.clone() {
+            let _ = app.emit(
+                "twin://sprite-updated",
+                serde_json::json!({
+                    "path": path,
+                    "isSvg": snapshot.is_svg
+                }),
+            );
+        }
         shared.set(next.clone());
         let _ = app.emit("twin://state-changed", next);
     }
@@ -346,6 +494,9 @@ pub async fn run_onboarding(
             message: format!("couldn't summon companion: {err}"),
         });
     }
+
+    let intro = onboarding_intro(&payload.owner, payload.sprite_evolution.as_ref());
+    let _ = windows::show_chat_with_intro(&app, &intro);
 
     Ok(OnboardingResult {
         ok: true,
@@ -490,12 +641,17 @@ pub fn list_models(provider: String) -> Result<ModelList, String> {
 // ──────────────────────────── Chat window ────────────────────────────────────
 
 /// Open (or focus) the dedicated chat window, optionally pre-seeding it with
-/// a message from the daemon / reminder engine.
+/// a message from the daemon / reminder engine or a first assistant intro.
 #[tauri::command]
-pub fn open_chat_window(app: AppHandle, seed: Option<String>) -> Result<(), String> {
-    match seed {
-        Some(msg) => windows::show_chat_with_seed(&app, &msg).map_err(|e| e.to_string()),
-        None => windows::show_chat(&app).map_err(|e| e.to_string()),
+pub fn open_chat_window(
+    app: AppHandle,
+    seed: Option<String>,
+    intro: Option<String>,
+) -> Result<(), String> {
+    match (seed, intro) {
+        (Some(msg), _) => windows::show_chat_with_seed(&app, &msg).map_err(|e| e.to_string()),
+        (None, Some(msg)) => windows::show_chat_with_intro(&app, &msg).map_err(|e| e.to_string()),
+        (None, None) => windows::show_chat(&app).map_err(|e| e.to_string()),
     }
 }
 
@@ -687,5 +843,34 @@ pub async fn generate_sprite_preview(prompt: String) -> Result<String, String> {
         .await
         .map_err(|e| e.to_string())?;
     Ok(img.saved_path)
+}
+
+#[tauri::command]
+pub async fn generate_sprite_preview_from_photo(
+    prompt: String,
+    photo_path: String,
+) -> Result<String, String> {
+    let p = prompt.trim();
+    if p.is_empty() {
+        return Err("describe how to transform the photo into a sprite first".to_string());
+    }
+    if !rembg::is_available() {
+        return Err(rembg::rembg_install_hint_err());
+    }
+    let img = image_gen::render_sprite_from_photo(p, photo_path.trim())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(img.saved_path)
+}
+
+#[tauri::command]
+pub async fn generate_chat_background(prompt: String) -> Result<image_gen::ImageResult, String> {
+    let p = prompt.trim();
+    if p.is_empty() {
+        return Err("describe the chat background first".to_string());
+    }
+    image_gen::render_chat_background(p)
+        .await
+        .map_err(|e| e.to_string())
 }
 

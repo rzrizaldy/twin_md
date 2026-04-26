@@ -106,6 +106,7 @@ export interface OnboardingPayload {
   spriteEvolution: {
     kind: "default" | "custom";
     customPrompt: string | null;
+    currentPath?: string | null;
   };
 }
 
@@ -185,6 +186,17 @@ export async function generateSpritePreview(prompt: string): Promise<string> {
   return invoke<string>("generate_sprite_preview", { prompt });
 }
 
+export async function generateSpritePreviewFromPhoto(
+  prompt: string,
+  photoPath: string
+): Promise<string> {
+  return invoke<string>("generate_sprite_preview_from_photo", { prompt, photoPath });
+}
+
+export async function generateChatBackground(prompt: string): Promise<ImageGenResult> {
+  return invoke<ImageGenResult>("generate_chat_background", { prompt });
+}
+
 export function onReminder(
   cb: (reminder: Reminder) => void
 ): Promise<UnlistenFn> {
@@ -225,6 +237,17 @@ export async function runLocalCommand(
 ): Promise<LocalCommandOutcome> {
   return invoke<LocalCommandOutcome>("run_local_command", {
     payload: { handler, args }
+  });
+}
+
+export interface ClaudeActionResult {
+  id: string;
+  queuePath: string;
+}
+
+export async function requestClaudeAction(request: string): Promise<ClaudeActionResult> {
+  return invoke<ClaudeActionResult>("request_claude_action", {
+    payload: { request }
   });
 }
 
@@ -278,8 +301,8 @@ export interface ImageGenResult {
   prompt: string;
 }
 
-export async function openChatWindow(seed?: string | null): Promise<void> {
-  await invoke("open_chat_window", { seed: seed ?? null });
+export async function openChatWindow(seed?: string | null, intro?: string | null): Promise<void> {
+  await invoke("open_chat_window", { seed: seed ?? null, intro: intro ?? null });
 }
 
 export async function sendChatWindow(messages: CwMessage[]): Promise<void> {
@@ -316,4 +339,8 @@ export function onCwDone(cb: () => void): Promise<UnlistenFn> {
 
 export function onCwSeed(cb: (msg: string) => void): Promise<UnlistenFn> {
   return listen<string>("twin://cw-seed", (event) => cb(event.payload));
+}
+
+export function onCwIntro(cb: (msg: string) => void): Promise<UnlistenFn> {
+  return listen<string>("twin://cw-intro", (event) => cb(event.payload));
 }

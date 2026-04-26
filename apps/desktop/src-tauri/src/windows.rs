@@ -100,21 +100,29 @@ const CHAT_LABEL: &str = "chat";
 
 /// Open the dedicated chat window, creating it if it doesn't exist yet.
 pub fn show_chat(app: &AppHandle) -> Result<()> {
-    show_chat_inner(app, None)
+    show_chat_inner(app, None, None)
 }
 
 /// Open the dedicated chat window and pre-seed it with a message.
 /// If the window is already open it is focused and the seed is emitted.
 pub fn show_chat_with_seed(app: &AppHandle, seed: &str) -> Result<()> {
-    show_chat_inner(app, Some(seed.to_string()))
+    show_chat_inner(app, Some(seed.to_string()), None)
 }
 
-fn show_chat_inner(app: &AppHandle, seed: Option<String>) -> Result<()> {
+/// Open the dedicated chat window and show a first assistant intro.
+pub fn show_chat_with_intro(app: &AppHandle, intro: &str) -> Result<()> {
+    show_chat_inner(app, None, Some(intro.to_string()))
+}
+
+fn show_chat_inner(app: &AppHandle, seed: Option<String>, intro: Option<String>) -> Result<()> {
     if let Some(win) = app.get_webview_window(CHAT_LABEL) {
         win.show().ok();
         win.set_focus().ok();
         if let Some(msg) = seed {
             let _ = app.emit("twin://cw-seed", msg);
+        }
+        if let Some(msg) = intro {
+            let _ = app.emit("twin://cw-intro", msg);
         }
         return Ok(());
     }
@@ -135,6 +143,13 @@ fn show_chat_inner(app: &AppHandle, seed: Option<String>) -> Result<()> {
         tauri::async_runtime::spawn(async move {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             let _ = app2.emit("twin://cw-seed", msg);
+        });
+    }
+    if let Some(msg) = intro {
+        let app2 = app.clone();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            let _ = app2.emit("twin://cw-intro", msg);
         });
     }
     Ok(())

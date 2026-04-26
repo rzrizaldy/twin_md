@@ -117,6 +117,21 @@ fn build_evolutionary_prompt_with_baseline(state: &PetState, base: &str, custom_
     let out_fmt = "full-body sprite on a clean solid white or pastel background; single character; rembg will remove the background — do not use transparency / checkerboard patterns in raster image routes.";
     let mood = mood_key(&state.state);
     let env = env_key(&state.environment);
+    let mutation_hint = if custom_identity {
+        "expression, pose, accessory emphasis, line weight, tint"
+    } else {
+        "pose, eyes, gill color, line weight, tint"
+    };
+    let identity_rule = if custom_identity {
+        "CUSTOM IDENTITY RULE: The BASELINE is binding. Preserve the first-summon character almost exactly: same silhouette, age, clothing, color family, face structure, and recognizable identity. Do not add axolotl gills, cat ears, slime body, or any default twin.md mascot traits unless BASELINE explicitly asks for them."
+    } else {
+        "DEFAULT IDENTITY RULE: Preserve the selected bundled species identity."
+    };
+    let mood_cues = if custom_identity {
+        "Mood is secondary. Apply it as a tiny acting note only: a slight eyelid, micro-pose, or very subtle tint. Never redesign the character for mood. The sprite must still look like the same first-summon image at a glance."
+    } else {
+        "Mood -> visual cues (apply lightly, keep silhouette):\n- healthy: upright, warm saturation, soft smile\n- sleep_deprived: droopy lids, slight slouch, cool muted palette\n- stressed: tense micro-pose, slightly warmer stress tint\n- neglected: dimmer color, averted eye line, quieter posture"
+    };
     let (species, species_cue) = if custom_identity {
         (
             "custom companion",
@@ -135,13 +150,14 @@ fn build_evolutionary_prompt_with_baseline(state: &PetState, base: &str, custom_
         r#"You are generating a single sprite of a persistent desktop companion.
 Render: full body, centered, facing 3/4 forward, isolated — no frame, no UI, no text, no title.
 The sprite must read at 32x32 px by silhouette alone. Avoid corporate mascot energy, SaaS flat-vector filler, sticker-pack gloss, and Memoji realism.
+{identity_rule}
 
 Output must be: {out_fmt}
 
 BASELINE (do not break identity across evolutions; keep the same character readable):
 {base}
 
-CURRENT STATE (subtle, small mutations only — pose, eyes, gill color, line weight, tint):
+CURRENT STATE (subtle, small mutations only — {mutation_hint}):
 - species: {species} ({species_cue})
 - mood: {mood}
 - environment vibe: {env}
@@ -149,11 +165,7 @@ CURRENT STATE (subtle, small mutations only — pose, eyes, gill color, line wei
 - stress: {}/100
 - caption hint: "{cap}"
 
-Mood → visual cues (apply lightly, keep silhouette):
-- healthy: upright, warm saturation, soft smile
-- sleep_deprived: droopy lids, slight slouch, cool muted palette
-- stressed: tense micro-pose, slightly warmer stress tint
-- neglected: dimmer color, averted eye line, quieter posture
+{mood_cues}
 "#,
         state.energy,
         state.stress,
@@ -238,6 +250,32 @@ fn write_evolution_meta(path: &str, species: &str, mood: &str, env: &str) -> Res
         &p,
         serde_json::to_string_pretty(&value).map_err(|e| anyhow!(e))?,
     )?;
+    Ok(())
+}
+
+pub fn pin_current_sprite_to_state(state: &PetState) -> Result<()> {
+    if !custom_evolution_enabled() {
+        return Ok(());
+    }
+    let path = fs::read(twin_config_path())
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .and_then(|v| {
+            v.get("spriteEvolution")
+                .and_then(|se| se.get("currentPath"))
+                .and_then(|p| p.as_str())
+                .map(|p| p.to_string())
+        })
+        .filter(|p| !p.trim().is_empty() && std::path::Path::new(p).exists());
+
+    if let Some(path) = path {
+        write_evolution_meta(
+            &path,
+            species_key(&state.species),
+            mood_key(&state.state),
+            env_key(&state.environment),
+        )?;
+    }
     Ok(())
 }
 
@@ -335,9 +373,6 @@ pub async fn regenerate(app: &AppHandle) -> Result<String> {
         ));
     }
 
-    if let Some(wait) = rate_limit_wait_secs() {
-        return Err(anyhow!("rate_limited:{wait}"));
-    }
     if needs_rembg_for_provider() && !rembg::is_available() {
         return Err(anyhow!(rembg::rembg_install_hint_err()));
     }

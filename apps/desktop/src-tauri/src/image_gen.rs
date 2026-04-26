@@ -92,6 +92,57 @@ Use a limited friendly palette, thick outlines, cute proportions.";
     }
 }
 
+/// Chat background wallpaper: keep the whole scene, do not remove background.
+pub async fn render_chat_background(prompt: &str) -> Result<ImageResult> {
+    let (prov, _model) = active_provider_and_model();
+    let key = resolve_api_key(prov)
+        .ok_or_else(|| anyhow!("no API key for {} — add one in settings", prov.slug()))?;
+    let full = format!(
+        "{prompt}. Cozy illustrated wallpaper for a desktop pet chat window, atmospheric room or landscape, no text, no UI, no characters in foreground, soft readable center area."
+    );
+    match prov {
+        Provider::Openai => {
+            if let Ok(r) = generate_openai_gpt_image(&key, &full).await {
+                return Ok(ImageResult { prompt: prompt.to_string(), ..r });
+            }
+            let r = generate_openai_dalle3(&key, &full).await?;
+            Ok(ImageResult { prompt: prompt.to_string(), ..r })
+        }
+        Provider::Gemini => {
+            let bytes = generate_gemini_bytes(&key, &full).await?;
+            let path = save_bytes_media(&bytes, "gemini-background", prompt, "png")?;
+            Ok(ImageResult {
+                saved_path: path.display().to_string(),
+                provider_used: "gemini/imagen-3".to_string(),
+                prompt: prompt.to_string(),
+            })
+        }
+        Provider::Anthropic => Err(anyhow!(
+            "background generation needs OpenAI or Google image generation; switch provider in settings"
+        )),
+    }
+}
+
+/// Image-to-image sprite: read an uploaded photo and restyle it into a pet sprite.
+pub async fn render_sprite_from_photo(prompt: &str, photo_path: &str) -> Result<ImageResult> {
+    let (prov, _) = active_provider_and_model();
+    if prov != Provider::Openai {
+        return Err(anyhow!(
+            "photo-to-sprite currently needs OpenAI gpt-image-1; switch provider in settings"
+        ));
+    }
+    let key = resolve_api_key(prov)
+        .ok_or_else(|| anyhow!("no API key for {} — add one in settings", prov.slug()))?;
+    let bytes = generate_openai_image_edit(&key, prompt, photo_path).await?;
+    let processed = rembg::strip_bg(bytes).await.map_err(|e| anyhow!(e))?;
+    let path = save_bytes_sprite(&processed, "photo-sprite", prompt, "png")?;
+    Ok(ImageResult {
+        saved_path: path.display().to_string(),
+        provider_used: "openai/gpt-image-1-edit+rembg".to_string(),
+        prompt: prompt.to_string(),
+    })
+}
+
 async fn finalize_raster_media(
     r: ImageResult,
     prompt: &str,
@@ -165,6 +216,47 @@ async fn generate_openai_gpt_image(api_key: &str, prompt: &str) -> Result<ImageR
         });
     }
     Err(anyhow!("no b64 or url in gpt-image-1 response"))
+}
+
+async fn generate_openai_image_edit(api_key: &str, prompt: &str, photo_path: &str) -> Result<Vec<u8>> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()?;
+    let full = format!(
+        "Use the uploaded photo only as identity/reference. Generate a single full-body chibi desktop companion sprite based on it. {prompt}. Clean solid white or pastel background, no text, no frame, thick friendly outlines, readable at 32x32."
+    );
+    let image_part = reqwest::multipart::Part::bytes(std::fs::read(photo_path)?)
+        .file_name(
+            std::path::Path::new(photo_path)
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("reference.png")
+                .to_string(),
+        );
+    let form = reqwest::multipart::Form::new()
+        .text("model", "gpt-image-1")
+        .text("prompt", full)
+        .text("size", "1024x1024")
+        .part("image", image_part);
+    let res = client
+        .post("https://api.openai.com/v1/images/edits")
+        .bearer_auth(api_key)
+        .multipart(form)
+        .send()
+        .await?;
+    if !res.status().is_success() {
+        let status = res.status();
+        let t = res.text().await.unwrap_or_default();
+        return Err(anyhow!("openai image edit {status}: {t}"));
+    }
+    let json: serde_json::Value = res.json().await?;
+    if let Some(b) = json["data"][0]["b64_json"].as_str() {
+        return Ok(base64::engine::general_purpose::STANDARD.decode(b)?);
+    }
+    if let Some(url) = json["data"][0]["url"].as_str() {
+        return Ok(client.get(url).send().await?.bytes().await?.to_vec());
+    }
+    Err(anyhow!("no b64 or url in image edit response"))
 }
 
 async fn generate_openai_dalle3(api_key: &str, prompt: &str) -> Result<ImageResult> {

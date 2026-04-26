@@ -186,8 +186,12 @@
         </label>
         <div class="preview-actions">
           <button id="btn-gen-preview" class="secondary-button" type="button">generate preview</button>
+          <button id="btn-gen-preview-photo" class="secondary-button" type="button">upload photo</button>
           <span id="preview-status" class="muted preview-status"></span>
         </div>
+        <p class="muted preview-status">
+          upload photo = image-to-image. the model reads the photo as identity/reference, then redraws it as a clean desktop sprite.
+        </p>
         <div id="preview-img-wrap" class="preview-img-wrap">
           <img id="preview-img" alt="" class="preview-img" />
         </div>
@@ -196,7 +200,12 @@
       <!-- Step 6 — summon -->
       <section class="wizard-step" data-step="6">
         <div class="wizard-hero">
-          <img src="/pets/axolotl/healthy/reaction-happy.png" alt="" class="wizard-hero-sprite" />
+          <img
+            id="summon-hero-sprite"
+            src="/pets/axolotl/healthy/reaction-happy.png"
+            alt=""
+            class="wizard-hero-sprite"
+          />
         </div>
         <h1>ready to summon</h1>
         <p class="muted">

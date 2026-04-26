@@ -19,6 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
@@ -26,8 +27,13 @@ import {
   getChatStatus,
   getSpriteEvolution,
   emitLastChat,
+  generateChatBackground,
+  generateSpritePreview,
+  generateSpritePreviewFromPhoto,
   generatedAssetDataUrl,
   listModels,
+  requestClaudeAction,
+  runLocalCommand,
   saveProviderCredentials,
   validateProviderKey,
   onSpriteUpdated,
@@ -64,16 +70,48 @@ interface ImageGenResult {
 // ── Slash command registry ──────────────────────────────────────────────────
 
 const SLASH_COMMANDS = [
-  { name: "/note", blurb: "save last reply to vault", args: "<title>" },
-  { name: "/mood", blurb: "log your mood", args: "<feeling>" },
-  { name: "/image", blurb: "generate an image", args: "<prompt>" },
-  { name: "/harvest", blurb: "refresh twin.md from sources", args: "" },
-  { name: "/new", blurb: "start a new conversation", args: "" },
+  {
+    name: "/inbox",
+    blurb: "quick capture to inbox.md",
+    args: "<thought>",
+    detail: "Save a raw idea/task now; organize it later."
+  },
+  {
+    name: "/mood",
+    blurb: "log how you feel",
+    args: "<0-10 + note>",
+    detail: "Feeds the pet state and your daily context."
+  },
+  {
+    name: "/image",
+    blurb: "make an image",
+    args: "<prompt>",
+    detail: "Generate a visual and save it to your vault media."
+  },
+  {
+    name: "/change-char",
+    blurb: "preview a new pet",
+    args: "<description>",
+    detail: "Preview first in chat, then summon or revert."
+  },
+  {
+    name: "/change-background",
+    blurb: "scene or AI wallpaper",
+    args: "<scene/prompt>",
+    detail: "Pick bloom/stars/storm/nook, or describe a new background."
+  },
+  {
+    name: "/new",
+    blurb: "fresh chat",
+    args: "",
+    detail: "Clear this conversation without changing your pet."
+  },
 ];
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
 const cwLog = document.getElementById("cw-log") as HTMLDivElement;
+const cwLayout = document.getElementById("cw-layout") as HTMLDivElement;
 const cwForm = document.getElementById("cw-form") as HTMLFormElement;
 const cwInput = document.getElementById("cw-input") as HTMLTextAreaElement;
 const cwSend = document.getElementById("cw-send") as HTMLButtonElement;
@@ -114,10 +152,22 @@ let currentProvider = "anthropic";
 let currentModel = "";
 let settingsReturnFocus: HTMLElement | null = null;
 let activeAutocompleteIndex = 0;
+let introShown = false;
 
 // Font size (12–20px, stored in localStorage)
 const FONT_SIZE_KEY = "twin-cw-font-size";
+const CHAT_BACKGROUND_KEY = "twin-cw-background";
 let fontSize = parseInt(localStorage.getItem(FONT_SIZE_KEY) ?? "15", 10);
+type ChatBackgroundValue = { type: "scene"; slug: SceneSlug } | { type: "generated"; path: string };
+
+type SceneSlug = "sunny_island" | "stars_at_noon" | "storm_room" | "grey_nook";
+
+const SCENES: Array<{ slug: SceneSlug; label: string; aliases: string[] }> = [
+  { slug: "sunny_island", label: "Bloom mode", aliases: ["bloom", "sunny", "island", "healthy"] },
+  { slug: "stars_at_noon", label: "Stars at noon", aliases: ["stars", "noon", "low", "charge", "sleep"] },
+  { slug: "storm_room", label: "Paper storm", aliases: ["storm", "paper", "stress", "overload"] },
+  { slug: "grey_nook", label: "Quiet nook", aliases: ["grey", "gray", "nook", "quiet", "focus"] },
+];
 
 // ── Markdown rendering ────────────────────────────────────────────────────
 
@@ -147,8 +197,16 @@ function updateSprite(state: PetState) {
   }
 }
 
-function swapChatSprite(path: string) {
-  const url = convertFileSrc(path);
+async function resolveGeneratedSpriteUrl(path: string): Promise<string> {
+  try {
+    return await generatedAssetDataUrl(path);
+  } catch {
+    return convertFileSrc(path);
+  }
+}
+
+async function swapChatSprite(path: string) {
+  const url = await resolveGeneratedSpriteUrl(path);
   const next = new Image();
   next.onload = () => {
     cwSpriteWrap?.classList.remove("is-evolving");
@@ -193,6 +251,59 @@ function applyFontSize() {
   localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
 }
 
+function scenePath(slug: SceneSlug): string {
+  return `/scenes/${slug}/reference.png`;
+}
+
+function persistChatBackground(value: ChatBackgroundValue | null): void {
+  if (!value) {
+    localStorage.removeItem(CHAT_BACKGROUND_KEY);
+    return;
+  }
+  localStorage.setItem(CHAT_BACKGROUND_KEY, JSON.stringify(value));
+}
+
+function readPersistedChatBackground(): ChatBackgroundValue | null {
+  const raw = localStorage.getItem(CHAT_BACKGROUND_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ChatBackgroundValue;
+    if (parsed.type === "scene" || parsed.type === "generated") return parsed;
+  } catch {
+    if (SCENES.some((scene) => scene.slug === raw)) {
+      return { type: "scene", slug: raw as SceneSlug };
+    }
+  }
+  return null;
+}
+
+async function applyChatBackground(value: ChatBackgroundValue | null): Promise<void> {
+  if (!value) {
+    cwLayout.style.removeProperty("--chat-bg-image");
+    cwLayout.removeAttribute("data-chat-background");
+    persistChatBackground(null);
+    return;
+  }
+  const src =
+    value.type === "scene" ? scenePath(value.slug) : await generatedAssetDataUrl(value.path);
+  cwLayout.style.setProperty("--chat-bg-image", `url("${src}")`);
+  cwLayout.dataset.chatBackground = value.type === "scene" ? value.slug : "generated";
+  persistChatBackground(value);
+}
+
+function resolveScene(query: string): SceneSlug | null {
+  const needle = query.trim().toLowerCase().replace(/^\//, "");
+  if (!needle) return null;
+  return (
+    SCENES.find(
+      (scene) =>
+        scene.slug === needle ||
+        scene.label.toLowerCase().includes(needle) ||
+        scene.aliases.some((alias) => alias.includes(needle) || needle.includes(alias))
+    )?.slug ?? null
+  );
+}
+
 // ── Message log rendering ─────────────────────────────────────────────────
 
 function appendMessage(role: "user" | "assistant", content: string): HTMLDivElement {
@@ -233,14 +344,162 @@ async function appendImageBlock(filePath: string, prompt: string, providerUsed: 
   cwLog.appendChild(wrap);
   cwLog.scrollTop = cwLog.scrollHeight;
   try {
-    img.src = await generatedAssetDataUrl(filePath);
-  } catch {
-    img.src = convertFileSrc(filePath);
+    await setGeneratedImageSrc(img, filePath);
+  } catch (e) {
     img.addEventListener("error", () => {
       wrap.classList.add("cw-image-block--error");
       img.remove();
       caption.textContent = `image saved but couldn't be displayed: ${filePath}`;
     });
+    caption.textContent = `image saved but couldn't be displayed: ${String(e)}`;
+  }
+}
+
+async function appendCharacterPreview(filePath: string, prompt: string): Promise<void> {
+  const wrap = document.createElement("div");
+  wrap.className = "cw-character-card";
+
+  const img = document.createElement("img");
+  img.className = "cw-character-preview";
+  img.alt = prompt;
+  await setGeneratedImageSrc(img, filePath);
+
+  const body = document.createElement("div");
+  body.className = "cw-character-body";
+
+  const title = document.createElement("strong");
+  title.textContent = "preview new character";
+
+  const desc = document.createElement("p");
+  desc.textContent = prompt;
+
+  const actions = document.createElement("div");
+  actions.className = "cw-character-actions";
+
+  const summon = document.createElement("button");
+  summon.type = "button";
+  summon.className = "secondary-button";
+  summon.textContent = "summon this";
+
+  const revert = document.createElement("button");
+  revert.type = "button";
+  revert.className = "text-button";
+  revert.textContent = "revert";
+
+  summon.addEventListener("click", async () => {
+    summon.disabled = true;
+    try {
+      await invoke("apply_custom_sprite_preview", { prompt, path: filePath });
+      evolutionSpritePath = filePath;
+      await swapChatSprite(filePath);
+      const intro = `Oke, aku ganti bentuk. Sekarang aku hadir sebagai **${prompt}**. Kalau rasanya belum pas, pakai \`/change-char\` lagi dan kita preview dulu sebelum summon.`;
+      appendAssistantIntro(intro);
+      appendStatus("character summoned");
+      wrap.remove();
+    } catch (e) {
+      summon.disabled = false;
+      appendStatus(`couldn't summon character: ${String(e)}`, "error");
+    }
+  });
+
+  revert.addEventListener("click", () => {
+    wrap.remove();
+    appendStatus("character preview discarded");
+  });
+
+  actions.append(summon, revert);
+  body.append(title, desc, actions);
+  wrap.append(img, body);
+  cwLog.appendChild(wrap);
+  cwLog.scrollTop = cwLog.scrollHeight;
+}
+
+async function uploadPhotoForCharacter(prompt: string): Promise<void> {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    title: "Choose a reference photo for your sprite",
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }]
+  });
+  if (typeof selected !== "string") {
+    appendStatus("photo upload cancelled");
+    return;
+  }
+  appendStatus("generating sprite from uploaded photo…");
+  const path = await generateSpritePreviewFromPhoto(prompt, selected);
+  await appendCharacterPreview(path, prompt);
+  appendStatus("photo sprite preview ready — summon or revert");
+}
+
+function appendBackgroundPicker(preselect?: SceneSlug | null): void {
+  const wrap = document.createElement("div");
+  wrap.className = "cw-background-card";
+  const scenes = preselect ? SCENES.filter((scene) => scene.slug === preselect) : SCENES;
+
+  scenes.forEach((scene) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "cw-background-option";
+    item.style.setProperty("--scene-thumb", `url("${scenePath(scene.slug)}")`);
+    item.innerHTML = `
+      <span>${scene.label}</span>
+      <small>${scene.slug.replace(/_/g, " ")}</small>
+    `;
+    item.addEventListener("click", () => {
+      void applyChatBackground({ type: "scene", slug: scene.slug });
+      appendStatus(`background changed: ${scene.label}`);
+      wrap.remove();
+    });
+    wrap.appendChild(item);
+  });
+
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "text-button";
+  clear.textContent = "clear background";
+  clear.addEventListener("click", () => {
+    void applyChatBackground(null);
+    appendStatus("background cleared");
+    wrap.remove();
+  });
+  wrap.appendChild(clear);
+
+  cwLog.appendChild(wrap);
+  cwLog.scrollTop = cwLog.scrollHeight;
+}
+
+async function appendGeneratedBackgroundPreview(filePath: string, prompt: string): Promise<void> {
+  const wrap = document.createElement("div");
+  wrap.className = "cw-background-card cw-background-card--generated";
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "cw-background-option cw-background-option--wide";
+  const src = await generatedAssetDataUrl(filePath);
+  item.style.setProperty("--scene-thumb", `url("${src}")`);
+  item.innerHTML = `<span>Generated background</span><small>${prompt}</small>`;
+  item.addEventListener("click", () => {
+    void applyChatBackground({ type: "generated", path: filePath });
+    appendStatus("generated background applied");
+    wrap.remove();
+  });
+  const discard = document.createElement("button");
+  discard.type = "button";
+  discard.className = "text-button";
+  discard.textContent = "discard";
+  discard.addEventListener("click", () => {
+    wrap.remove();
+    appendStatus("background preview discarded");
+  });
+  wrap.append(item, discard);
+  cwLog.appendChild(wrap);
+  cwLog.scrollTop = cwLog.scrollHeight;
+}
+
+async function setGeneratedImageSrc(img: HTMLImageElement, filePath: string): Promise<void> {
+  try {
+    img.src = await generatedAssetDataUrl(filePath);
+  } catch {
+    img.src = convertFileSrc(filePath);
   }
 }
 
@@ -251,6 +510,17 @@ function appendStatus(text: string, kind: "info" | "error" = "info"): void {
   cwLog.appendChild(el);
   cwLog.scrollTop = cwLog.scrollHeight;
   setTimeout(() => el.remove(), 4000);
+}
+
+function appendAssistantIntro(text: string): void {
+  const intro = text.trim();
+  if (!intro) return;
+  introShown = true;
+  document.querySelector(".cw-greeting")?.remove();
+  appendMessage("assistant", intro);
+  messages.push({ role: "assistant", content: intro });
+  sessionTurns.push({ role: "assistant", content: intro, ts: new Date().toISOString() });
+  void emitLastChat(intro);
 }
 
 // ── Streaming ─────────────────────────────────────────────────────────────
@@ -333,11 +603,43 @@ async function submitText(text: string) {
     if (handled) return;
   }
 
+  if (shouldBridgeToClaude(trimmed)) {
+    await queueClaudeAction(trimmed);
+    return;
+  }
+
   appendMessage("user", trimmed);
   messages.push({ role: "user", content: trimmed });
   sessionTurns.push({ role: "user", content: trimmed, ts: new Date().toISOString() });
 
   await sendMessages();
+}
+
+function shouldBridgeToClaude(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("use mcp claude") ||
+    lower.includes("pakai mcp claude") ||
+    lower.includes("mcp computer use") ||
+    lower.includes("claude desktop") ||
+    lower.startsWith("minta claude ")
+  );
+}
+
+async function queueClaudeAction(request: string): Promise<void> {
+  try {
+    const result = await requestClaudeAction(request);
+    appendMessage("user", request);
+    sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
+    appendToolCard(
+      `<span class="tool-icon">↔</span> queued for Claude Desktop · <code>${result.id}</code>`
+    );
+    appendAssistantIntro(
+      `Aku sudah queue request ini untuk Claude Desktop via twin MCP: "${request}". Claude Desktop bisa ambil lewat \`get_pending_twin_actions\`, pakai tool/computer-use yang dia punya, lalu balikin hasilnya via \`resolve_twin_action\`.`
+    );
+  } catch (e) {
+    appendStatus(`couldn't queue Claude request: ${String(e)}`, "error");
+  }
 }
 
 // ── Slash commands ────────────────────────────────────────────────────────
@@ -350,6 +652,96 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     await persistSession();
     startNewSession();
     appendStatus("new conversation started");
+    return true;
+  }
+
+  // /inbox <thought> — quick capture to inbox.md
+  if (lower.startsWith("/inbox")) {
+    const note = cmd.slice("/inbox".length).trim();
+    if (!note) {
+      appendStatus("usage: /inbox buy milk / idea for portfolio / follow up with X", "error");
+      return true;
+    }
+    try {
+      const result = await runLocalCommand("inbox", note);
+      if (result.ok) {
+        appendToolCard(
+          `<span class="tool-icon">↳</span> inbox captured · <code>${result.path ?? "inbox.md"}</code>`
+        );
+      } else {
+        appendStatus(result.message, "error");
+      }
+    } catch (e) {
+      appendStatus(`inbox failed: ${String(e)}`, "error");
+    }
+    return true;
+  }
+
+  // /change-char <description> — generate a preview before applying.
+  if (
+    lower.startsWith("/change-char-photo") ||
+    lower.startsWith("/change-char") ||
+    lower.startsWith("/char")
+  ) {
+    const fromPhoto = lower.startsWith("/change-char-photo");
+    const command = fromPhoto ? "/change-char-photo" : lower.startsWith("/change-char") ? "/change-char" : "/char";
+    const prompt = cmd.slice(command.length).trim();
+    if (!prompt) {
+      appendStatus("usage: /change-char yellow doraemon superhero OR /change-char-photo chibi desk pet", "error");
+      return true;
+    }
+    try {
+      if (fromPhoto) {
+        await uploadPhotoForCharacter(prompt);
+      } else {
+        appendStatus(`previewing new character: "${prompt}"…`);
+        const path = await generateSpritePreview(prompt);
+        await appendCharacterPreview(path, prompt);
+        appendStatus("preview ready — summon or revert");
+      }
+    } catch (e) {
+      appendStatus(`character preview failed: ${String(e)}`, "error");
+    }
+    return true;
+  }
+
+  // /change-background [scene] — preview/apply a scene wallpaper.
+  if (lower.startsWith("/change-background") || lower.startsWith("/background")) {
+    const command = lower.startsWith("/change-background") ? "/change-background" : "/background";
+    const raw = cmd.slice(command.length).trim();
+    if (!raw) {
+      appendBackgroundPicker();
+      return true;
+    }
+    const scene = resolveScene(raw);
+    if (!scene) {
+      appendStatus(`generating custom background: "${raw}"…`);
+      try {
+        const result = await generateChatBackground(raw);
+        if (result.savedPath) {
+          await appendGeneratedBackgroundPreview(result.savedPath, result.prompt);
+          appendStatus("background preview ready");
+        } else {
+          appendStatus(result.error ?? "background generation failed", "error");
+        }
+      } catch (e) {
+        appendStatus(`background generation failed: ${String(e)}`, "error");
+      }
+      return true;
+    }
+    appendBackgroundPicker(scene);
+    return true;
+  }
+
+  // /claude <request> — hand off to Claude Desktop via twin MCP action queue.
+  if (lower.startsWith("/claude") || lower.startsWith("/delegate")) {
+    const command = lower.startsWith("/claude") ? "/claude" : "/delegate";
+    const request = cmd.slice(command.length).trim();
+    if (!request) {
+      appendStatus("usage: /claude change Spotify to upbeat sprint music", "error");
+      return true;
+    }
+    await queueClaudeAction(request);
     return true;
   }
 
@@ -426,7 +818,8 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     return true;
   }
 
-  return false;
+  appendStatus("unknown command — type / and choose one of the core actions", "error");
+  return true;
 }
 
 // ── Session management ────────────────────────────────────────────────────
@@ -471,7 +864,10 @@ function showAutoComplete(query: string) {
     item.dataset.cmd = cmd.name;
     item.innerHTML = `
       <span class="chat-autocomplete-name">${cmd.name} <span class="chip-args">${cmd.args}</span></span>
-      <span class="chat-autocomplete-blurb">${cmd.blurb}</span>
+      <span class="chat-autocomplete-copy">
+        <span class="chat-autocomplete-blurb">${cmd.blurb}</span>
+        <span class="chat-autocomplete-detail">${cmd.detail}</span>
+      </span>
     `;
     item.addEventListener("click", () => {
       cwInput.value = cmd.name + " ";
@@ -796,6 +1192,7 @@ document.addEventListener("keydown", async (e) => {
 
 async function init() {
   applyFontSize();
+  void applyChatBackground(readPersistedChatBackground());
 
   // Load current provider status and update pill
   await loadProviderStatus();
@@ -806,7 +1203,7 @@ async function init() {
     syncRegenerateButton();
     if (evo.currentPath) {
       evolutionSpritePath = evo.currentPath;
-      swapChatSprite(evo.currentPath);
+      void swapChatSprite(evo.currentPath);
     }
   } catch {
     // Non-fatal; bundled sprites are always available.
@@ -853,7 +1250,7 @@ async function init() {
 
   void onSpriteUpdated((payload) => {
     evolutionSpritePath = payload.path;
-    swapChatSprite(payload.path);
+    void swapChatSprite(payload.path);
   });
 
   // Listen for proactive seed messages (from reminder engine or companion sprite click)
@@ -867,18 +1264,25 @@ async function init() {
     await sendMessages();
   });
 
+  await listen<string>("twin://cw-intro", (event) => {
+    appendAssistantIntro(event.payload);
+  });
+
   // Persist session on window close
   const win = getCurrentWindow();
   win.onCloseRequested(async () => {
     await persistSession();
   });
 
-  // Show greeting
-  const greeting = document.createElement("div");
-  greeting.className = "cw-greeting";
-  greeting.innerHTML =
-    `<p>hi there — type a message, or try <code>/note</code>, <code>/mood</code>, <code>/image</code></p>`;
-  cwLog.appendChild(greeting);
+  // Show fallback greeting unless onboarding sends a character intro.
+  setTimeout(() => {
+    if (introShown || cwLog.querySelector(".chat-bubble")) return;
+    const greeting = document.createElement("div");
+    greeting.className = "cw-greeting";
+    greeting.innerHTML =
+      `<p>hi there — type a message, or try <code>/note</code>, <code>/mood</code>, <code>/image</code></p>`;
+    cwLog.appendChild(greeting);
+  }, 700);
 
   cwInput.focus();
 }

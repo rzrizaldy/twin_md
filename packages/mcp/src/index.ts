@@ -2,7 +2,7 @@ import { McpServer, StdioServerTransport } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import os from "node:os";
 import path from "node:path";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import {
   acknowledgeReminder,
   dismissReminder,
@@ -31,6 +31,33 @@ function resolveBrainPath(config: { brainPath?: string }): string {
 
 function isoDate(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function twinActionQueuePath(): string {
+  return path.join(os.homedir(), ".claude", "twin", "action-requests.jsonl");
+}
+
+function readActionRequests(): Array<Record<string, unknown>> {
+  const queuePath = twinActionQueuePath();
+  if (!existsSync(queuePath)) return [];
+  return readFileSync(queuePath, "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry));
+}
+
+function writeActionRequests(requests: Array<Record<string, unknown>>): void {
+  const queuePath = twinActionQueuePath();
+  mkdirSync(path.dirname(queuePath), { recursive: true });
+  writeFileSync(queuePath, requests.map((r) => JSON.stringify(r)).join("\n") + "\n", "utf8");
 }
 
 function safeAbsPath(brainPath: string, notePath: string): string | null {
@@ -63,6 +90,8 @@ export async function startTwinMcpServer(): Promise<void> {
         "Use dismiss_reminder(id) when the user waves one off.",
         "Use refresh_twin after local source changes.",
         "twin_talk speaks in mirror voice from the local twin.md state.",
+        "Use get_pending_twin_actions to see requests the desktop pet wants Claude Desktop to execute with its own tools.",
+        "After acting, call resolve_twin_action so the pet can show the result.",
         "query_me must always cite the exact note paths that support the answer.",
         "Never write _* fields unless seeding a type definition."
       ].join(" ")
@@ -332,6 +361,64 @@ export async function startTwinMcpServer(): Promise<void> {
   );
 
   // ── Existing twin.md tools (kept) ─────────────────────────────────────────
+
+  server.registerTool(
+    "get_pending_twin_actions",
+    {
+      title: "Get Pending Twin Actions",
+      description:
+        "List action requests created by the desktop pet for Claude Desktop to handle with its own tools/MCP/computer-use access.",
+      annotations: { readOnlyHint: true }
+    },
+    async () => {
+      const actions = readActionRequests().filter((a) => a.status === "pending");
+      return {
+        content: [{ type: "text", text: JSON.stringify({ actions }, null, 2) }],
+        structuredContent: { actions }
+      };
+    }
+  );
+
+  server.registerTool(
+    "resolve_twin_action",
+    {
+      title: "Resolve Twin Action",
+      description:
+        "Mark a desktop pet action request done/failed/needs_user and attach the result Claude Desktop observed.",
+      inputSchema: z.object({
+        id: z.string().min(1),
+        status: z.enum(["done", "failed", "needs_user"]),
+        result: z.string().min(1).describe("Short user-facing result for the pet/chat UI"),
+        details: z.record(z.string(), z.unknown()).optional()
+      })
+    },
+    async ({ id, status, result, details }) => {
+      const requests = readActionRequests();
+      let found = false;
+      const updated = requests.map((request) => {
+        if (request.id !== id) return request;
+        found = true;
+        return {
+          ...request,
+          status,
+          result,
+          details: details ?? null,
+          resolvedAt: new Date().toISOString()
+        };
+      });
+      if (!found) {
+        return {
+          content: [{ type: "text", text: `No pending twin action found for id ${id}` }],
+          isError: true
+        };
+      }
+      writeActionRequests(updated);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ id, status, result }, null, 2) }],
+        structuredContent: { id, status, result }
+      };
+    }
+  );
 
   server.registerTool(
     "get_twin_status",

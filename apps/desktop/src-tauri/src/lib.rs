@@ -49,6 +49,8 @@ pub fn run() {
             ipc::install_rembg,
             ipc::get_sprite_evolution,
             ipc::generated_asset_data_url,
+            ipc::apply_custom_sprite_preview,
+            ipc::request_claude_action,
             ipc::dismiss_bubble,
             ipc::trigger_harvest,
             ipc::send_chat,
@@ -72,6 +74,8 @@ pub fn run() {
             ipc::generate_image,
             ipc::regenerate_sprite,
             ipc::generate_sprite_preview,
+            ipc::generate_sprite_preview_from_photo,
+            ipc::generate_chat_background,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

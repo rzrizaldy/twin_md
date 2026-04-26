@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   getState,
   getSpriteEvolution,
+  generatedAssetDataUrl,
   emitLastChat,
   onChatDone,
   onChatToken,
@@ -57,6 +58,7 @@ const DEFAULT_STATE: PetState = {
 
 let current: PetState = DEFAULT_STATE;
 let evolutionSpritePath: string | null = null;
+let evolutionSpriteUrl: string | null = null;
 let lastChatPreview = "";
 
 // ── Sprite helpers ───────────────────────────────────────────────────────────
@@ -89,15 +91,36 @@ function renderAmbientBubble() {
 function render() {
   if (evolutionSpritePath) {
     spriteWrap?.classList.add("has-evolved-sprite");
-    sprite.src = convertFileSrc(evolutionSpritePath);
+    sprite.src = evolutionSpriteUrl ?? convertFileSrc(evolutionSpritePath);
   } else {
     spriteWrap?.classList.remove("has-evolved-sprite");
     setSpriteFor(current.species, current.state, "breath-a");
   }
-  caption.textContent = current.caption.toLowerCase();
-  caption.hidden = false;
+  caption.hidden = true;
   bubble.dataset.tone = current.state.replace("_", "-");
   renderAmbientBubble();
+}
+
+async function resolveGeneratedSpriteUrl(path: string): Promise<string> {
+  try {
+    return await generatedAssetDataUrl(path);
+  } catch {
+    return convertFileSrc(path);
+  }
+}
+
+async function setEvolutionSprite(path: string): Promise<boolean> {
+  const url = await resolveGeneratedSpriteUrl(path);
+  return new Promise((resolve) => {
+    const next = new Image();
+    next.onload = () => {
+      evolutionSpritePath = path;
+      evolutionSpriteUrl = url;
+      resolve(true);
+    };
+    next.onerror = () => resolve(false);
+    next.src = url;
+  });
 }
 
 function breathLoop() {
@@ -366,8 +389,9 @@ async function init() {
   try {
     const evo = await getSpriteEvolution();
     if (evo.currentPath) {
-      evolutionSpritePath = evo.currentPath;
-      render();
+      if (await setEvolutionSprite(evo.currentPath)) {
+        render();
+      }
     }
   } catch {
     // Non-fatal; bundled sprites are always available.
@@ -400,20 +424,15 @@ async function init() {
     setLastChatPreview(message);
   });
 
-  void onSpriteUpdated((payload) => {
-    const url = convertFileSrc(payload.path);
-    const next = new Image();
-    next.onload = () => {
-      evolutionSpritePath = payload.path;
+  void onSpriteUpdated(async (payload) => {
+    if (await setEvolutionSprite(payload.path)) {
       spriteWrap?.classList.remove("is-evolving");
       spriteWrap?.classList.add("sprite-swap");
       render();
       setTimeout(() => spriteWrap?.classList.remove("sprite-swap"), 280);
-    };
-    next.onerror = () => {
+    } else {
       spriteWrap?.classList.remove("is-evolving");
-    };
-    next.src = url;
+    }
   });
 
   await onReminder((reminder: Reminder) => {

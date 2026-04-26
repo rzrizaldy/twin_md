@@ -6,6 +6,7 @@ import {
   createStarterVault,
   ensureClaudeDir,
   generateSpritePreview,
+  generateSpritePreviewFromPhoto,
   generatedAssetDataUrl,
   getChatStatus,
   installRembg,
@@ -86,8 +87,14 @@ const previewPrompt = document.getElementById(
 const btnGenPreview = document.getElementById(
   "btn-gen-preview"
 ) as HTMLButtonElement | null;
+const btnGenPreviewPhoto = document.getElementById(
+  "btn-gen-preview-photo"
+) as HTMLButtonElement | null;
 const previewStatus = document.getElementById("preview-status");
 const previewImg = document.getElementById("preview-img") as HTMLImageElement | null;
+const summonHeroSprite = document.getElementById(
+  "summon-hero-sprite"
+) as HTMLImageElement | null;
 let lastPreviewAt = 0;
 let chatStatus: ChatStatus | null = null;
 
@@ -104,6 +111,29 @@ function setStatus(message: string, kind: "info" | "error" | "ok" = "info"): voi
 function syncSpriteDot() {
   const d5 = document.querySelector<HTMLElement>('[data-step-dot="5"]');
   if (d5) d5.style.display = state.spriteMode === "custom" ? "" : "none";
+}
+
+async function setImageFromGeneratedPath(img: HTMLImageElement, path: string): Promise<void> {
+  try {
+    img.src = await generatedAssetDataUrl(path);
+  } catch {
+    img.src = convertFileSrc(path);
+  }
+}
+
+async function syncSummonHero(): Promise<void> {
+  if (!summonHeroSprite) return;
+  summonHeroSprite.alt =
+    state.spriteMode === "custom" && state.customSprite.trim()
+      ? state.customSprite.trim()
+      : "default Axiotyl";
+
+  if (state.spriteMode === "custom" && state.customSpritePreviewPath) {
+    await setImageFromGeneratedPath(summonHeroSprite, state.customSpritePreviewPath);
+    return;
+  }
+
+  summonHeroSprite.src = "/pets/axolotl/healthy/reaction-happy.png";
 }
 
 function setStep(requested: number) {
@@ -143,6 +173,7 @@ function setStep(requested: number) {
   if (state.step < 4) setStatus("");
   if (state.step === 2) runClaudeDirCheck();
   if (state.step === 4) void refreshLocalAgentStatus();
+  if (state.step === 6) void syncSummonHero();
 }
 
 function validateStep(step: number): string | null {
@@ -541,18 +572,40 @@ btnGenPreview?.addEventListener("click", async () => {
     state.customSpritePreviewPath = path;
     if (previewImg) {
       previewImg.style.display = "block";
-      try {
-        previewImg.src = await generatedAssetDataUrl(path);
-      } catch {
-        previewImg.onerror = () => {
-          if (previewStatus) {
-            previewStatus.textContent = `preview saved but couldn't display: ${path}`;
-          }
-        };
-        previewImg.src = convertFileSrc(path);
-      }
+      await setImageFromGeneratedPath(previewImg, path);
     }
     if (previewStatus) previewStatus.textContent = "preview ready — tweak the prompt or continue.";
+  } catch (e) {
+    if (previewStatus) previewStatus.textContent = String(e);
+  }
+});
+
+btnGenPreviewPhoto?.addEventListener("click", async () => {
+  const p = (previewPrompt?.value ?? state.customSprite).trim();
+  if (!p) {
+    if (previewStatus) previewStatus.textContent = "describe the sprite style first";
+    return;
+  }
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    title: "Choose a reference photo",
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }]
+  });
+  if (typeof selected !== "string") {
+    if (previewStatus) previewStatus.textContent = "photo upload cancelled";
+    return;
+  }
+  state.customSprite = p;
+  if (previewStatus) previewStatus.textContent = "reading photo and generating sprite…";
+  try {
+    const path = await generateSpritePreviewFromPhoto(p, selected);
+    state.customSpritePreviewPath = path;
+    if (previewImg) {
+      previewImg.style.display = "block";
+      await setImageFromGeneratedPath(previewImg, path);
+    }
+    if (previewStatus) previewStatus.textContent = "photo sprite ready — continue or upload another.";
   } catch (e) {
     if (previewStatus) previewStatus.textContent = String(e);
   }
