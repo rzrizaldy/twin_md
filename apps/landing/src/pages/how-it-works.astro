@@ -3,7 +3,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
 
 const integrations = [
   { name: 'Obsidian', role: 'your Markdown vault', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]' },
-  { name: 'Claude', role: 'local agent + MCP handoff', tone: 'bg-[#d97706]/10 text-[#92400e]' },
+  { name: 'Claude', role: 'Claude Desktop + twin MCP (optional)', tone: 'bg-[#d97706]/10 text-[#92400e]' },
   { name: 'OpenAI', role: 'optional model provider', tone: 'bg-[#10a37f]/10 text-[#047857]' },
   { name: 'Gemini', role: 'optional model provider', tone: 'bg-[#4285f4]/10 text-[#1d4ed8]' },
   { name: 'Spotify', role: 'approved desktop action', tone: 'bg-[#1db954]/10 text-[#15803d]' },
@@ -39,29 +39,58 @@ const steps = [
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">architecture</p>
     <h1 class="mt-2 font-display text-4xl sm:text-5xl">your vault stays the center</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Twin is a local desktop app with a small Rust backend. It reads the vault you selected, shows a companion window, and only hands off desktop actions after approval.
+      Twin.md is a <strong>macOS desktop app</strong> (Tauri + Rust) that sits next to your notes. It reads the vault you pick at onboarding, runs chat and vault tools locally, and queues sensitive “do something on my Mac” requests until you approve them. Nothing requires a hosted dashboard: your folder, your machine, your rules.
     </p>
   </header>
 
   <section class="mt-12 rounded-[2rem] border border-[var(--color-ink)]/10 bg-gradient-to-br from-[var(--color-cream)] to-[var(--color-mint)] p-6 sm:p-10">
-    <div class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+    <div class="grid gap-8 lg:grid-cols-[1fr_1.05fr] lg:items-start">
       <div>
-        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">plain English</p>
-        <h2 class="mt-1 font-display text-3xl sm:text-4xl">not a giant cloud brain</h2>
-        <p class="mt-3 text-[var(--color-ink-soft)]">
-          Think of Twin as a friendly desktop layer over files you already own: your vault, your local config, and your approved action queue.
+        <h2 class="font-display text-3xl sm:text-4xl">how the flow fits together</h2>
+        <ol class="mt-5 space-y-4 text-sm text-[var(--color-ink-soft)]">
+          <li class="flex gap-3">
+            <span class="font-mono text-xs text-[var(--color-ink)]">1</span>
+            <span>
+              <strong class="text-[var(--color-ink)]">You</strong> install the Twin.md app and point it at an <strong>Obsidian</strong> or Markdown vault. That path is the anchor for retrieval, session snapshots, and the hidden <code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">.twin-md</code> profile folder (no secrets there—just UI and approval memory you can sync with the vault).
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="font-mono text-xs text-[var(--color-ink)]">2</span>
+            <span>
+              <strong class="text-[var(--color-ink)]">Twin.md (desktop)</strong> shows the companion and chat. With optional <strong>Anthropic</strong>, <strong>OpenAI</strong>, or <strong>Gemini</strong> keys, the app talks to those APIs for replies, backgrounds, and custom sprites. Vault questions can be answered using <em>read-only</em> scans of your Markdown first, so the model sees grounded snippets instead of guessing.
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="font-mono text-xs text-[var(--color-ink)]">3</span>
+            <span>
+              When you ask for something that needs the real desktop—<strong>Spotify</strong>, a <strong>Playwright</strong> browser pass, <strong>Reminders</strong>, and similar—Twin enqueues an item in a <strong>local action queue</strong> (JSON lines on disk). In the app you approve by capability; the first time you trust “Spotify,” later Spotify-shaped asks can move faster.
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="font-mono text-xs text-[var(--color-ink)]">4</span>
+            <span>
+              <strong class="text-[var(--color-ink)]">Claude Desktop</strong> (optional) is the bridge when you want <strong class="text-[var(--color-ink)]">Claude</strong> to run computer-use or MCP tools on your behalf. Run <code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">npx twin-md init</code> once: it registers the <strong>twin MCP server</strong> so Claude can list pending actions, execute them with its own tools, and mark them done. The <strong><code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">twin-md</code> CLI</strong> is the same queue from the terminal (<code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">twin-md action approve</code>, etc.) if you prefer a shell workflow.
+            </span>
+          </li>
+        </ol>
+        <p class="mt-5 text-sm text-[var(--color-ink-soft)]">
+          Harvest and terminal pet flows (<code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">twin-md harvest</code>, <code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">twin-md watch</code>) still merge signals into <code class="rounded bg-[var(--color-paper)] px-1 text-[11px]">~/.claude/twin.md</code> for power users; the desktop app is the friendlier surface on top.
         </p>
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-2">
-        {integrations.map((item) => (
-          <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
-            <span class:list={['inline-flex rounded-full px-3 py-1 text-sm font-semibold', item.tone]}>
-              {item.name}
-            </span>
-            <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{item.role}</p>
-          </div>
-        ))}
+      <div>
+        <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">integrations &amp; tools</p>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">Names you will see in docs and permissions—not all are required.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          {integrations.map((item) => (
+            <div class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-4">
+              <span class:list={['inline-flex rounded-full px-3 py-1 text-sm font-semibold', item.tone]}>
+                {item.name}
+              </span>
+              <p class="mt-2 text-sm text-[var(--color-ink-soft)]">{item.role}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   </section>
@@ -77,31 +106,34 @@ const steps = [
   </section>
 
   <section class="mt-12 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-paper)] p-6 sm:p-8">
-    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">current architecture</p>
-    <h2 class="mt-1 font-display text-3xl sm:text-4xl">four small loops</h2>
+    <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">where things run</p>
+    <h2 class="mt-1 font-display text-3xl sm:text-4xl">four loops inside one machine</h2>
+    <p class="mt-3 max-w-3xl text-sm text-[var(--color-ink-soft)]">
+      Twin.md is not “one cloud service.” It is a few cooperating processes on your Mac: the desktop UI, optional Claude Desktop with MCP, optional CLI, and the vault on disk.
+    </p>
     <div class="mt-6 grid gap-5 md:grid-cols-2">
       <div>
         <h3 class="font-display text-xl">Vault retrieval</h3>
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Read-only tools scan and retrieve Markdown from the onboarding vault before answering vault questions.
+          The app’s Rust side walks the onboarding vault, counts folders, and pulls short Markdown snippets when your chat looks like a research question. It is read-only toward your notes: Twin does not rewrite your vault unless you explicitly ask it to capture something (e.g. inbox saves).
         </p>
       </div>
       <div>
         <h3 class="font-display text-xl">Session restore</h3>
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Non-secret profile state is saved under <code class="rounded bg-[var(--color-cream)] px-1 text-xs">.twin-md</code> inside your vault.
+          Non-secret profile state lives under <code class="rounded bg-[var(--color-cream)] px-1 text-xs">.twin-md</code> inside the vault—chat snapshots, UI prefs, which capabilities you already approved. API keys stay in the app’s local credential store, not in that folder.
         </p>
       </div>
       <div>
-        <h3 class="font-display text-xl">AI providers</h3>
+        <h3 class="font-display text-xl">In-app models vs Claude Desktop</h3>
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Claude Desktop can use MCP. Anthropic, OpenAI, or Gemini keys are optional for direct chat and image generation.
+          <strong class="text-[var(--color-ink)]">Inside Twin.md:</strong> optional Anthropic, OpenAI, or Gemini keys power chat, image backgrounds, and sprites. <strong class="text-[var(--color-ink)]">Claude Desktop</strong> is separate: install Anthropic’s app, add the twin MCP server, and Claude can read the same action queue and resolve items after it runs computer-use or other MCP tools—useful when you want the full Claude toolbelt instead of only the Twin UI.
         </p>
       </div>
       <div>
         <h3 class="font-display text-xl">Approved action queue</h3>
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Spotify, browser, and reminders requests go through a local permission queue instead of running silently.
+          Desktop intents become rows in a local JSONL file. The Permission Center (and <code class="rounded bg-[var(--color-cream)] px-1 text-xs">twin-md action</code>) move them from <em>needs approval</em> to <em>pending</em> or <em>done</em>. First-time Spotify / Playwright / Reminders flows ask explicitly; later, saved capability matches can skip the heavy friction.
         </p>
       </div>
     </div>
