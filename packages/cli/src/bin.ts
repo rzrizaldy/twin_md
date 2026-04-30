@@ -1,8 +1,6 @@
 import { Command } from "commander";
-import { runDaemonCommand } from "./commands/daemon.js";
 import { runHarvestCommand } from "./commands/harvest.js";
 import { runInitCommand } from "./commands/init.js";
-import { runWatchCommand } from "./commands/watch.js";
 import {
   runBrainInitCommand,
   runBrainSyncCommand,
@@ -22,7 +20,7 @@ const program = new Command();
 program
   .name("twin-md")
   .description("Local-first twin.md pet: CLI, MCP, and desktop companion")
-  .version("0.9.1");
+  .version("0.9.2");
 
 program
   .command("init")
@@ -41,9 +39,8 @@ program
 program
   .command("harvest")
   .description("harvest local sources into twin.md")
-  .option("-w, --watch", "re-harvest when Claude dir, vault, or export files change")
   .action(runHarvestCommand);
-program.command("watch").description("render the terminal pet and watch twin files").action(runWatchCommand);
+
 program
   .command("mcp")
   .description("start the stdio MCP server")
@@ -51,38 +48,6 @@ program
     const { runMcpCommand } = await import("./commands/mcp.js");
     await runMcpCommand();
   });
-
-const daemon = program
-  .command("daemon")
-  .description("background sprite daemon that harvests, infers state, and fires reminders");
-
-daemon
-  .command("start")
-  .description("start the daemon detached in the background")
-  .option("--interval <minutes>", "minutes between ticks", (value) => Number(value))
-  .option("--foreground", "run in the foreground instead of detaching")
-  .action((options: { interval?: number; foreground?: boolean }) =>
-    runDaemonCommand("start", options)
-  );
-
-daemon
-  .command("stop")
-  .description("stop the running daemon")
-  .action(() => runDaemonCommand("stop"));
-
-daemon
-  .command("status")
-  .description("print daemon status and recent pending reminders")
-  .action(() => runDaemonCommand("status"));
-
-daemon
-  .command("run")
-  .description("internal: run the daemon loop in the current process")
-  .option("--interval <minutes>", "minutes between ticks", (value) => Number(value))
-  .option("--once", "run one tick then exit")
-  .action((options: { interval?: number; once?: boolean }) =>
-    runDaemonCommand("run", options)
-  );
 
 // ── Brain vault commands ──────────────────────────────────────────────────────
 

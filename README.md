@@ -2,113 +2,96 @@
 
 **Live site:** [rzrizaldy.github.io/twin_md/](https://rzrizaldy.github.io/twin_md/)
 
-A **local desktop companion** for **Obsidian + Claude Desktop**. It reads and writes notes, harvests local context into `~/.claude/twin.md`, renders a floating pet/chat window, and can queue approved actions for Claude Desktop through the bundled **MCP** server. State, sprites, action queues, and config live on your machine.
+Twin.md is a **local macOS desktop companion** for people who keep their life in
+Obsidian or Markdown. The desktop app renders the floating pet/chat window,
+retrieves from the selected vault, saves local session state, and queues approved
+desktop actions through the bundled MCP bridge.
 
-## Current release
+## Current Release
 
-`v0.9` focuses on making the desktop companion feel launch-ready:
+`v0.9.2` is the final desktop-first closeout release:
 
-- custom characters from prompts or uploaded photos
-- `/change-char` for a brand-new sprite identity
-- `/evolution` for image-to-image iterations from the current sprite
-- chat backgrounds from built-in scenes or generated prompts
-- Claude Code/Desktop handoff queue with in-app approval, Enter-to-approve, and saved approvals per capability
-- vault-backed session restore in `.twin-md/`, including UI prefs, chat snapshots, and non-secret state
-- English-by-default chat that mirrors Indonesian only when the latest message does
+- GitHub Releases is the supported public install path.
+- The terminal pet, `watch`, and background `daemon` surfaces are removed.
+- npm publishing is intentionally out of scope; the packages are source/dev
+  workspace packages, not registry install targets.
+- Clean/release tooling now builds a macOS DMG and checksum artifact from a
+  clean `main` checkout.
 
-## Install (CLI + MCP)
+Download the latest macOS build from
+[GitHub Releases](https://github.com/rzrizaldy/twin_md/releases).
 
-```bash
-npm install -g twin-md
-```
+## Desktop App
 
-Or without a global install:
+From the release DMG, drag Twin to Applications and run onboarding. Pick an
+Obsidian or Markdown vault when prompted. Local non-secret state is stored in the
+configured vault under `.twin-md/`; runtime state lives under `~/.claude/`.
 
-```bash
-npx twin-md init
-npx twin-md harvest
-npx twin-md watch
-```
+Optional provider keys are only needed for cloud chat fallback, generated
+sprites, generated backgrounds, or image evolution:
 
-Requires **Node 20+**. macOS notifications and some integrations expect macOS; core harvest and CLI work on Linux and Windows too.
+- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY`
+- `GEMINI_API_KEY`
 
-## Desktop companion (Tauri)
-
-The floating pet and **chat panel** are in `apps/desktop`. **Prebuilt macOS builds** (when published): [GitHub Releases](https://github.com/rzrizaldy/twin_md/releases) — look for tags like `desktop-v*`.
-
-**From this repo:**
-
-```bash
-cd twin_md
-npm ci
-npm run build
-npm run dev:desktop
-```
-
-**You do not start a second “web product.”** `npm run dev:desktop` runs Tauri, which in turn **starts Vite on `localhost:1420`** so the *native* window can load the UI with hot reload. That local URL is the desktop dev pipeline only — not the public site, and not something you open in a normal browser (the `apps/desktop` build is Tauri-only).
-
-**Marketing / landing** lives in `apps/landing` and is deployed to [GitHub Pages](https://rzrizaldy.github.io/twin_md/). You only run `npm run dev:landing` when you are **editing** that site; day-to-day desk-app work does not use it.
-
-## Everyday commands
-
-```bash
-twin-md init       # config, twin.md seed, Claude Desktop MCP wiring
-twin-md harvest    # refresh twin.md from vault + local sources
-twin-md watch      # terminal pet + reminders
-twin-md mcp        # stdio MCP server (for Claude Desktop config)
-twin-md action list
-twin-md action approve <id>
-```
-
-Desktop action handoff is explicit and capability-based: the first Spotify, Playwright, Reminders, Calendar, Mail, Notes, or Desktop action queues as `needs_approval`. Approving it once stores that capability in the vault profile, so future matching requests can go straight to `pending` and open Claude Code/Desktop without another click.
-
-Natural language routing understands context, so phrases like `main lagu ...`, `putar lagu ...`, or `next song` map to Spotify even if the user does not say “Spotify.”
-
-## Native Vault Tools
-
-Twin reads the Obsidian vault selected during onboarding directly from disk. It should not need external MCP permission to answer vault questions.
-
-- Inventory questions such as “how many markdown notes are in my vault?” use a read-only vault scan tool.
-- Knowledge questions such as “what do I know about EVPI?” or “retrieve my notes about ML final” use a read-only retrieval tool over the vault markdown files.
-- Results are shown in chat with a small tool-use pill and a tool card, so it is clear when Twin used vault context instead of guessing.
-
-## Session Sync
-
-Non-secret state is saved in the configured Obsidian vault under `.twin-md/`. API keys stay local-only.
-
-Chat sessions are saved after each assistant reply, before starting a new chat, when the chat window closes, and every 30 seconds while the chat window is open. A normal exit should load the latest saved chat/profile state on the next start. If the app is force-killed between autosaves, it may fall back to the last successful save, at most about 30 seconds behind.
-
-## Chat commands
-
-```text
-/change-char <description>      # new character from scratch
-/change-char-photo <style>      # upload a photo, redraw as sprite
-/evolution <small change>       # iterate current sprite, preserve identity
-/change-background <scene|prompt>
-/claude <desktop action>        # queue for Claude Desktop after approval
-```
-
-## More
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) — harvest → interpret → surfaces
-- [DESIGN_BRIEF.md](DESIGN_BRIEF.md) — visual direction
-- `twin-md daemon` — background harvest + reminders
-
-## From source (full monorepo)
+## Source Development
 
 ```bash
 git clone https://github.com/rzrizaldy/twin_md.git
 cd twin_md
 npm ci
 npm run build
+npm run dev:desktop
 ```
+
+`npm run dev:desktop` starts Tauri. Tauri starts Vite on
+`http://localhost:1420` for the native webview only; this is not a public web
+product and not a browser-tab companion.
+
+Useful source commands:
+
+```bash
+npm run clean
+npm run build
+npm run typecheck
+npm run validate:pet-assets
+npm run build:landing
+npm run build:web -w @twin-md/desktop
+cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+npm run build:desktop
+```
+
+## Source CLI
+
+The CLI remains for local development and Claude Desktop MCP wiring from a
+checked-out repo:
+
+```bash
+node packages/cli/dist/bin.js init
+node packages/cli/dist/bin.js harvest
+node packages/cli/dist/bin.js mcp
+node packages/cli/dist/bin.js action list
+node packages/cli/dist/bin.js action approve <id>
+```
+
+There is no `watch` command and no background `daemon` command in the supported
+surface.
 
 ## Release
 
+Releases are GitHub desktop releases only. The release script requires a clean
+`main` branch that already matches `origin/main`.
+
 ```bash
-npm run build
-git tag v0.9.1
-git push origin v0.9.1
+npm run release
 ```
 
-Tauri app bundles: `./scripts/release.sh --tauri` (creates a GitHub Release when `gh` is installed).
+The script cleans generated artifacts, runs the validation suite, builds the
+Tauri DMG, writes `SHA256SUMS.txt`, and creates the `vX.Y.Z` GitHub Release.
+
+## More
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) - runtime and package architecture
+- [docs/BRAIN_CONVENTIONS.md](docs/BRAIN_CONVENTIONS.md) - brain vault fields
+- [docs/archive/2026-04-closeout/](docs/archive/2026-04-closeout/) - old plans,
+  soft-launch notes, and build reports kept for provenance

@@ -30,9 +30,9 @@ edits to `src-tauri/**` recompile the Rust side.
 npm run build:desktop
 ```
 
-Produces a signed `.app` and `.dmg` under `src-tauri/target/release/bundle/`.
-Signing/notarization is off by default — set `APPLE_SIGNING_IDENTITY` and the
-related Apple env vars before shipping. See PLAN_V2 §8.1.
+Produces a `.app` and `.dmg` under `src-tauri/target/release/bundle/`.
+Signing/notarization is off by default. Public closeout releases are uploaded
+to GitHub Releases with a `SHA256SUMS.txt` checksum file.
 
 ## Architecture contract
 
@@ -44,7 +44,9 @@ This app is a **reader**, not a writer, of twin-md state:
   tray "harvest now" item is clicked
 
 The only file the desktop app writes is `~/.claude/twin.companion.json` for its
-own window position + prefs.
+own window position + prefs. Long-running terminal watch and daemon surfaces
+were removed in `v0.9.2`; use the tray harvest action or one-shot source CLI
+commands when you need to refresh state manually.
 
 ## Windows
 

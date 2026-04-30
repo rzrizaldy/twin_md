@@ -67,7 +67,7 @@
     text-decoration-thickness: 1px;
   }
 
-  /* Hand-drawn wobble for display headings — DESIGN_BRIEF §11 "somebody made it" */
+  /* Hand-drawn wobble for display headings. */
   .wobble {
     filter: url(#wobble);
   }

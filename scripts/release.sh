@@ -1,128 +1,130 @@
 #!/usr/bin/env bash
-# twin-md release script.
-#
-# Runs the whole workspace build, packs each package into a clean-room tmp dir
-# to verify the published tarballs actually install, then npm publish -ws.
+# GitHub desktop release for twin.md.
 #
 # Usage:
-#   scripts/release.sh               # pack + verify only (npm)
-#   scripts/release.sh --publish     # pack + verify + npm publish
-#   scripts/release.sh --dry-run     # pack + verify + npm publish --dry-run
-#   scripts/release.sh --tauri       # build Tauri desktop bundle + GitHub Release
-#   scripts/release.sh --tauri --publish  # npm publish AND GitHub Release
+#   npm run release
+#
+# This is intentionally GitHub-only. npm packages are not published by this
+# project closeout flow.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-MODE="verify"
-TAURI_RELEASE=0
-for arg in "$@"; do
-  case "$arg" in
-    --publish)
-      MODE="publish"
-      ;;
-    --dry-run)
-      MODE="dry-run"
-      ;;
-    --tauri)
-      TAURI_RELEASE=1
-      ;;
-    *)
-      echo "unknown arg: $arg" >&2
-      exit 2
-      ;;
-  esac
-done
+if ! command -v gh >/dev/null 2>&1; then
+  echo "gh CLI is required for the GitHub release." >&2
+  exit 1
+fi
 
-echo "==> building all packages"
+VERSION="$(node -p "require('./package.json').version")"
+TAG="v${VERSION}"
+HEAD_SHA="$(git rev-parse HEAD)"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
+if [[ "$BRANCH" != "main" ]]; then
+  echo "release must run from main; current branch is ${BRANCH}" >&2
+  exit 1
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "release requires a clean committed worktree." >&2
+  exit 1
+fi
+
+git fetch origin main --tags
+
+if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
+  echo "release requires local main to match origin/main." >&2
+  exit 1
+fi
+
+if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+  echo "tag ${TAG} already exists locally." >&2
+  exit 1
+fi
+
+if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+  echo "tag ${TAG} already exists on origin." >&2
+  exit 1
+fi
+
+if gh release view "$TAG" >/dev/null 2>&1; then
+  echo "release ${TAG} already exists." >&2
+  exit 1
+fi
+
+echo "==> clean"
+npm run clean
+
+echo "==> build packages"
 npm run build
 
-echo "==> packing tarballs for clean-room verification"
-TMP="$(mktemp -d -t twin-md-release-XXXXXX)"
-trap 'rm -rf "$TMP"' EXIT
+echo "==> typecheck"
+npm run typecheck
 
-PACKAGES=(
-  "packages/core"
-  "packages/mcp"
-  "packages/cli"
-)
+echo "==> validate pet assets"
+npm run validate:pet-assets
 
-for pkg in "${PACKAGES[@]}"; do
-  ( cd "$pkg" && npm pack --pack-destination "$TMP" >/dev/null )
+echo "==> build landing"
+npm run build:landing
+
+echo "==> build desktop web"
+npm run build:web -w @twin-md/desktop
+
+echo "==> cargo check"
+cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+echo "==> build desktop bundle"
+npm run build:desktop
+
+BUNDLE_DIR="$ROOT/apps/desktop/src-tauri/target/release/bundle/dmg"
+mapfile -t DMGS < <(find "$BUNDLE_DIR" -maxdepth 1 -type f -name "twin_${VERSION}_*.dmg" | sort)
+
+if [[ "${#DMGS[@]}" -eq 0 ]]; then
+  echo "no DMG found for ${VERSION} under ${BUNDLE_DIR}" >&2
+  exit 1
+fi
+
+ARTIFACT_DIR="$ROOT/output/releases/${TAG}"
+mkdir -p "$ARTIFACT_DIR"
+
+for dmg in "${DMGS[@]}"; do
+  cp "$dmg" "$ARTIFACT_DIR/"
 done
 
-echo "==> clean-room install in $TMP"
 (
-  cd "$TMP"
-  mkdir -p probe
-  cd probe
-  npm init -y >/dev/null
-  npm install --no-fund --no-audit ../*.tgz
-  node -e "require('twin-md/dist/bin.js')" 2>/dev/null || true
-  ./node_modules/.bin/twin-md --version
-  ./node_modules/.bin/twin-md --help | head -n 20
+  cd "$ARTIFACT_DIR"
+  shasum -a 256 *.dmg > SHA256SUMS.txt
 )
 
-case "$MODE" in
-  verify)
-    echo "==> verify OK. tarballs live at $TMP"
-    echo "    re-run with --publish to push to npm."
-    trap - EXIT
-    ;;
-  dry-run)
-    echo "==> npm publish --dry-run across workspaces"
-    npm publish -ws --access public --dry-run
-    ;;
-  publish)
-    echo "==> npm publish across workspaces"
-    npm publish -ws --access public
-    ;;
-esac
+NOTES="$(mktemp -t twin-md-release-notes-XXXXXX.md)"
+cat > "$NOTES" <<EOF
+## Summary
+- Final desktop-first closeout release.
+- Removes terminal watch and daemon surfaces so Twin does not keep CLI UI sessions alive.
+- Makes GitHub Releases the supported public install path.
+- Adds reproducible clean/release tooling and checksum output.
 
-# ── Tauri desktop bundle + GitHub Release ────────────────────────────────────
-if [[ "$TAURI_RELEASE" -eq 1 ]]; then
-  echo ""
-  echo "==> building Tauri desktop bundle"
-  cd "$ROOT/apps/desktop"
-  npm run build
+## Verification
+- npm run clean
+- npm run build
+- npm run typecheck
+- npm run validate:pet-assets
+- npm run build:landing
+- npm run build:web -w @twin-md/desktop
+- cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+- npm run build:desktop
+EOF
 
-  # Detect version from tauri.conf.json
-  VERSION=$(node -e "const c=require('./src-tauri/tauri.conf.json'); console.log(c.version)")
-  TAG="desktop-v${VERSION}"
+echo "==> create GitHub release ${TAG}"
+gh release create "$TAG" \
+  --target "$HEAD_SHA" \
+  --title "twin.md ${VERSION}" \
+  --notes-file "$NOTES" \
+  "$ARTIFACT_DIR"/*.dmg \
+  "$ARTIFACT_DIR/SHA256SUMS.txt"
 
-  echo "==> tauri version: $VERSION  (tag: $TAG)"
+rm -f "$NOTES"
 
-  # Collect bundle artifacts (macOS produces .dmg + .app.tar.gz)
-  BUNDLE_DIR="$ROOT/apps/desktop/src-tauri/target/release/bundle"
-  ARTIFACTS=()
-  while IFS= read -r -d '' f; do
-    ARTIFACTS+=("$f")
-  done < <(find "$BUNDLE_DIR" \
-    \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.AppImage" \
-       -o -name "*.deb" -o -name "*.msi" -o -name "*.nsis.exe" \) \
-    -print0 2>/dev/null)
-
-  if [[ ${#ARTIFACTS[@]} -eq 0 ]]; then
-    echo "no bundle artifacts found under $BUNDLE_DIR — did the build succeed?" >&2
-    exit 1
-  fi
-
-  echo "==> artifacts to upload:"
-  for a in "${ARTIFACTS[@]}"; do echo "    $a"; done
-
-  if command -v gh &>/dev/null; then
-    echo "==> creating GitHub release $TAG"
-    gh release create "$TAG" \
-      --title "twin desktop $VERSION" \
-      --notes "Desktop companion bundle for twin.md $VERSION." \
-      "${ARTIFACTS[@]}"
-    echo "==> GitHub release created: $TAG"
-  else
-    echo "gh CLI not found — skipping GitHub release upload."
-    echo "    artifacts are ready at: $BUNDLE_DIR"
-  fi
-
-  cd "$ROOT"
-fi
+echo "==> release created: ${TAG}"

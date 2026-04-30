@@ -1,7 +1,7 @@
 {
   "name": "twin-md-workspace",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "twin-md monorepo: local-first sprite that reads your second brain.",
   "packageManager": "pnpm@10.33.0",
   "workspaces": [
@@ -15,6 +15,7 @@
     "dev:landing": "npm run dev -w @twin-md/landing",
     "dev:desktop": "npm run dev -w @twin-md/desktop",
     "generate:pet-assets": "node scripts/generate-pet-sprites-v2.mjs",
+    "clean": "node scripts/clean.mjs",
     "release": "./scripts/release.sh",
     "validate:pet-assets": "node scripts/validate-pet-assets.mjs",
     "lint": "npm run lint -ws --if-present",
@@ -23,8 +24,6 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/qrcode-terminal": "^0.12.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3"
   }

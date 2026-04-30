@@ -7,7 +7,7 @@ import CozyLayout from '../layouts/CozyLayout.astro';
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">install</p>
     <h1 class="mt-2 font-display text-4xl sm:text-5xl">get your twin running</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      Download the macOS desktop build, then choose your Obsidian or Markdown vault during onboarding. Node 20+ is only needed if you want the CLI/MCP tools or local development.
+      Download the macOS desktop build, then choose your Obsidian or Markdown vault during onboarding. Node 20+ is only needed for source development and source-only MCP wiring.
     </p>
   </header>
 
@@ -50,32 +50,32 @@ import CozyLayout from '../layouts/CozyLayout.astro';
   </section>
 
   <section class="mt-12" id="optional-cli">
-    <h2 class="font-display text-2xl">Optional: Claude Desktop wiring</h2>
-    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">Use this only if you want the CLI and MCP bridge. New users can skip it at first.</p>
+    <h2 class="font-display text-2xl">Optional: source MCP wiring</h2>
+    <p class="mt-2 text-sm text-[var(--color-ink-soft)]">Use this only from a checked-out repo when you want Claude Desktop to poll the same local action queue.</p>
     <div class="mt-4 rounded-[2rem] border border-[var(--color-ink)]/10 bg-[var(--color-cream)] p-6 sm:p-8">
       <div>
-        <h3 class="font-display text-lg">CLI setup</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">This seeds Twin context and registers the MCP server for Claude Desktop.</p>
+        <h3 class="font-display text-lg">Source CLI setup</h3>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">This is not an npm install path. Build the repo, then run the generated CLI directly.</p>
       </div>
       <div class="mt-4 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
         <span class="text-[var(--color-ink-soft)]">$</span>
-        <code>npx twin-md init</code>
+        <code>node packages/cli/dist/bin.js init</code>
         <button
           type="button"
           class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
-          data-copy="npx twin-md init"
+          data-copy="node packages/cli/dist/bin.js init"
         >copy</button>
       </div>
       <p class="mt-3 text-sm text-[var(--color-ink-soft)]">
-        You do not need to memorize generated file paths. The desktop app and CLI manage the setup.
+        The public desktop release does not depend on npm registry packages.
       </p>
       <div class="mt-4 flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
         <span class="text-[var(--color-ink-soft)]">$</span>
-        <code>twin-md action approve &lt;id&gt;</code>
+        <code>node packages/cli/dist/bin.js action approve &lt;id&gt;</code>
         <button
           type="button"
           class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
-          data-copy="twin-md action approve <id>"
+          data-copy="node packages/cli/dist/bin.js action approve <id>"
         >copy</button>
       </div>
       <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
@@ -161,8 +161,8 @@ import CozyLayout from '../layouts/CozyLayout.astro';
         <p class="text-sm font-medium mb-2">Developer smoke test:</p>
         <div class="flex items-center gap-2 rounded-lg border border-[var(--color-ink)]/10 bg-[var(--color-paper)] px-3 py-2 font-mono text-sm">
           <span class="text-[var(--color-ink-soft)]">$</span>
-          <code>twin-md watch</code>
-          <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="twin-md watch">copy</button>
+          <code>npm run build:web -w @twin-md/desktop</code>
+          <button type="button" class="ml-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]" data-copy="npm run build:web -w @twin-md/desktop">copy</button>
         </div>
       </div>
       <details class="mt-6" open>
@@ -173,12 +173,12 @@ import CozyLayout from '../layouts/CozyLayout.astro';
             <p>Build from <code class="rounded bg-[var(--color-cream)] px-1 text-xs">apps/desktop</code> with <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm run dev:desktop</code> (Vite must be on port 1420 in dev) or install a <a href="https://github.com/rzrizaldy/twin_md/releases" class="underline" target="_blank" rel="noreferrer">release</a> bundle. Check the terminal for a Rust or webview error.</p>
           </div>
           <div>
-            <p class="font-medium text-[var(--color-ink)]">twin-md command not found</p>
-            <p>Install globally: <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm install -g twin-md</code></p>
+            <p class="font-medium text-[var(--color-ink)]">source CLI command not found</p>
+            <p>Run <code class="rounded bg-[var(--color-cream)] px-1 text-xs">npm run build</code> from the repo root, then use <code class="rounded bg-[var(--color-cream)] px-1 text-xs">node packages/cli/dist/bin.js</code>.</p>
           </div>
           <div>
             <p class="font-medium text-[var(--color-ink)]">pet shows blank / default state</p>
-            <p>Run <code class="rounded bg-[var(--color-cream)] px-1 text-xs">twin-md harvest</code> to pull fresh signals. The companion auto-updates.</p>
+            <p>Use the tray harvest action, or from source run <code class="rounded bg-[var(--color-cream)] px-1 text-xs">node packages/cli/dist/bin.js harvest</code>.</p>
           </div>
         </div>
       </details>
