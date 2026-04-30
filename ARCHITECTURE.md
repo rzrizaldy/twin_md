@@ -12,16 +12,17 @@ Runtime state lives under `~/.claude/` by default:
 
 | File | Purpose |
 |---|---|
-| `twin.config.json` | Local config: vault path, brain path, species, provider |
+| `twin.config.json` | Local config: vault path, quick-notes path, brain fallback path, species, provider |
 | `twin.md` | Harvested context summary |
 | `twin-state.json` | Derived pet state read by desktop surfaces |
 | `twin-reminders.jsonl` | Reminder ledger |
 | `twin-actions.jsonl` | Desktop action queue |
 | `twin-history/` | Harvest snapshots |
 
-The optional brain vault lives at `~/twin-brain/` by default and is ordinary
-Markdown in git. It stores diary entries, moods, observations, themes, people,
-sessions, and type conventions.
+When `obsidianVaultPath` is configured, that vault is the primary notes root for
+retrieval, quick notes, and MCP note tools. The optional brain vault lives at
+`~/twin-brain/` by default and is ordinary Markdown in git; it is used as a
+fallback/internal notes root when no Obsidian or Markdown vault is configured.
 
 ## Core Loop
 
@@ -30,6 +31,8 @@ sessions, and type conventions.
 3. The Tauri desktop app watches those local files and updates the pet/chat UI.
 4. Approved desktop actions are queued locally and resolved through the MCP
    bridge or local agent subprocess.
+5. `/inbox` creates a titled Markdown note under the configured
+   `quickNotesPath` inside the selected vault.
 
 All long-running terminal UI/background CLI surfaces were removed in `v0.9.2`.
 Refreshes are explicit: desktop onboarding/tray actions or one-shot source CLI
@@ -57,6 +60,7 @@ The desktop app reads and emits:
 - `~/.claude/twin-state.json`
 - `~/.claude/twin-reminders.jsonl`
 - configured vault `.twin-md/` profile/session files
+- configured vault quick-notes folder, for titled `/inbox` captures
 
 The app writes only local runtime/profile/action data. It does not publish or
 sync user content remotely.
@@ -73,8 +77,9 @@ The MCP server is stdio-only. It exposes:
   `open_note`, `create_note`, `append_to_note`, `link_notes`, and
   `query_me`
 
-Claude Desktop starts MCP explicitly from its config. The repo no longer starts
-an ambient CLI watcher or daemon.
+These tools resolve the configured Obsidian/Markdown vault first. Claude Desktop
+starts MCP explicitly from its config. The repo no longer starts an ambient CLI
+watcher or daemon.
 
 ## Source Commands
 

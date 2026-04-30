@@ -4,7 +4,7 @@ import type { BrandMarkId } from '../brand-marks';
 import BrandMark from '../components/BrandMark.astro';
 
 const integrations: { name: string; role: string; tone: string; mark: BrandMarkId }[] = [
-  { name: 'Obsidian', role: 'Markdown vault', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]', mark: 'obsidian' },
+  { name: 'Obsidian', role: 'primary notes root', tone: 'bg-[#7c3aed]/10 text-[#5b21b6]', mark: 'obsidian' },
   { name: 'Claude Code', role: 'local chat · CLI + twin MCP', tone: 'bg-[#d97706]/10 text-[#92400e]', mark: 'anthropic' },
   { name: 'Claude Desktop', role: 'optional · MCP + actions', tone: 'bg-[#ea580c]/10 text-[#9a3412]', mark: 'anthropic' },
   { name: 'OpenAI', role: 'optional · sprites & backgrounds', tone: 'bg-[#10a37f]/10 text-[#047857]', mark: 'openai' },
@@ -24,7 +24,7 @@ const integrations: { name: string; role: string; tone: string; mark: BrandMarkI
     <p class="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">architecture</p>
     <h1 class="mt-2 font-display text-4xl sm:text-5xl">your vault stays the center</h1>
     <p class="mt-4 text-[var(--color-ink-soft)]">
-      <strong>Everyday chat is local-first.</strong> The app prefers your installed <strong>Claude Code</strong> or <strong>Codex</strong> CLI, injects the bundled <strong>twin MCP</strong> server, and streams the reply into Twin—no Claude <em>Desktop</em> window required for typing in the app. Provider <strong>API keys are optional</strong>: use them for <strong>custom sprites</strong>, <strong>chat backgrounds</strong>, and (if you skip the CLI) <strong>in-app chat over HTTPS</strong> to Anthropic, OpenAI, or Gemini.
+      <strong>Everyday chat is local-first.</strong> The app prefers your installed <strong>Claude Code</strong> or <strong>Codex</strong> CLI, injects the bundled <strong>twin MCP</strong> server, and streams the reply into Twin—no Claude <em>Desktop</em> window required for typing in the app. When an Obsidian vault is configured, that vault is the notes root for retrieval and MCP tools; the fallback <code class="rounded bg-[var(--color-paper)] px-1 text-xs">~/twin-brain</code> tree is only used when there is no vault. Provider <strong>API keys are optional</strong>: use them for <strong>custom sprites</strong>, <strong>chat backgrounds</strong>, and (if you skip the CLI) <strong>in-app chat over HTTPS</strong> to Anthropic, OpenAI, or Gemini.
     </p>
   </header>
 
@@ -74,11 +74,11 @@ const integrations: { name: string; role: string; tone: string; mark: BrandMarkI
             <div class="how-box__head">
               <BrandMark mark="obsidian" size={26} />
               <div>
-                <p class="how-box__title">Vault</p>
-                <p class="how-box__sub">Obsidian / Markdown folder</p>
+            <p class="how-box__title">Vault</p>
+                <p class="how-box__sub">Obsidian / Markdown folder · primary notes root</p>
               </div>
             </div>
-            <p class="how-box__pill">read · retrieve snippets</p>
+            <p class="how-box__pill">read · retrieve snippets · create quick notes</p>
           </div>
         </div>
         <div class="how-branch">
@@ -155,7 +155,7 @@ const integrations: { name: string; role: string; tone: string; mark: BrandMarkI
           <div>
             <p class="how-box__title">Claude Desktop (separate app)</p>
             <p class="how-box__sub">
-              Optional source setup registers the same twin MCP in <strong>Anthropic’s Claude Desktop</strong> so that app can poll the action queue, run computer-use, and resolve items. This does <em>not</em> replace in-app chat—it is an extra surface for power workflows.
+              Optional source setup registers the same twin MCP in <strong>Anthropic’s Claude Desktop</strong> so that app can read the configured Obsidian vault, poll the action queue, run computer-use, and resolve items. This does <em>not</em> replace in-app chat—it is an extra surface for power workflows.
             </p>
           </div>
         </div>

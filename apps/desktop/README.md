@@ -36,16 +36,21 @@ to GitHub Releases with a `SHA256SUMS.txt` checksum file.
 
 ## Architecture contract
 
-This app is a **reader**, not a writer, of twin-md state:
+This app treats the configured Obsidian or Markdown vault as the primary notes
+root. `~/twin-brain` is only fallback/internal when no vault is configured.
+
+This app is mostly a **reader** of twin-md runtime state:
 
 - reads `~/.claude/twin-state.json` and re-emits on change
 - reads `~/.claude/twin-reminders.jsonl` and spawns a bubble window per line
 - shells out to `twin-md harvest` / `twin-md init` when onboarding or when the
   tray "harvest now" item is clicked
+- writes titled `/inbox` captures to the configured vault-relative
+  `quickNotesPath`
 
-The only file the desktop app writes is `~/.claude/twin.companion.json` for its
-own window position + prefs. Long-running terminal watch and daemon surfaces
-were removed in the desktop-first closeout; use the tray harvest action or one-shot source CLI
+The app also writes `~/.claude/twin.companion.json` for its own window position
++ prefs. Long-running terminal watch and daemon surfaces were removed in the
+desktop-first closeout; use the tray harvest action or one-shot source CLI
 commands when you need to refresh state manually.
 
 ## Windows

@@ -9,7 +9,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 
 <CozyLayout
   title="twin.md — desktop companion for Obsidian vaults"
-  description="twin.md is a local desktop companion for people with Obsidian or Markdown vaults. It retrieves your notes, saves new thoughts, and helps with approved desktop actions."
+  description="twin.md is a local desktop companion for people with Obsidian or Markdown vaults. It retrieves your notes, saves titled quick notes, and helps with approved desktop actions."
   active="home"
 >
   <IslandHero />
@@ -34,7 +34,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
       <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
         <h3 class="font-display text-lg">Save thoughts back</h3>
         <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-          Capture inbox notes, mood logs, and chat summaries without leaving the companion.
+          <code>/inbox</code> creates a titled Markdown note in the quick-notes folder you picked during onboarding.
         </p>
       </article>
       <article class="rounded-2xl border border-[var(--color-ink)]/10 bg-[var(--color-paper)]/80 p-5">
@@ -60,9 +60,9 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
     <div class="mt-8 grid gap-6 lg:grid-cols-3">
       <div>
         <p class="font-mono text-xs text-[var(--color-ink-soft)]">01</p>
-        <h3 class="mt-2 font-display text-xl">Choose your vault</h3>
+        <h3 class="mt-2 font-display text-xl">Choose your vault and inbox</h3>
         <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
-          Onboarding points Twin at your Obsidian or Markdown folder. That becomes its home base.
+          Onboarding points Twin at your Obsidian or Markdown folder and asks where quick notes should land.
         </p>
       </div>
       <div>
@@ -113,7 +113,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
         <div>
           <h3 class="font-display text-xl">Useful enough to trust</h3>
           <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
-            Tool-use pills show when Twin is scanning the vault, retrieving notes, saving to your inbox, or asking for desktop approval.
+            Tool-use pills show when Twin is scanning the vault, retrieving notes, creating a quick note, or asking for desktop approval.
           </p>
         </div>
         <div>
@@ -135,7 +135,7 @@ const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
       </div>
       <div>
         <h3 class="font-display text-lg">local by default</h3>
-        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">state and session snapshots live on your machine or in your chosen vault.</p>
+        <p class="mt-1 text-sm text-[var(--color-ink-soft)]">state and session snapshots live on your machine or in your chosen Obsidian vault.</p>
       </div>
       <div>
         <h3 class="font-display text-lg">small on purpose</h3>

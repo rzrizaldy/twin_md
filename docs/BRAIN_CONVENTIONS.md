@@ -1,7 +1,9 @@
 # Brain Conventions
 
-Field vocabulary for the twin-brain vault. These are the only field names that twin.md
-acts on — all other frontmatter is stored as-is in `BrainEntry.properties` and never
+Field vocabulary for the configured notes root. If the user selected an
+Obsidian or Markdown vault, that vault is the primary root. `~/twin-brain` is
+only fallback/internal. These are the only field names that twin.md acts on —
+all other frontmatter is stored as-is in `BrainEntry.properties` and never
 triggers special behaviour in source code. No hardcoded exceptions.
 
 > Rule from Tolaria: *"Convention, not configuration. If a field contains `[[wikilinks]]`,
@@ -13,6 +15,8 @@ triggers special behaviour in source code. No hardcoded exceptions.
 
 Each note should declare a `type:` field. The valid built-in types are defined as files
 under `<brain>/type/*.md` — edit those files to change how they appear in the UI.
+When using an existing Obsidian vault, those type files are optional; ordinary
+Markdown still scans and retrieves.
 
 | type | Meaning |
 |---|---|

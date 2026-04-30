@@ -4,15 +4,26 @@
 
 Twin.md is a **local macOS desktop companion** for people who keep their life in
 Obsidian or Markdown. The desktop app renders the floating pet/chat window,
-retrieves from the selected vault, saves local session state, and queues approved
-desktop actions through the bundled MCP bridge.
+retrieves from the selected vault, creates titled quick notes back into that
+vault, saves local session state, and queues approved desktop actions through
+the bundled MCP bridge.
 
-## Current Release
+## Release Status
 
-`v0.9.4` is the final desktop-first closeout release:
+The latest published GitHub Release is `v0.9.4`. `main` may contain newer
+desktop fixes before the next DMG is published. There is no `v1.0.0` release
+yet.
+
+The current desktop-first system is:
 
 - GitHub Releases is the supported public install path.
 - The terminal pet, `watch`, and background `daemon` surfaces are removed.
+- Obsidian or a Markdown vault is the primary knowledge root when configured.
+  `~/twin-brain` remains a fallback/internal notes root, not the default public
+  destination for people who already have an Obsidian vault.
+- Onboarding asks where quick notes should land inside the vault. `/inbox`
+  creates a titled Markdown note in that folder instead of appending to a random
+  root `inbox.md`.
 - npm publishing is intentionally out of scope; the packages are source/dev
   workspace packages, not registry install targets.
 - Clean/release tooling now builds a macOS DMG and checksum artifact from a
@@ -26,8 +37,18 @@ Download the latest macOS build from
 ## Desktop App
 
 From the release DMG, drag Twin to Applications and run onboarding. Pick an
-Obsidian or Markdown vault when prompted. Local non-secret state is stored in the
-configured vault under `.twin-md/`; runtime state lives under `~/.claude/`.
+Obsidian or Markdown vault when prompted, then choose the vault-relative folder
+for quick captures, such as `📥 Inbox`, `Inbox`, or `00 Inbox`. Local non-secret
+state is stored in the configured vault under `.twin-md/`; runtime state lives
+under `~/.claude/`.
+
+In chat:
+
+- `/inbox title: QGIS Analysis idea` creates a note such as
+  `📥 Inbox/qgis-analysis-idea.md`.
+- Vault retrieval and MCP tools read from `obsidianVaultPath` first.
+- Claude Desktop MCP is optional; in-app chat prefers the local Claude/Codex
+  bridge when available.
 
 Optional provider keys are only needed for cloud chat fallback, generated
 sprites, generated backgrounds, or image evolution:
@@ -70,6 +91,7 @@ checked-out repo:
 
 ```bash
 node packages/cli/dist/bin.js init
+node packages/cli/dist/bin.js init --obsidian-vault ~/Notes --quick-notes-path "📥 Inbox"
 node packages/cli/dist/bin.js harvest
 node packages/cli/dist/bin.js mcp
 node packages/cli/dist/bin.js action list
