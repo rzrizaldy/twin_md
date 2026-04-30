@@ -79,7 +79,10 @@ echo "==> build desktop bundle"
 npm run build:desktop
 
 BUNDLE_DIR="$ROOT/apps/desktop/src-tauri/target/release/bundle/dmg"
-mapfile -t DMGS < <(find "$BUNDLE_DIR" -maxdepth 1 -type f -name "twin_${VERSION}_*.dmg" | sort)
+DMGS=()
+while IFS= read -r dmg; do
+  DMGS+=("$dmg")
+done < <(find "$BUNDLE_DIR" -maxdepth 1 -type f -name "twin_${VERSION}_*.dmg" | sort)
 
 if [[ "${#DMGS[@]}" -eq 0 ]]; then
   echo "no DMG found for ${VERSION} under ${BUNDLE_DIR}" >&2
