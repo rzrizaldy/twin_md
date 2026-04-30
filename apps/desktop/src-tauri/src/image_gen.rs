@@ -347,7 +347,7 @@ fn media_dir() -> PathBuf {
     let cfg_path = crate::paths::claude_dir().join("twin.config.json");
     if let Ok(bytes) = std::fs::read(&cfg_path) {
         if let Ok(cfg) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-            for key in &["brainPath", "obsidianVaultPath"] {
+            for key in &["obsidianVaultPath", "brainPath"] {
                 if let Some(raw) = cfg[key].as_str().filter(|s| !s.is_empty()) {
                     let p = PathBuf::from(expand_tilde(raw)).join("media");
                     if p.parent().map(|x| x.exists()).unwrap_or(false) {

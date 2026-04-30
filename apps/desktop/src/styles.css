@@ -923,6 +923,13 @@ body.window-onboarding {
   align-items: baseline;
 }
 
+.field > small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgba(71, 54, 67, 0.62);
+}
+
 .where-link {
   font-size: 10px;
   color: rgba(71, 54, 67, 0.55);

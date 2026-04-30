@@ -23,6 +23,7 @@ type InitOptions = {
   species?: string;
   owner?: string;
   obsidianVault?: string;
+  quickNotesPath?: string;
   healthPath?: string;
   calendarPath?: string;
   locationPath?: string;
@@ -85,12 +86,21 @@ export async function runInitCommand(options: InitOptions): Promise<void> {
     (interactive
       ? await input({ message: "Your name", default: current.owner })
       : current.owner);
+  const quickNotesPath =
+    options.quickNotesPath ??
+    (interactive && (options.obsidianVault ?? current.obsidianVaultPath)
+      ? await input({
+          message: "Quick notes folder inside your Obsidian vault",
+          default: current.quickNotesPath ?? "inbox"
+        })
+      : current.quickNotesPath ?? "inbox");
 
   const config = createDefaultConfig({
     ...current,
     species: species as TwinConfig["species"],
     owner: ownerValue,
     obsidianVaultPath: options.obsidianVault ?? current.obsidianVaultPath,
+    quickNotesPath,
     healthPath: options.healthPath ?? current.healthPath,
     calendarPath: options.calendarPath ?? current.calendarPath,
     locationPath: options.locationPath ?? current.locationPath,

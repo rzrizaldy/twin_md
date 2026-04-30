@@ -31,15 +31,27 @@ function resolveBrainPath(config: { brainPath?: string }): string {
   return config.brainPath ?? path.join(os.homedir(), "twin-brain");
 }
 
+function resolveNotesRoot(config: {
+  obsidianVaultPath?: string | null;
+  brainPath?: string;
+}): { path: string; source: "obsidianVaultPath" | "brainPath" } {
+  if (config.obsidianVaultPath) {
+    return { path: config.obsidianVaultPath, source: "obsidianVaultPath" };
+  }
+  return { path: resolveBrainPath(config), source: "brainPath" };
+}
+
 function isoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function safeAbsPath(brainPath: string, notePath: string): string | null {
+function safeAbsPath(notesRoot: string, notePath: string): string | null {
+  const root = path.resolve(notesRoot);
   const abs = path.isAbsolute(notePath)
-    ? notePath
-    : path.join(brainPath, notePath);
-  if (!abs.startsWith(brainPath)) return null;
+    ? path.resolve(notePath)
+    : path.resolve(root, notePath);
+  const rel = path.relative(root, abs);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
   return abs;
 }
 
@@ -53,12 +65,13 @@ function patchFrontmatter(filePath: string, patch: Record<string, unknown>): voi
 export async function startTwinMcpServer(): Promise<void> {
   const config = await readTwinConfigOrDefault();
   const brainPath = resolveBrainPath(config);
+  const notesRoot = resolveNotesRoot(config);
 
   const server = new McpServer(
     { name: "twin-md", version: "0.9.4" },
     {
       instructions: [
-        "Use brain_context to orient yourself — it returns recent notes, entity types, and pet state.",
+        "Use brain_context to orient yourself — it returns recent notes from the configured Obsidian vault when present, otherwise the fallback twin-brain notes.",
         "Use get_twin_status to inspect the pet and see pending reminders/actions.",
         "If brain_context or get_twin_status returns pendingTwinActions, execute them with your tools and then call resolve_twin_action.",
         "If it returns twinActionsNeedingApproval, tell the user to approve in Twin's macOS dialog or Permission Center first; do not execute those yet.",
@@ -86,7 +99,7 @@ export async function startTwinMcpServer(): Promise<void> {
       annotations: { readOnlyHint: true }
     },
     async () => {
-      const entries = await scanBrainCached(brainPath).catch(() => []);
+      const entries = await scanBrainCached(notesRoot.path).catch(() => []);
       const sorted = [...entries].sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0));
       const recent = sorted.slice(0, 20).map((e) => ({
         path: e.path,
@@ -106,13 +119,15 @@ export async function startTwinMcpServer(): Promise<void> {
         : null;
 
       const output = {
+        notesRoot: notesRoot.path,
+        notesRootSource: notesRoot.source,
         brainPath,
         entityTypes,
         totalNotes: entries.length,
         recentNotes: recent,
         configFiles: [
           path.join(os.homedir(), ".claude", "twin.config.json"),
-          path.join(brainPath, "AGENTS.md")
+          path.join(notesRoot.path, "AGENTS.md")
         ],
         petState: state,
         pendingTwinActions: listTwinActionsByStatus(["pending"]),
@@ -132,11 +147,11 @@ export async function startTwinMcpServer(): Promise<void> {
       description: "Read the full contents of a note by path.",
       annotations: { readOnlyHint: true },
       inputSchema: z.object({
-        path: z.string().min(1).describe("Absolute or brainPath-relative path to the .md file")
+        path: z.string().min(1).describe("Absolute or notes-root-relative path to the .md file")
       })
     },
     async ({ path: notePath }) => {
-      const abs = safeAbsPath(brainPath, notePath);
+      const abs = safeAbsPath(notesRoot.path, notePath);
       if (!abs) return { content: [{ type: "text", text: "Invalid path" }], isError: true };
       if (!existsSync(abs)) return { content: [{ type: "text", text: "Note not found" }], isError: true };
       const raw = readFileSync(abs, "utf8");
@@ -155,7 +170,7 @@ export async function startTwinMcpServer(): Promise<void> {
       title: "Create Note",
       description: "Create a new markdown note with optional frontmatter type.",
       inputSchema: z.object({
-        path: z.string().min(1).describe("Absolute or brainPath-relative path for the new note"),
+        path: z.string().min(1).describe("Absolute or notes-root-relative path for the new note"),
         title: z.string().min(1).describe("H1 heading for the note"),
         type: z.string().optional().describe("type: frontmatter value (Mood, Diary, Session, etc.)"),
         body: z.string().optional().describe("Markdown body content after the heading"),
@@ -163,7 +178,7 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ path: notePath, title, type, body, frontmatter }) => {
-      const abs = safeAbsPath(brainPath, notePath);
+      const abs = safeAbsPath(notesRoot.path, notePath);
       if (!abs) return { content: [{ type: "text", text: "Invalid path" }], isError: true };
       if (existsSync(abs)) return { content: [{ type: "text", text: "Note already exists — use append_to_note or edit_note_frontmatter" }], isError: true };
       mkdirSync(path.dirname(abs), { recursive: true });
@@ -193,7 +208,7 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ path: notePath, text }) => {
-      const abs = safeAbsPath(brainPath, notePath);
+      const abs = safeAbsPath(notesRoot.path, notePath);
       if (!abs) return { content: [{ type: "text", text: "Invalid path" }], isError: true };
       if (!existsSync(abs)) return { content: [{ type: "text", text: "Note not found" }], isError: true };
       const existing = readFileSync(abs, "utf8");
@@ -213,7 +228,7 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ path: notePath, patch }) => {
-      const abs = safeAbsPath(brainPath, notePath);
+      const abs = safeAbsPath(notesRoot.path, notePath);
       if (!abs) return { content: [{ type: "text", text: "Invalid path" }], isError: true };
       if (!existsSync(abs)) return { content: [{ type: "text", text: "Note not found" }], isError: true };
       patchFrontmatter(abs, patch as Record<string, unknown>);
@@ -225,14 +240,14 @@ export async function startTwinMcpServer(): Promise<void> {
     "delete_note",
     {
       title: "Delete Note",
-      description: "Delete a note from the brain vault. Irreversible (git history preserves it).",
+      description: "Delete a note from the configured notes root. Irreversible (git history may preserve it).",
       inputSchema: z.object({
         path: z.string().min(1),
         confirm: z.literal(true).describe("Must be true to confirm deletion")
       })
     },
     async ({ path: notePath }) => {
-      const abs = safeAbsPath(brainPath, notePath);
+      const abs = safeAbsPath(notesRoot.path, notePath);
       if (!abs) return { content: [{ type: "text", text: "Invalid path" }], isError: true };
       if (!existsSync(abs)) return { content: [{ type: "text", text: "Note not found" }], isError: true };
       const { unlinkSync } = await import("node:fs");
@@ -253,7 +268,7 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ source_path, property, target_title }) => {
-      const abs = safeAbsPath(brainPath, source_path);
+      const abs = safeAbsPath(notesRoot.path, source_path);
       if (!abs) return { content: [{ type: "text", text: "Invalid path" }], isError: true };
       if (!existsSync(abs)) return { content: [{ type: "text", text: "Source note not found" }], isError: true };
       const raw = readFileSync(abs, "utf8");
@@ -277,7 +292,7 @@ export async function startTwinMcpServer(): Promise<void> {
     "list_notes",
     {
       title: "List Notes",
-      description: "List notes in the brain vault, optionally filtered by type.",
+      description: "List notes in the configured Obsidian vault or fallback notes root, optionally filtered by type.",
       annotations: { readOnlyHint: true },
       inputSchema: z.object({
         type_filter: z.string().optional().describe("Filter to notes with this type: value"),
@@ -285,7 +300,7 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ type_filter, sort }) => {
-      let entries = await scanBrainCached(brainPath).catch(() => []);
+      let entries = await scanBrainCached(notesRoot.path).catch(() => []);
       if (type_filter) entries = entries.filter((e) => e.type === type_filter);
       if (sort === "title") entries.sort((a, b) => a.title.localeCompare(b.title));
       else if (sort === "created") entries.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
@@ -309,7 +324,7 @@ export async function startTwinMcpServer(): Promise<void> {
     "search_notes",
     {
       title: "Search Notes",
-      description: "Full-text search over brain note titles and snippets.",
+      description: "Full-text search over note titles and snippets.",
       annotations: { readOnlyHint: true },
       inputSchema: z.object({
         query: z.string().min(1),
@@ -317,7 +332,7 @@ export async function startTwinMcpServer(): Promise<void> {
       })
     },
     async ({ query, limit }) => {
-      const entries = await scanBrainCached(brainPath).catch(() => []);
+      const entries = await scanBrainCached(notesRoot.path).catch(() => []);
       const q = query.toLowerCase();
       const matches = entries.filter(
         (e) =>
@@ -540,7 +555,7 @@ export async function startTwinMcpServer(): Promise<void> {
     {
       title: "Log Mood",
       description:
-        "Append a mood check-in to moods/YYYY-MM-DD.md in the brain vault. Creates the file if it doesn't exist.",
+        "Append a mood check-in to moods/YYYY-MM-DD.md in the configured notes root. Creates the file if it doesn't exist.",
       inputSchema: z.object({
         mood: z
           .enum(["tired", "wired", "quiet", "steady", "anxious", "bright"])
@@ -550,7 +565,7 @@ export async function startTwinMcpServer(): Promise<void> {
     },
     async ({ mood, note }) => {
       const today = isoDate();
-      const notePath = path.join(brainPath, "moods", `${today}.md`);
+      const notePath = path.join(notesRoot.path, "moods", `${today}.md`);
       mkdirSync(path.dirname(notePath), { recursive: true });
 
       const timestamp = new Date().toISOString();
@@ -564,7 +579,7 @@ export async function startTwinMcpServer(): Promise<void> {
         writeFileSync(notePath, existing.trimEnd() + "\n" + entry, "utf8");
       }
 
-      await gitCommit(brainPath, `mood: ${mood} — ${today}`).catch(() => {});
+      await gitCommit(notesRoot.path, `mood: ${mood} — ${today}`).catch(() => {});
 
       return {
         content: [{ type: "text", text: `Logged mood '${mood}' to ${notePath}` }],
@@ -584,7 +599,7 @@ export async function startTwinMcpServer(): Promise<void> {
     async () => {
       const document = await readCurrentTwinDocument(config).catch(() => null);
       const today = isoDate();
-      const notePath = path.join(brainPath, "diary", `${today}.md`);
+      const notePath = path.join(notesRoot.path, "diary", `${today}.md`);
 
       const prompts = [
         "What was one moment today that felt real or important?",
@@ -620,14 +635,14 @@ ${prompts.map((p, i) => `## ${i + 1}. ${p}\n\n`).join("")}`;
     {
       title: "Query Me",
       description:
-        "Answer a question about the user grounded in their brain notes. Citations are mandatory — every claim must reference the exact note path that supports it.",
+        "Answer a question about the user grounded in their Obsidian or fallback notes. Citations are mandatory — every claim must reference the exact note path that supports it.",
       inputSchema: z.object({
         question: z.string().min(1).describe("A question about the user's patterns, history, or state")
       })
     },
     async ({ question }) => {
       const q = question.toLowerCase();
-      const entries = await scanBrainCached(brainPath).catch(() => []);
+      const entries = await scanBrainCached(notesRoot.path).catch(() => []);
 
       const relevant = entries
         .filter(

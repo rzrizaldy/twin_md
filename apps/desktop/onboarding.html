@@ -76,6 +76,19 @@
             <span>claude harvest still runs</span>
           </button>
         </div>
+        <label class="field quick-notes-field">
+          <span>quick notes folder</span>
+          <input
+            id="quick-notes-path"
+            class="text-input"
+            type="text"
+            value="inbox"
+            placeholder="Inbox / 00 Inbox / Daily/Inbox"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <small>vault-relative folder where <code>/inbox</code> creates titled markdown notes.</small>
+        </label>
         <div class="vault-status" id="vault-status" hidden></div>
       </section>
 

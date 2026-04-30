@@ -17,6 +17,7 @@ pub struct VaultProfile {
     pub owner: Option<String>,
     pub species: Option<String>,
     pub vault_path: Option<String>,
+    pub quick_notes_path: Option<String>,
     pub sprite_evolution: Option<Value>,
     #[serde(default)]
     pub permissions: VaultProfilePermissions,
@@ -52,6 +53,7 @@ pub struct VaultProfileStatus {
     pub profile_path: Option<String>,
     pub owner: Option<String>,
     pub updated_at: Option<String>,
+    pub quick_notes_path: Option<String>,
     pub sprite_prompt: Option<String>,
     pub chat_background: Option<Value>,
     pub approved_action_capabilities: Vec<String>,
@@ -149,6 +151,11 @@ fn profile_from_config(vault_root: &Path, existing: Option<VaultProfile>) -> Vau
         .and_then(Value::as_str)
         .map(str::to_string)
         .or(profile.species);
+    profile.quick_notes_path = cfg
+        .get("quickNotesPath")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or(profile.quick_notes_path);
     profile.sprite_evolution = cfg.get("spriteEvolution").cloned().or(profile.sprite_evolution);
     profile
 }
@@ -271,6 +278,7 @@ pub fn status() -> VaultProfileStatus {
             profile_path: None,
             owner: None,
             updated_at: None,
+            quick_notes_path: None,
             sprite_prompt: None,
             chat_background: None,
             approved_action_capabilities: Vec::new(),
@@ -290,6 +298,7 @@ pub fn status() -> VaultProfileStatus {
         profile_path: Some(path.display().to_string()),
         owner: profile.as_ref().and_then(|p| p.owner.clone()),
         updated_at: profile.as_ref().map(|p| p.updated_at.clone()),
+        quick_notes_path: profile.as_ref().and_then(|p| p.quick_notes_path.clone()),
         sprite_prompt,
         chat_background: profile.as_ref().and_then(|p| p.ui.chat_background.clone()),
         approved_action_capabilities: profile
@@ -316,6 +325,9 @@ pub fn apply_profile_to_config(profile: &VaultProfile) -> Result<(), String> {
     }
     if let Some(vault) = profile.vault_path.as_ref().filter(|s| !s.is_empty()) {
         obj.insert("obsidianVaultPath".to_string(), json!(vault));
+    }
+    if let Some(path) = profile.quick_notes_path.as_ref().filter(|s| !s.is_empty()) {
+        obj.insert("quickNotesPath".to_string(), json!(path));
     }
     if let Some(sprite) = profile.sprite_evolution.clone() {
         obj.insert("spriteEvolution".to_string(), sprite);

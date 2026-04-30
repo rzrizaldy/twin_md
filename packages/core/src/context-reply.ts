@@ -34,13 +34,29 @@ type ClaudeSnapshot = {
 
 // ── Vault readers ──────────────────────────────────────────────────────────────
 
-async function readVaultSnapshot(vaultPath: string): Promise<VaultSnapshot> {
+function normalizeVaultRelativePath(raw: string | null | undefined): string {
+  const cleaned = (raw ?? "inbox").trim().replace(/^\/+|\/+$/g, "");
+  if (!cleaned) return "inbox";
+  const parts = cleaned
+    .split(/[\\/]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => part !== "." && part !== "..");
+  return parts.length > 0 ? parts.join(path.sep) : "inbox";
+}
+
+async function readVaultSnapshot(
+  vaultPath: string,
+  quickNotesPath: string | null | undefined
+): Promise<VaultSnapshot> {
   const [goals, projects] = await Promise.all([
     tryReadFile(path.join(vaultPath, "1. 🗺️ Areas", "goals", "README.md"), 6000),
     tryReadFile(path.join(vaultPath, "1. 🗺️ Areas", "projects", "README.md"), 4000)
   ]);
 
-  const inboxTitles = await listMarkdownTitles(path.join(vaultPath, "📥 Inbox"));
+  const inboxTitles = await listMarkdownTitles(
+    path.join(vaultPath, normalizeVaultRelativePath(quickNotesPath))
+  );
   const conceptSummaries = await readConceptSummaries(path.join(vaultPath, "2. 🧠 Wiki", "concepts"));
   const milestones = parseMilestones(goals + "\n" + projects);
 
@@ -457,7 +473,7 @@ export async function contextualReply(
 ): Promise<string> {
   const [vault, claude] = await Promise.all([
     config.obsidianVaultPath
-      ? readVaultSnapshot(config.obsidianVaultPath)
+      ? readVaultSnapshot(config.obsidianVaultPath, config.quickNotesPath)
       : Promise.resolve<VaultSnapshot>({
           goals: "",
           projects: "",

@@ -154,10 +154,15 @@ pub async fn init(
     species: &str,
     owner: &str,
     obsidian_vault: Option<&str>,
+    quick_notes_path: Option<&str>,
 ) -> Result<()> {
     let mut args: Vec<&str> = vec!["init", "--species", species, "--owner", owner];
     if let Some(path) = obsidian_vault {
         args.push("--obsidian-vault");
+        args.push(path);
+    }
+    if let Some(path) = quick_notes_path {
+        args.push("--quick-notes-path");
         args.push(path);
     }
     spawn_cli(&args).await.context("twin-md init")?;

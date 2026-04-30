@@ -50,6 +50,7 @@ interface WizardState {
   owner: string;
   vaultChoice: VaultChoice;
   vaultPath: string | null;
+  quickNotesPath: string;
   claudeDir: ClaudeDirStatus | null;
   provider: AiProvider;
   model: string;
@@ -66,6 +67,7 @@ const state: WizardState = {
   owner: "",
   vaultChoice: null,
   vaultPath: null,
+  quickNotesPath: "inbox",
   claudeDir: null,
   provider: "anthropic",
   model: "claude-haiku-4-5",
@@ -114,6 +116,9 @@ const startFreshSessionBtn = document.getElementById(
 const deletePreviousSessionBtn = document.getElementById(
   "delete-previous-session"
 ) as HTMLButtonElement | null;
+const quickNotesPathInput = document.getElementById(
+  "quick-notes-path"
+) as HTMLInputElement | null;
 const readinessItems = {
   vault: document.querySelector<HTMLElement>('[data-ready-item="vault"]'),
   ai: document.querySelector<HTMLElement>('[data-ready-item="ai"]'),
@@ -213,6 +218,10 @@ async function refreshSessionRestore(): Promise<void> {
       sessionRestoreCard.hidden = true;
       return;
     }
+    if (status.quickNotesPath) {
+      state.quickNotesPath = status.quickNotesPath;
+      if (quickNotesPathInput) quickNotesPathInput.value = status.quickNotesPath;
+    }
     sessionRestoreCard.hidden = false;
     const owner = status.owner ? `${status.owner}'s ` : "";
     const updated = status.updatedAt ? ` · updated ${new Date(status.updatedAt).toLocaleString()}` : "";
@@ -245,7 +254,7 @@ async function refreshReadinessChecklist(): Promise<void> {
     readinessItems.vault,
     vaultReady,
     vaultReady
-      ? `.twin-md profile will sync in ${state.vaultPath}`
+      ? `.twin-md profile will sync in ${state.vaultPath}; /inbox writes to ${state.quickNotesPath || "inbox"}`
       : "no Obsidian vault selected; profile restore is local-only until you choose one"
   );
   if (!chatStatus) chatStatus = await getChatStatus();
@@ -271,6 +280,9 @@ function validateStep(step: number): string | null {
       if (!state.vaultChoice) return "pick an option for your vault.";
       if (state.vaultChoice === "existing" && !state.vaultPath)
         return "pick a folder or choose another option.";
+      if (state.vaultChoice !== "skip" && !isValidQuickNotesPath(state.quickNotesPath)) {
+        return "quick notes folder must be relative, like Inbox or Daily/Inbox.";
+      }
       return null;
     }
     case 2:
@@ -407,6 +419,32 @@ $<HTMLInputElement>("#owner").addEventListener("input", (event) => {
   state.owner = (event.target as HTMLInputElement).value;
 });
 
+function normalizeQuickNotesPath(raw: string): string {
+  const parts = raw
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .split(/[\\/]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => part !== "." && part !== "..");
+  return parts.length > 0 ? parts.join("/") : "inbox";
+}
+
+function isValidQuickNotesPath(raw: string): boolean {
+  const cleaned = raw.trim();
+  return Boolean(cleaned) && !cleaned.startsWith("/") && !cleaned.split(/[\\/]+/).includes("..");
+}
+
+quickNotesPathInput?.addEventListener("input", (event) => {
+  state.quickNotesPath = (event.target as HTMLInputElement).value;
+});
+
+quickNotesPathInput?.addEventListener("blur", () => {
+  state.quickNotesPath = normalizeQuickNotesPath(state.quickNotesPath);
+  if (quickNotesPathInput) quickNotesPathInput.value = state.quickNotesPath;
+  if (state.vaultPath) void persistVault(state.vaultPath);
+});
+
 document.querySelectorAll<HTMLInputElement>('input[name="sprite-mode"]').forEach((el) => {
   el.addEventListener("change", () => {
     state.spriteMode = el.value as SpriteMode;
@@ -478,7 +516,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn
       if (typeof selected === "string") {
         state.vaultChoice = "existing";
         state.vaultPath = selected;
-        vaultStatusEl.textContent = `reading from ${selected}`;
+        state.quickNotesPath = normalizeQuickNotesPath(state.quickNotesPath);
+        if (quickNotesPathInput) quickNotesPathInput.value = state.quickNotesPath;
+        vaultStatusEl.textContent = `reading from ${selected}; quick notes -> ${state.quickNotesPath}`;
         await persistVault(selected);
       } else {
         state.vaultChoice = null;
@@ -490,7 +530,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn
         const result = await createStarterVault(null);
         state.vaultChoice = "create";
         state.vaultPath = result.path;
-        vaultStatusEl.textContent = `seeded ${result.path}`;
+        state.quickNotesPath = normalizeQuickNotesPath(state.quickNotesPath);
+        if (quickNotesPathInput) quickNotesPathInput.value = state.quickNotesPath;
+        vaultStatusEl.textContent = `seeded ${result.path}; quick notes -> ${state.quickNotesPath}`;
         await persistVault(result.path);
       } catch (err) {
         state.vaultChoice = null;
@@ -508,7 +550,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-vault-choice]").forEach((btn
 
 async function persistVault(path: string | null) {
   try {
-    await setVaultPath(path);
+    await setVaultPath(path, normalizeQuickNotesPath(state.quickNotesPath));
   } catch (err) {
     console.warn("vault persist failed (non-fatal)", err);
   }
@@ -778,6 +820,7 @@ async function runSummon() {
     species: "axolotl" as const,
     owner: state.owner.trim(),
     obsidianVault: state.vaultPath,
+    quickNotesPath: normalizeQuickNotesPath(state.quickNotesPath),
     spriteEvolution: {
       kind: state.spriteMode,
       customPrompt: state.spriteMode === "custom" ? state.customSprite.trim() : null,

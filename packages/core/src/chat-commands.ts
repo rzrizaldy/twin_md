@@ -40,7 +40,7 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
   {
     name: "/inbox",
     label: "send to inbox",
-    blurb: "jot a quick thought into your vault inbox",
+    blurb: "create a titled note in your quick-notes folder",
     argsHint: "<note>",
     visibleInChips: true,
     usesLLM: false,

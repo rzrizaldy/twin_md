@@ -180,6 +180,7 @@ export interface OnboardingPayload {
   species: "axolotl";
   owner: string;
   obsidianVault: string | null;
+  quickNotesPath: string;
   spriteEvolution: {
     kind: "default" | "custom";
     customPrompt: string | null;
@@ -405,8 +406,11 @@ export interface ValidateKeyResult {
   message: string;
 }
 
-export async function setVaultPath(path: string | null): Promise<void> {
-  await invoke("set_vault_path", { payload: { path } });
+export async function setVaultPath(
+  path: string | null,
+  quickNotesPath = "inbox"
+): Promise<void> {
+  await invoke("set_vault_path", { payload: { path, quickNotesPath } });
 }
 
 export interface VaultProfileStatus {
@@ -415,6 +419,7 @@ export interface VaultProfileStatus {
   profilePath: string | null;
   owner: string | null;
   updatedAt: string | null;
+  quickNotesPath: string | null;
   spritePrompt: string | null;
   chatBackground: unknown | null;
   approvedActionCapabilities: ActionCapability[] | string[];

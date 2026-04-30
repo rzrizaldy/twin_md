@@ -19,6 +19,7 @@ pub struct ChatContext {
     pub twin_md: Option<String>,
     pub notes: Vec<VaultNote>,
     pub vault_path: Option<PathBuf>,
+    pub quick_notes_path: Option<String>,
     pub brain_notes: Vec<VaultNote>,
     pub brain_path: Option<PathBuf>,
     #[allow(dead_code)]
@@ -40,6 +41,8 @@ struct TwinConfig {
     owner: Option<String>,
     #[serde(rename = "obsidianVaultPath")]
     obsidian_vault_path: Option<String>,
+    #[serde(rename = "quickNotesPath")]
+    quick_notes_path: Option<String>,
     #[serde(rename = "brainPath")]
     brain_path: Option<String>,
 }
@@ -65,11 +68,17 @@ pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
         .as_ref()
         .map(|p| collect_ranked_notes(p, user_message))
         .unwrap_or_default();
-    let brain_path = read_brain_path_from_config(cfg.as_ref(), vault_path.as_ref());
-    let brain_notes = brain_path
-        .as_ref()
-        .map(|p| collect_ranked_notes(p, user_message))
-        .unwrap_or_default();
+    let quick_notes_path = read_quick_notes_path_from_config(cfg.as_ref());
+    let (brain_path, brain_notes) = if vault_path.is_some() {
+        (None, Vec::new())
+    } else {
+        let brain_path = read_brain_path_from_config(cfg.as_ref(), vault_path.as_ref());
+        let brain_notes = brain_path
+            .as_ref()
+            .map(|p| collect_ranked_notes(p, user_message))
+            .unwrap_or_default();
+        (brain_path, brain_notes)
+    };
 
     let buddy = read_buddy_context();
 
@@ -78,6 +87,7 @@ pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
         twin_md,
         notes,
         vault_path,
+        quick_notes_path,
         brain_notes,
         brain_path,
         buddy_memory: buddy.0,
@@ -103,6 +113,14 @@ fn read_vault_path_from_config(cfg: Option<&TwinConfig>) -> Option<PathBuf> {
     } else {
         None
     }
+}
+
+fn read_quick_notes_path_from_config(cfg: Option<&TwinConfig>) -> Option<String> {
+    cfg?.quick_notes_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(ToOwned::to_owned)
 }
 
 fn read_brain_path_from_config(
@@ -327,6 +345,11 @@ pub fn render_prompt(context: &ChatContext) -> String {
             "== recent notes from Obsidian vault at {} ==\n",
             path.display()
         ));
+        if let Some(quick_notes_path) = &context.quick_notes_path {
+            buf.push_str(&format!(
+                "Quick captures land in vault folder: {quick_notes_path}\n"
+            ));
+        }
         if context.notes.is_empty() {
             buf.push_str("(vault is empty or unreadable)\n\n");
         } else {

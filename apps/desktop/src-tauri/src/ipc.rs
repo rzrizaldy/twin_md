@@ -1241,6 +1241,22 @@ pub async fn send_chat(
 #[serde(rename_all = "camelCase")]
 pub struct VaultPayload {
     pub path: Option<String>,
+    pub quick_notes_path: Option<String>,
+}
+
+fn normalize_vault_relative_path(raw: Option<&str>) -> String {
+    let mut out = PathBuf::new();
+    let cleaned = raw.unwrap_or("inbox").trim().trim_matches('/');
+    for component in std::path::Path::new(cleaned).components() {
+        if let std::path::Component::Normal(part) = component {
+            out.push(part);
+        }
+    }
+    if out.as_os_str().is_empty() {
+        "inbox".to_string()
+    } else {
+        out.to_string_lossy().into_owned()
+    }
 }
 
 /// Persists the vault path into `~/.claude/twin.config.json` immediately on
@@ -1264,9 +1280,16 @@ pub fn set_vault_path(payload: VaultPayload) -> Result<(), String> {
                 "obsidianVaultPath".into(),
                 serde_json::Value::String(p.to_string()),
             );
+            obj.insert(
+                "quickNotesPath".into(),
+                serde_json::Value::String(normalize_vault_relative_path(
+                    payload.quick_notes_path.as_deref(),
+                )),
+            );
         }
         None => {
             obj.remove("obsidianVaultPath");
+            obj.remove("quickNotesPath");
         }
     }
 
@@ -1421,9 +1444,27 @@ pub struct OnboardingPayload {
     pub species: String,
     pub owner: String,
     pub obsidian_vault: Option<String>,
+    pub quick_notes_path: Option<String>,
     pub sprite_evolution: Option<serde_json::Value>,
 }
 
+fn merge_quick_notes_path(raw: Option<&str>) -> Result<(), String> {
+    let p = claude_dir().join("twin.config.json");
+    let mut value: serde_json::Value = match fs::read(&p) {
+        Ok(bytes) if !bytes.is_empty() => {
+            serde_json::from_slice(&bytes).unwrap_or_else(|_| serde_json::json!({}))
+        }
+        _ => serde_json::json!({}),
+    };
+    let o = ensure_json_object(&mut value)?;
+    o.insert(
+        "quickNotesPath".into(),
+        serde_json::Value::String(normalize_vault_relative_path(raw)),
+    );
+    let json = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
+    fs::write(&p, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 fn merge_sprite_evolution(v: &serde_json::Value) -> Result<(), String> {
     let p = claude_dir().join("twin.config.json");
@@ -1514,12 +1555,20 @@ pub async fn run_onboarding(
         &payload.species,
         &payload.owner,
         vault,
+        payload.quick_notes_path.as_deref(),
     )
     .await
     {
         return Ok(OnboardingResult {
             ok: false,
             message: format!("init failed: {err}"),
+        });
+    }
+
+    if let Err(e) = merge_quick_notes_path(payload.quick_notes_path.as_deref()) {
+        return Ok(OnboardingResult {
+            ok: false,
+            message: format!("config merge failed: {e}"),
         });
     }
 

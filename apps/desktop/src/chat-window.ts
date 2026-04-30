@@ -7,7 +7,7 @@
  *  - Markdown rendering via marked + DOMPurify
  *  - Provider/model settings panel (Anthropic · OpenAI · Gemini)
  *  - Slash commands: /note, /mood, /image
- *  - Brain vault writes: write_vault_note, log_mood_entry
+ *  - Obsidian vault writes: write_vault_note, log_mood_entry
  *  - Image generation: generate_image → convertFileSrc display
  *  - Font size: Cmd+= / Cmd+- (persisted to localStorage)
  *  - Session persistence: save_chat_session on close / new chat
@@ -94,9 +94,9 @@ interface ImageGenResult {
 const SLASH_COMMANDS = [
   {
     name: "/inbox",
-    blurb: "quick capture to inbox.md",
+    blurb: "quick capture note",
     args: "<thought>",
-    detail: "Save a raw idea/task now; organize it later."
+    detail: "Create a titled markdown note in your configured quick-notes folder."
   },
   {
     name: "/mood",
@@ -1315,12 +1315,12 @@ function contextualPermissionMessage(
 }
 
 function inboxContextPrompt(note: string, filePath: string | null): string {
-  const pathLine = filePath ? `Saved path: ${filePath}` : "Saved path: inbox.md";
+  const pathLine = filePath ? `Saved path: ${filePath}` : "Saved path: quick notes folder";
   return [
     `I just captured this into my inbox: ${note}`,
     pathLine,
     "",
-    "Reply as twin in 2-4 short sentences. Ground the reply in my current Obsidian vault and twin-brain context if there is a clear connection. " +
+    "Reply as twin in 2-4 short sentences. Ground the reply in my current Obsidian vault context if there is a clear connection. " +
       "Tell me what this capture seems connected to, what folder/theme it may belong near, or what question it raises. " +
       "If the local context does not say enough, say that plainly. Do not give a generic productivity checklist."
   ].join("\n");
@@ -1348,7 +1348,7 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     return true;
   }
 
-  // /inbox <thought> — quick capture to inbox.md
+  // /inbox <thought> — create a titled quick note in the configured vault folder
   if (lower.startsWith("/inbox")) {
     const note = cmd.slice("/inbox".length).trim();
     if (!note) {
@@ -1361,7 +1361,7 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
         appendMessage("user", `/inbox ${note}`);
         sessionTurns.push({ role: "user", content: `/inbox ${note}`, ts: new Date().toISOString() });
         appendToolCard(
-          `<span class="tool-icon">↳</span> inbox captured · <code>${result.path ?? "inbox.md"}</code>`
+          `<span class="tool-icon">↳</span> inbox note created · <code>${result.path ?? "quick notes folder"}</code>`
         );
         messages.push({
           role: "user",

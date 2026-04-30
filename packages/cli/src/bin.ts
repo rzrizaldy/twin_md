@@ -28,6 +28,7 @@ program
   .option("--species <species>", "pet species")
   .option("--owner <owner>", "owner label")
   .option("--obsidian-vault <path>", "obsidian vault path")
+  .option("--quick-notes-path <path>", "vault-relative folder for quick /inbox notes")
   .option("--health-path <path>", "health json path")
   .option("--calendar-path <path>", "calendar ics path")
   .option("--location-path <path>", "location json path")
