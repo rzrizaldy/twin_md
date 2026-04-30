@@ -260,7 +260,7 @@ async function refreshReadinessChecklist(): Promise<void> {
   setReadyItem(
     readinessItems.approval,
     true,
-    "permission requests can be approved in chat; Terminal remains the fallback"
+    "permission requests show a macOS approval dialog; Claude runs quietly in the background"
   );
 }
 

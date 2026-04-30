@@ -61,7 +61,7 @@ export async function startTwinMcpServer(): Promise<void> {
         "Use brain_context to orient yourself — it returns recent notes, entity types, and pet state.",
         "Use get_twin_status to inspect the pet and see pending reminders/actions.",
         "If brain_context or get_twin_status returns pendingTwinActions, execute them with your tools and then call resolve_twin_action.",
-        "If it returns twinActionsNeedingApproval, tell the user to approve from terminal first; do not execute those yet.",
+        "If it returns twinActionsNeedingApproval, tell the user to approve in Twin's macOS dialog or Permission Center first; do not execute those yet.",
         "Surface pending reminders to the user in plain language when relevant.",
         "Use acknowledge_reminder(id) when the user agrees to act on a reminder.",
         "Use dismiss_reminder(id) when the user waves one off.",
@@ -363,7 +363,7 @@ export async function startTwinMcpServer(): Promise<void> {
     {
       title: "Get Twin Actions Needing Approval",
       description:
-        "List desktop pet action requests that exist but are blocked until the user approves them in Twin or terminal.",
+        "List desktop pet action requests that exist but are blocked until the user approves them in Twin's macOS dialog or Permission Center.",
       annotations: { readOnlyHint: true }
     },
     async () => {

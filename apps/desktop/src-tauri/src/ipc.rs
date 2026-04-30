@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::chat;
@@ -779,9 +780,9 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         "trustedApproval": trusted,
         "createdAt": chrono::Utc::now().to_rfc3339(),
         "hint": if trusted {
-            "This action matched a saved twin.md capability approval. Claude should read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+            "This action matched a saved twin.md capability approval. Twin can start Claude Code quietly in the background, or Claude Desktop can read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
         } else {
-            "User must approve this first, for example: twin-md action approve <id>. After approval, Claude Desktop should read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
+            "User must approve this first in Twin's macOS dialog or Permission Center. After approval, Twin can start Claude Code quietly in the background, or Claude Desktop can read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
         }
     });
     let mut file = OpenOptions::new()
@@ -1018,14 +1019,16 @@ If permissions, login, or manual control are required, resolve with needs_user a
     )
 }
 
-#[tauri::command]
-pub fn open_claude_action_runner(id: String) -> Result<(), String> {
-    let id = id.trim();
-    if id.is_empty() || !id.starts_with("act-") {
-        return Err("invalid twin action id".to_string());
-    }
-    let claude = ai_agents::detect_claude_cli()
-        .ok_or_else(|| "Claude Code CLI not found. Install/login to Claude Code, or use Claude Desktop MCP polling.".to_string())?;
+struct ClaudeActionRunner {
+    script_path: PathBuf,
+    log_path: PathBuf,
+}
+
+fn prepare_claude_action_runner(id: &str) -> Result<ClaudeActionRunner, String> {
+    let claude = ai_agents::detect_claude_cli().ok_or_else(|| {
+        "Claude Code CLI not found. Install/login to Claude Code, or use Claude Desktop MCP polling."
+            .to_string()
+    })?;
     let action = action_request_by_id(id)?;
     let request = action
         .get("request")
@@ -1036,6 +1039,7 @@ pub fn open_claude_action_runner(id: String) -> Result<(), String> {
     let runner_dir = std::env::temp_dir().join("twin-md").join("actions");
     let prompt_path = runner_dir.join(format!("{id}.prompt.txt"));
     let script_path = runner_dir.join(format!("run-{id}.zsh"));
+    let log_path = runner_dir.join(format!("{id}.log"));
     write_text_file(&prompt_path, &prompt)?;
     let script = format!(
         "#!/bin/zsh -f\nset -e\ncat {} | {} --mcp-config {} --print --permission-mode auto --allowedTools {}\n",
@@ -1045,59 +1049,156 @@ pub fn open_claude_action_runner(id: String) -> Result<(), String> {
         shell_quote(claude_runner_allowed_tools())
     );
     write_text_file(&script_path, &script)?;
-    let command = format!("zsh -f {}", shell_quote(&script_path.display().to_string()));
+    Ok(ClaudeActionRunner {
+        script_path,
+        log_path,
+    })
+}
 
-    #[cfg(target_os = "macos")]
-    {
-        let script = format!(
-            r#"tell application "Terminal"
-    activate
-    do script "{}"
-end tell"#,
-            command.replace('\\', "\\\\").replace('"', "\\\"")
-        );
-        std::process::Command::new("osascript")
-            .arg("-e")
-            .arg(script)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-        return Ok(());
+fn compact_runner_output(stdout: &[u8], stderr: &[u8]) -> String {
+    let mut combined = String::new();
+    let out = String::from_utf8_lossy(stdout).trim().to_string();
+    let err = String::from_utf8_lossy(stderr).trim().to_string();
+    if !out.is_empty() {
+        combined.push_str(&out);
+    }
+    if !err.is_empty() {
+        if !combined.is_empty() {
+            combined.push_str("\n\n");
+        }
+        combined.push_str(&err);
+    }
+    if combined.len() > 1200 {
+        combined.truncate(1200);
+        combined.push_str("...");
+    }
+    combined
+}
+
+fn finish_background_claude_action(
+    app: AppHandle,
+    id: String,
+    log_path: PathBuf,
+    status: Option<i32>,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+) {
+    let combined = compact_runner_output(&stdout, &stderr);
+    let mut log_body = String::new();
+    log_body.push_str(&format!("exit: {:?}\n\n", status));
+    log_body.push_str(&combined);
+    let _ = write_text_file(&log_path, &log_body);
+
+    let current_status = action_request_by_id(&id)
+        .ok()
+        .and_then(|action| {
+            action
+                .get("status")
+                .and_then(|value| value.as_str())
+                .map(str::to_string)
+        });
+
+    if current_status.as_deref() == Some("pending") {
+        let finished_at = chrono::Utc::now().to_rfc3339();
+        let result_text = if status == Some(0) {
+            if combined.is_empty() {
+                "Claude Code finished in the background but did not return a visible result.".to_string()
+            } else {
+                format!("Claude Code finished in the background: {combined}")
+            }
+        } else if combined.is_empty() {
+            format!("Claude Code exited with status {:?}. See {}", status, log_path.display())
+        } else {
+            format!("Claude Code exited with status {:?}: {combined}", status)
+        };
+        let resolved_status = if status == Some(0) { "done" } else { "failed" };
+        let log_display = log_path.display().to_string();
+        let _ = update_action_status(&id, |obj| {
+            obj.insert("status".to_string(), serde_json::json!(resolved_status));
+            obj.insert("result".to_string(), serde_json::json!(result_text));
+            obj.insert("resolvedAt".to_string(), serde_json::json!(finished_at));
+            obj.insert(
+                "runnerFinishedAt".to_string(),
+                serde_json::json!(chrono::Utc::now().to_rfc3339()),
+            );
+            obj.insert("runnerExitCode".to_string(), serde_json::json!(status));
+            obj.insert("runnerLogPath".to_string(), serde_json::json!(log_display));
+        });
+    } else {
+        let log_display = log_path.display().to_string();
+        let _ = update_action_status(&id, |obj| {
+            obj.insert(
+                "runnerFinishedAt".to_string(),
+                serde_json::json!(chrono::Utc::now().to_rfc3339()),
+            );
+            obj.insert("runnerExitCode".to_string(), serde_json::json!(status));
+            obj.insert("runnerLogPath".to_string(), serde_json::json!(log_display));
+        });
     }
 
-    #[cfg(not(target_os = "macos"))]
-    {
-        Err(format!("run this in your terminal: {command}"))
-    }
+    let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "id": id }));
 }
 
 #[tauri::command]
-pub fn open_terminal_action_approval(id: String) -> Result<(), String> {
-    let id = id.trim();
+pub fn open_claude_action_runner(app: AppHandle, id: String) -> Result<(), String> {
+    let id = id.trim().to_string();
     if id.is_empty() || !id.starts_with("act-") {
         return Err("invalid twin action id".to_string());
     }
-    let command = format!("twin-md action approve {id}");
-    #[cfg(target_os = "macos")]
-    {
-        let script = format!(
-            r#"tell application "Terminal"
-    activate
-    do script "{}"
-end tell"#,
-            command.replace('\\', "\\\\").replace('"', "\\\"")
-        );
-        std::process::Command::new("osascript")
-            .arg("-e")
-            .arg(script)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-        return Ok(());
-    }
+    let runner = prepare_claude_action_runner(&id)?;
+    let started_at = chrono::Utc::now().to_rfc3339();
+    let log_display = runner.log_path.display().to_string();
+    update_action_status(&id, |obj| {
+        obj.insert("status".to_string(), serde_json::json!("pending"));
+        obj.insert("runner".to_string(), serde_json::json!("claude-code-background"));
+        obj.insert("runnerStartedAt".to_string(), serde_json::json!(started_at));
+        obj.insert("runnerLogPath".to_string(), serde_json::json!(log_display));
+    })?;
+    let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "id": id }));
 
-    #[cfg(not(target_os = "macos"))]
-    {
-        Err(format!("run this in your terminal: {command}"))
-    }
+    let app_for_task = app.clone();
+    let id_for_task = id.clone();
+    let script_path = runner.script_path.clone();
+    let log_path = runner.log_path.clone();
+    tauri::async_runtime::spawn(async move {
+        let output = tokio::process::Command::new("zsh")
+            .arg("-f")
+            .arg(&script_path)
+            .stdin(Stdio::null())
+            .output()
+            .await;
+        match output {
+            Ok(out) => finish_background_claude_action(
+                app_for_task,
+                id_for_task,
+                log_path,
+                out.status.code(),
+                out.stdout,
+                out.stderr,
+            ),
+            Err(err) => {
+                let message = format!("couldn't start Claude Code background runner: {err}");
+                let _ = write_text_file(&log_path, &message);
+                let log_display = log_path.display().to_string();
+                let _ = update_action_status(&id_for_task, |obj| {
+                    obj.insert("status".to_string(), serde_json::json!("failed"));
+                    obj.insert("result".to_string(), serde_json::json!(message));
+                    obj.insert(
+                        "resolvedAt".to_string(),
+                        serde_json::json!(chrono::Utc::now().to_rfc3339()),
+                    );
+                    obj.insert(
+                        "runnerFinishedAt".to_string(),
+                        serde_json::json!(chrono::Utc::now().to_rfc3339()),
+                    );
+                    obj.insert("runnerLogPath".to_string(), serde_json::json!(log_display));
+                });
+                let _ = app_for_task.emit("twin://action-queue-changed", serde_json::json!({ "id": id_for_task }));
+            }
+        }
+    });
+
+    Ok(())
 }
 
 #[tauri::command]

@@ -19,7 +19,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
+import { confirm as confirmDialog, open } from "@tauri-apps/plugin-dialog";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification
+} from "@tauri-apps/plugin-notification";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { PetState, TwinMood, TwinSpecies } from "./types.ts";
@@ -41,7 +46,6 @@ import {
   listTwinActions,
   onActionQueueChanged,
   openClaudeActionRunner,
-  openTerminalActionApproval,
   requestClaudeAction,
   retrieveVaultKnowledge,
   rejectTwinAction,
@@ -407,6 +411,67 @@ function actionStatusLabel(status: string | undefined): string {
   }
 }
 
+function displayActionStatus(action: TwinActionRequest): string {
+  const status = String(action.status ?? "");
+  if (status === "pending" && typeof action.runnerStartedAt === "string") {
+    return "Claude running in background";
+  }
+  return actionStatusLabel(status);
+}
+
+async function notifyTwin(title: string, body: string): Promise<void> {
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) {
+      granted = (await requestPermission()) === "granted";
+    }
+    if (granted) {
+      sendNotification({ title, body });
+    }
+  } catch {
+    // Notifications are only a secondary assurance surface; the chat card remains source of truth.
+  }
+}
+
+function actionRequestSummary(action: TwinActionRequest): string {
+  const request = String(action.request ?? "").trim();
+  if (request.length <= 220) return request;
+  return `${request.slice(0, 220)}...`;
+}
+
+async function confirmClaudeApproval(action: TwinActionRequest): Promise<boolean> {
+  const capability = typeof action.capability === "string" ? action.capability : "desktop";
+  const label = capabilityDisplayName(capability);
+  const request = actionRequestSummary(action);
+  return confirmDialog(
+    `Allow Twin to send this ${label} request to Claude Code?\n\n${request}\n\nClaude will run in the background with the approved desktop tools. No Terminal window will open.`,
+    {
+      title: `Approve ${label} action`,
+      kind: "warning",
+      okLabel: "Approve and run",
+      cancelLabel: "Cancel"
+    }
+  );
+}
+
+async function approveAndRunClaudeAction(
+  action: TwinActionRequest,
+  card?: HTMLDivElement
+): Promise<boolean> {
+  const ok = await confirmClaudeApproval(action);
+  if (!ok) {
+    appendStatus("Claude action left queued for later approval");
+    return false;
+  }
+  const id = String(action.id ?? "");
+  const updated = await approveTwinAction(id);
+  if (card) renderActionCard(card, updated);
+  await openClaudeActionRunner(id);
+  appendStatus(`Claude is running ${id} in the background`);
+  void notifyTwin("Twin approved Claude action", `${displayActionStatus(updated)} · ${id}`);
+  return true;
+}
+
 function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void {
   const id = String(action.id ?? "");
   const status = String(action.status ?? "");
@@ -420,7 +485,7 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
   copy.className = "cw-tool-card-copy";
   const capabilityLabel = capability ? `${capabilityDisplayName(capability)} · ` : "";
   copy.innerHTML = DOMPurify.sanitize(
-    `<span class="tool-icon">permission</span><span>${capabilityLabel}${actionStatusLabel(status)} · <code>${id}</code></span><small>${request}</small>`
+    `<span class="tool-icon">permission</span><span>${capabilityLabel}${displayActionStatus(action)} · <code>${id}</code></span><small>${request}</small>`
   );
   if (action.result) {
     const result = document.createElement("small");
@@ -435,23 +500,14 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
     const approve = document.createElement("button");
     approve.type = "button";
     approve.className = "secondary-button cw-approval-button";
-    approve.textContent = "approve + run Claude";
+    approve.textContent = "approve + run";
     approve.dataset.primaryAction = "true";
     approve.addEventListener("click", async () => {
       approve.disabled = true;
       try {
-        const updated = await approveTwinAction(id);
-        renderActionCard(card, updated);
+        await approveAndRunClaudeAction(action, card);
       } catch (e) {
-        appendStatus(`approval failed: ${String(e)}`, "error");
-        approve.disabled = false;
-        return;
-      }
-      try {
-        await openClaudeActionRunner(id);
-        appendStatus(`approved ${id} and opened Claude Code`);
-      } catch (e) {
-        appendStatus(`approved ${id}, but couldn't open Claude Code: ${String(e)}`, "error");
+        appendStatus(`approval/run failed: ${String(e)}`, "error");
       }
       approve.disabled = false;
     });
@@ -463,9 +519,24 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
     approveOnly.addEventListener("click", async () => {
       approveOnly.disabled = true;
       try {
+        const ok = await confirmDialog(
+          `Approve this ${capabilityDisplayName(String(capability ?? "desktop"))} capability for Claude?\n\n${actionRequestSummary(action)}\n\nThis saves the capability approval, but does not start a new background runner.`,
+          {
+            title: "Approve Claude capability",
+            kind: "warning",
+            okLabel: "Approve only",
+            cancelLabel: "Cancel"
+          }
+        );
+        if (!ok) {
+          appendStatus("approval cancelled");
+          approveOnly.disabled = false;
+          return;
+        }
         const updated = await approveTwinAction(id);
         renderActionCard(card, updated);
         appendStatus(`approved ${id}; Claude Desktop can pick it up`);
+        void notifyTwin("Twin approved Claude action", `${capabilityDisplayName(String(capability ?? "desktop"))} is approved`);
       } catch (e) {
         appendStatus(`approval failed: ${String(e)}`, "error");
       }
@@ -488,35 +559,31 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
       reject.disabled = false;
     });
 
-    const terminal = document.createElement("button");
-    terminal.type = "button";
-    terminal.className = "text-button cw-approval-button";
-    terminal.textContent = "terminal";
-    terminal.addEventListener("click", async () => {
-      try {
-        await openTerminalActionApproval(id);
-        appendStatus(`opened Terminal fallback for ${id}`);
-      } catch {
-        const command = `twin-md action approve ${id}`;
-        await navigator.clipboard.writeText(command).catch(() => {});
-        appendStatus(`copied fallback: ${command}`, "error");
-      }
+    const copyCli = document.createElement("button");
+    copyCli.type = "button";
+    copyCli.className = "text-button cw-approval-button";
+    copyCli.textContent = "copy CLI fallback";
+    copyCli.addEventListener("click", async () => {
+      const command = `twin-md action approve ${id}`;
+      await navigator.clipboard.writeText(command).catch(() => {});
+      appendStatus(`copied fallback: ${command}`);
     });
-    actions.append(approve, approveOnly, reject, terminal);
+    actions.append(approve, approveOnly, reject, copyCli);
   }
 
   if (status === "pending") {
     const run = document.createElement("button");
     run.type = "button";
     run.className = "secondary-button cw-approval-button";
-    run.textContent = "open Claude Code";
+    run.textContent = "run in background";
     run.addEventListener("click", async () => {
       run.disabled = true;
       try {
         await openClaudeActionRunner(id);
-        appendStatus(`opened Claude Code for ${id}`);
+        appendStatus(`Claude is running ${id} in the background`);
+        void notifyTwin("Twin started Claude", `${id} is running in the background`);
       } catch (e) {
-        appendStatus(`couldn't open Claude Code: ${String(e)}`, "error");
+        appendStatus(`couldn't start Claude: ${String(e)}`, "error");
       }
       run.disabled = false;
     });
@@ -558,6 +625,7 @@ function maybeAppendActionResult(action: TwinActionRequest): void {
   messages.push({ role: "assistant", content: message });
   sessionTurns.push({ role: "assistant", content: message, ts: new Date().toISOString() });
   void emitLastChat(message);
+  void notifyTwin(`Twin action ${prefix.toLowerCase()}`, result.slice(0, 180));
   void persistSession();
 }
 
@@ -1124,6 +1192,8 @@ function inferActionCapability(text: string): ActionCapability | null {
 
   const musicIntent =
     lower.includes("spotify") ||
+    lower.includes("spotofy") ||
+    lower.includes("spotfy") ||
     lower.includes("apple music") ||
     /\b(main|putar|play|setel|nyalain)\s+(lagu|musik|music|song)\b/.test(lower) ||
     /\b(next|skip|pause|resume|lanjut|jeda)\s+(lagu|musik|music|song)?\b/.test(lower) ||
@@ -1176,25 +1246,32 @@ async function queueClaudeAction(request: string): Promise<void> {
     const result = await requestClaudeAction(request, capability);
     appendMessage("user", request);
     sessionTurns.push({ role: "user", content: request, ts: new Date().toISOString() });
-    appendClaudeActionCard({
+    const action: TwinActionRequest = {
       id: result.id,
       request,
       status: result.status,
       capability: result.capability ?? capability
-    });
+    };
+    appendClaudeActionCard(action);
     if (result.status === "pending" || result.trusted) {
       appendStatus(`trusted ${capabilityDisplayName(String(result.capability ?? capability ?? "desktop"))} · ${result.id}`);
       appendAssistantIntro(contextualPermissionMessage(request, result.capability ?? capability, true));
       try {
         await openClaudeActionRunner(result.id);
-        appendStatus(`opened Claude Code for ${result.id}`);
+        appendStatus(`Claude is running ${result.id} in the background`);
+        void notifyTwin("Twin started Claude", `${result.id} is running in the background`);
       } catch (e) {
-        appendStatus(`trusted approval saved, but couldn't open Claude Code: ${String(e)}`, "error");
+        appendStatus(`trusted approval saved, but couldn't start Claude: ${String(e)}`, "error");
       }
       return;
     }
     appendStatus(`permission queued · ${result.id}`);
     appendAssistantIntro(contextualPermissionMessage(request, result.capability ?? capability, false));
+    try {
+      await approveAndRunClaudeAction(action, actionCards.get(result.id));
+    } catch (e) {
+      appendStatus(`approval/run failed: ${String(e)}`, "error");
+    }
   } catch (e) {
     appendStatus(`couldn't queue Claude request: ${String(e)}`, "error");
   }

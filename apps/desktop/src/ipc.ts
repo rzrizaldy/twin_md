@@ -387,10 +387,6 @@ export async function openClaudeActionRunner(id: string): Promise<void> {
   await invoke("open_claude_action_runner", { id });
 }
 
-export async function openTerminalActionApproval(id: string): Promise<void> {
-  await invoke("open_terminal_action_approval", { id });
-}
-
 export async function applySpriteEvolutionPreview(path: string): Promise<void> {
   await invoke("apply_sprite_evolution_preview", { path });
 }

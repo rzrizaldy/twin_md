@@ -61,7 +61,6 @@ pub fn run() {
             ipc::approve_twin_action,
             ipc::reject_twin_action,
             ipc::open_claude_action_runner,
-            ipc::open_terminal_action_approval,
             ipc::dismiss_bubble,
             ipc::trigger_harvest,
             ipc::send_chat,
