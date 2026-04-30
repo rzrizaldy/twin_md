@@ -7,20 +7,74 @@ use std::process::Stdio;
 use anyhow::{anyhow, Context, Result};
 use tokio::process::Command;
 
-/// Climb up from this binary's location to find the monorepo root.
-/// `target/debug/twin-desktop` lives inside `apps/desktop/src-tauri/target/debug/`,
-/// so the monorepo root is four parents up.
+fn is_monorepo_root(path: &Path) -> bool {
+    path.join("packages").join("cli").join("dist").join("bin.js").exists()
+        && path.join("packages").join("core").join("package.json").exists()
+}
+
+/// Release builds run from /Applications/twin.app, so parent walking alone does
+/// not find the source checkout. Prefer the explicit env override, then common
+/// local checkout locations, then fall back to executable/current-dir parents.
 fn monorepo_root() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    let mut cursor: &Path = exe.as_path();
-    for _ in 0..8 {
-        cursor = cursor.parent()?;
-        let candidate = cursor.join("packages").join("cli").join("dist").join("bin.js");
-        if candidate.exists() {
-            return Some(cursor.to_path_buf());
+    let mut starts = Vec::new();
+    if let Ok(repo) = std::env::var("TWIN_MD_REPO") {
+        starts.push(PathBuf::from(repo));
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        starts.push(PathBuf::from(&home).join("CodeFolder").join("twin_md"));
+        starts.push(PathBuf::from(&home).join("CodeFolder").join("twin-md"));
+        starts.push(PathBuf::from(&home).join("twin_md"));
+        starts.push(PathBuf::from(&home).join("twin-md"));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        starts.push(exe);
+    }
+    if let Ok(pwd) = std::env::current_dir() {
+        starts.push(pwd);
+    }
+
+    for start in starts {
+        let mut cursor: &Path = start.as_path();
+        for _ in 0..14 {
+            if is_monorepo_root(cursor) {
+                return Some(cursor.to_path_buf());
+            }
+            let Some(parent) = cursor.parent() else {
+                break;
+            };
+            cursor = parent;
         }
     }
     None
+}
+
+fn resolve_bin(name: &str, extra_candidates: &[&str]) -> Option<PathBuf> {
+    if let Ok(path) = std::env::var("PATH") {
+        if let Some(found) = path
+            .split(':')
+            .map(|dir| PathBuf::from(dir).join(name))
+            .find(|candidate| candidate.exists())
+        {
+            return Some(found);
+        }
+    }
+    extra_candidates
+        .iter()
+        .map(PathBuf::from)
+        .find(|candidate| candidate.exists())
+}
+
+fn resolve_node() -> PathBuf {
+    let home = std::env::var("HOME").ok().unwrap_or_default();
+    let candidates = [
+        format!("{home}/.volta/bin/node"),
+        format!("{home}/.npm-global/bin/node"),
+        format!("{home}/.local/bin/node"),
+        "/usr/local/bin/node".to_string(),
+        "/opt/homebrew/bin/node".to_string(),
+    ];
+    let refs: Vec<&str> = candidates.iter().map(String::as_str).collect();
+    resolve_bin("node", &refs).unwrap_or_else(|| PathBuf::from("node"))
 }
 
 fn cli_candidates() -> Vec<String> {
@@ -62,7 +116,7 @@ async fn spawn_cli(args: &[&str]) -> Result<()> {
         }
         let runs_as_node = path.extension().and_then(|e| e.to_str()) == Some("js");
         let mut command = if runs_as_node {
-            let mut c = Command::new("node");
+            let mut c = Command::new(resolve_node());
             c.arg(&bin);
             c
         } else {

@@ -110,6 +110,8 @@ cat > "$NOTES" <<EOF
 - Adds reproducible clean/release tooling and checksum output.
 - Fixes desktop local MCP wiring from /Applications by resolving the source
   checkout plus Node/npm paths explicitly.
+- Fixes desktop onboarding init from /Applications by resolving the source CLI
+  checkout before running twin-md init.
 
 ## Verification
 - npm run clean

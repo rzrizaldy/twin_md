@@ -9,7 +9,7 @@ desktop actions through the bundled MCP bridge.
 
 ## Current Release
 
-`v0.9.3` is the final desktop-first closeout release:
+`v0.9.4` is the final desktop-first closeout release:
 
 - GitHub Releases is the supported public install path.
 - The terminal pet, `watch`, and background `daemon` surfaces are removed.

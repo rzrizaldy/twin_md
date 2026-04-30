@@ -1,6 +1,6 @@
 {
   "name": "@twin-md/mcp",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "twin-md MCP stdio server. Exposes pet state and reminder tools to Claude Desktop.",
   "license": "MIT",
   "type": "module",
@@ -32,8 +32,8 @@
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
     "@modelcontextprotocol/server": "^2.0.0-alpha.2",
-    "@twin-md/brain": "^0.9.3",
-    "@twin-md/core": "^0.9.3",
+    "@twin-md/brain": "^0.9.4",
+    "@twin-md/core": "^0.9.4",
     "zod": "^4.3.6"
   }
 }

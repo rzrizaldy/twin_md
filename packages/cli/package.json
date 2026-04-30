@@ -1,6 +1,6 @@
 {
   "name": "twin-md",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Local-first twin.md pet: CLI, MCP, Obsidian + Claude harvest, desktop companion.",
   "license": "MIT",
   "type": "module",
@@ -32,9 +32,9 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.4.2",
-    "@twin-md/brain": "^0.9.3",
-    "@twin-md/core": "^0.9.3",
-    "@twin-md/mcp": "^0.9.3",
+    "@twin-md/brain": "^0.9.4",
+    "@twin-md/core": "^0.9.4",
+    "@twin-md/mcp": "^0.9.4",
     "commander": "^14.0.3",
     "qrcode-terminal": "^0.12.0"
   }
