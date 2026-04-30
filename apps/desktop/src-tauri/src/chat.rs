@@ -12,13 +12,13 @@ use tauri::{AppHandle, Emitter};
 
 use crate::ai_agents;
 use crate::context;
-use crate::credentials::{active_provider_and_model, resolve_api_key};
+use crate::credentials::{active_provider_and_model, has_configured_api_key, resolve_api_key};
 use crate::model::{ChatWindowMessage, PetState};
 use crate::provider;
 
 pub fn has_api_key() -> bool {
     let (provider, _) = active_provider_and_model();
-    resolve_api_key(provider).is_some()
+    has_configured_api_key(provider)
 }
 
 pub async fn stream(app: AppHandle, message: String, state: Option<PetState>) -> Result<()> {

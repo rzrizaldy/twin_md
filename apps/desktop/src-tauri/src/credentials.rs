@@ -231,6 +231,34 @@ pub fn resolve_api_key(provider: Provider) -> Option<String> {
     resolved
 }
 
+/// Cheap readiness check for UI status. This intentionally does not read the
+/// macOS keychain, because Keychain can block the WebView main thread during
+/// onboarding while waiting for system security services.
+pub fn has_configured_api_key(provider: Provider) -> bool {
+    if let Ok(key) = std::env::var(provider.env_key()) {
+        if !key.trim().is_empty() {
+            return true;
+        }
+    }
+
+    if let Some(cfg) = read_ai_config() {
+        if cfg.provider.eq_ignore_ascii_case(provider.slug()) {
+            return match Storage::parse(&cfg.storage) {
+                Storage::Keychain => true,
+                Storage::Config => cfg
+                    .api_key
+                    .as_deref()
+                    .map(str::trim)
+                    .map(|key| !key.is_empty())
+                    .unwrap_or(false),
+                Storage::Env => read_dot_env_files(provider).is_some(),
+            };
+        }
+    }
+
+    read_dot_env_files(provider).is_some()
+}
+
 /// Default-provider resolution for chat.rs. Falls back to Anthropic, matching
 /// the pre-v2.1 behaviour.
 pub fn active_provider_and_model() -> (Provider, String) {

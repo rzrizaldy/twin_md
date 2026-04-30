@@ -108,6 +108,8 @@ cat > "$NOTES" <<EOF
 - Removes terminal watch and daemon surfaces so Twin does not keep CLI UI sessions alive.
 - Makes GitHub Releases the supported public install path.
 - Adds reproducible clean/release tooling and checksum output.
+- Fixes desktop local MCP wiring from /Applications by resolving the source
+  checkout plus Node/npm paths explicitly.
 
 ## Verification
 - npm run clean

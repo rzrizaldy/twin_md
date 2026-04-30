@@ -45,7 +45,7 @@ This app is a **reader**, not a writer, of twin-md state:
 
 The only file the desktop app writes is `~/.claude/twin.companion.json` for its
 own window position + prefs. Long-running terminal watch and daemon surfaces
-were removed in `v0.9.2`; use the tray harvest action or one-shot source CLI
+were removed in the desktop-first closeout; use the tray harvest action or one-shot source CLI
 commands when you need to refresh state manually.
 
 ## Windows

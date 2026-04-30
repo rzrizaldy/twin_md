@@ -4,7 +4,7 @@
 //! `claude` or `codex` CLI with our MCP server injected as a stdio tool.
 //! Fall back to direct API-key chat only when neither CLI is detected.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use anyhow::{anyhow, Result};
@@ -89,27 +89,77 @@ fn resolve_bin(name: &str) -> Option<PathBuf> {
         .find(|p| p.exists())
 }
 
-/// Resolve the path to the MCP entrypoint for twin-md.
-/// Mirrors the logic in harvest.rs — climbs from the binary to find dist/mcp.js.
-fn mcp_entrypoint() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    let mut cursor = exe.as_path();
-    for _ in 0..14 {
-        cursor = cursor.parent()?;
-        let candidate = cursor
-            .join("packages")
-            .join("mcp")
-            .join("dist")
-            .join("server.js");
-        if candidate.exists() {
-            return Some(candidate);
-        }
+fn resolve_tool(name: &str, extra_candidates: &[&str]) -> Option<PathBuf> {
+    if let Some(path) = resolve_bin(name) {
+        return Some(path);
     }
-    None
+    extra_candidates
+        .iter()
+        .map(PathBuf::from)
+        .find(|path| path.exists())
+}
+
+fn resolve_node() -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok().unwrap_or_default();
+    let candidates = [
+        format!("{home}/.volta/bin/node"),
+        format!("{home}/.npm-global/bin/node"),
+        format!("{home}/.local/bin/node"),
+        "/usr/local/bin/node".to_string(),
+        "/opt/homebrew/bin/node".to_string(),
+    ];
+    let refs: Vec<&str> = candidates.iter().map(String::as_str).collect();
+    resolve_tool("node", &refs)
+}
+
+fn resolve_npm() -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok().unwrap_or_default();
+    let candidates = [
+        format!("{home}/.volta/bin/npm"),
+        format!("{home}/.npm-global/bin/npm"),
+        format!("{home}/.local/bin/npm"),
+        "/usr/local/bin/npm".to_string(),
+        "/opt/homebrew/bin/npm".to_string(),
+    ];
+    let refs: Vec<&str> = candidates.iter().map(String::as_str).collect();
+    resolve_tool("npm", &refs)
+}
+
+fn is_monorepo_root(path: &Path) -> bool {
+    path.join("packages").join("mcp").join("package.json").exists()
+        && path.join("packages").join("core").join("package.json").exists()
+}
+
+fn mcp_entrypoint_from_root(root: &Path) -> Option<PathBuf> {
+    let candidate = root
+        .join("packages")
+        .join("mcp")
+        .join("dist")
+        .join("server.js");
+    candidate.exists().then_some(candidate)
+}
+
+/// Resolve the path to the MCP entrypoint for twin-md.
+///
+/// Release builds run from /Applications/twin.app, so parent walking is not
+/// enough. Prefer an explicit repo path, then common local checkout locations,
+/// then fall back to walking from the executable/current directory.
+fn mcp_entrypoint() -> Option<PathBuf> {
+    let root = find_monorepo_root()?;
+    mcp_entrypoint_from_root(&root)
 }
 
 fn find_monorepo_root() -> Option<PathBuf> {
     let mut starts = Vec::new();
+    if let Ok(repo) = std::env::var("TWIN_MD_REPO") {
+        starts.push(PathBuf::from(repo));
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        starts.push(PathBuf::from(&home).join("CodeFolder").join("twin_md"));
+        starts.push(PathBuf::from(&home).join("CodeFolder").join("twin-md"));
+        starts.push(PathBuf::from(&home).join("twin_md"));
+        starts.push(PathBuf::from(&home).join("twin-md"));
+    }
     if let Ok(exe) = std::env::current_exe() {
         starts.push(exe);
     }
@@ -120,9 +170,7 @@ fn find_monorepo_root() -> Option<PathBuf> {
     for start in starts {
         let mut cursor = start.as_path();
         for _ in 0..14 {
-            if cursor.join("packages").join("mcp").join("package.json").exists()
-                && cursor.join("packages").join("core").join("package.json").exists()
-            {
+            if is_monorepo_root(cursor) {
                 return Some(cursor.to_path_buf());
             }
             let Some(parent) = cursor.parent() else {
@@ -139,8 +187,11 @@ pub fn mcp_config_json() -> Result<String> {
         .ok_or_else(|| anyhow!("twin-md MCP dist not found; run `npm run build -w @twin-md/mcp` first"))?;
     Ok(serde_json::json!({
         "mcpServers": {
-            "twin-md": {
-                "command": "node",
+            "twin_md_mcp": {
+                "command": resolve_node()
+                    .unwrap_or_else(|| PathBuf::from("node"))
+                    .to_string_lossy()
+                    .to_string(),
                 "args": [mcp_path.to_string_lossy()]
             }
         }
@@ -161,7 +212,8 @@ pub fn mcp_config_arg_for_cli() -> Result<PathBuf> {
 }
 
 async fn run_npm_build(root: &PathBuf, package: &str) -> Result<()> {
-    let output = Command::new("npm")
+    let npm = resolve_npm().unwrap_or_else(|| PathBuf::from("npm"));
+    let output = Command::new(npm)
         .arg("run")
         .arg("build")
         .arg("-w")
@@ -198,7 +250,7 @@ pub async fn build_and_wire_local_mcp() -> Result<LocalMcpWireResult> {
     run_npm_build(&root, "@twin-md/brain").await?;
     run_npm_build(&root, "@twin-md/mcp").await?;
 
-    let mcp_path = mcp_entrypoint().ok_or_else(|| {
+    let mcp_path = mcp_entrypoint_from_root(&root).ok_or_else(|| {
         anyhow!("MCP build finished but packages/mcp/dist/server.js was not found")
     })?;
     let mcp_config_path = write_temp_mcp_config()?;

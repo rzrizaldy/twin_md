@@ -9,7 +9,7 @@ desktop actions through the bundled MCP bridge.
 
 ## Current Release
 
-`v0.9.2` is the final desktop-first closeout release:
+`v0.9.3` is the final desktop-first closeout release:
 
 - GitHub Releases is the supported public install path.
 - The terminal pet, `watch`, and background `daemon` surfaces are removed.
@@ -17,6 +17,8 @@ desktop actions through the bundled MCP bridge.
   workspace packages, not registry install targets.
 - Clean/release tooling now builds a macOS DMG and checksum artifact from a
   clean `main` checkout.
+- Desktop local MCP wiring resolves the monorepo and Node/npm paths correctly
+  when launched from `/Applications/twin.app`.
 
 Download the latest macOS build from
 [GitHub Releases](https://github.com/rzrizaldy/twin_md/releases).
