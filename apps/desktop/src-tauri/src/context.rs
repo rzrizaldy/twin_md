@@ -19,6 +19,8 @@ pub struct ChatContext {
     pub twin_md: Option<String>,
     pub notes: Vec<VaultNote>,
     pub vault_path: Option<PathBuf>,
+    pub brain_notes: Vec<VaultNote>,
+    pub brain_path: Option<PathBuf>,
     #[allow(dead_code)]
     pub buddy_memory: Vec<String>,
     #[allow(dead_code)]
@@ -38,6 +40,8 @@ struct TwinConfig {
     owner: Option<String>,
     #[serde(rename = "obsidianVaultPath")]
     obsidian_vault_path: Option<String>,
+    #[serde(rename = "brainPath")]
+    brain_path: Option<String>,
 }
 
 /// No user message bias — most recently modified notes.
@@ -61,6 +65,11 @@ pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
         .as_ref()
         .map(|p| collect_ranked_notes(p, user_message))
         .unwrap_or_default();
+    let brain_path = read_brain_path_from_config(cfg.as_ref(), vault_path.as_ref());
+    let brain_notes = brain_path
+        .as_ref()
+        .map(|p| collect_ranked_notes(p, user_message))
+        .unwrap_or_default();
 
     let buddy = read_buddy_context();
 
@@ -69,6 +78,8 @@ pub fn gather_for_user_message(user_message: Option<&str>) -> ChatContext {
         twin_md,
         notes,
         vault_path,
+        brain_notes,
+        brain_path,
         buddy_memory: buddy.0,
         stuck_threads: buddy.1,
         recent_last_user_msg: buddy.2,
@@ -92,6 +103,24 @@ fn read_vault_path_from_config(cfg: Option<&TwinConfig>) -> Option<PathBuf> {
     } else {
         None
     }
+}
+
+fn read_brain_path_from_config(
+    cfg: Option<&TwinConfig>,
+    vault_path: Option<&PathBuf>,
+) -> Option<PathBuf> {
+    let raw = cfg?.brain_path.as_deref()?;
+    if raw.trim().is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(shellexpand_tilde(raw));
+    if !path.exists() {
+        return None;
+    }
+    if vault_path.map(|vault| vault == &path).unwrap_or(false) {
+        return None;
+    }
+    Some(path)
 }
 
 fn shellexpand_tilde(input: &str) -> String {
@@ -312,6 +341,25 @@ pub fn render_prompt(context: &ChatContext) -> String {
         }
     } else {
         buf.push_str("== Obsidian vault: not configured ==\n\n");
+    }
+
+    if let Some(path) = &context.brain_path {
+        buf.push_str(&format!(
+            "== recent notes from twin-brain at {} ==\n",
+            path.display()
+        ));
+        if context.brain_notes.is_empty() {
+            buf.push_str("(brain tree is empty or unreadable)\n\n");
+        } else {
+            for note in &context.brain_notes {
+                buf.push_str(&format!("--- {} ---\n", note.relative_path));
+                buf.push_str(&note.snippet);
+                if !note.snippet.ends_with('\n') {
+                    buf.push('\n');
+                }
+                buf.push('\n');
+            }
+        }
     }
 
     if !context.buddy_memory.is_empty() {

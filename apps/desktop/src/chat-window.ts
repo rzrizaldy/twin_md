@@ -1314,6 +1314,18 @@ function contextualPermissionMessage(
     : `I need one approval for ${target}. After you approve it, ${capabilityDisplayName(String(capability ?? "desktop"))} will be saved as trusted so future matching requests can run directly.`;
 }
 
+function inboxContextPrompt(note: string, filePath: string | null): string {
+  const pathLine = filePath ? `Saved path: ${filePath}` : "Saved path: inbox.md";
+  return [
+    `I just captured this into my inbox: ${note}`,
+    pathLine,
+    "",
+    "Reply as twin in 2-4 short sentences. Ground the reply in my current Obsidian vault and twin-brain context if there is a clear connection. " +
+      "Tell me what this capture seems connected to, what folder/theme it may belong near, or what question it raises. " +
+      "If the local context does not say enough, say that plainly. Do not give a generic productivity checklist."
+  ].join("\n");
+}
+
 // ── Slash commands ────────────────────────────────────────────────────────
 
 async function handleSlashCommand(cmd: string): Promise<boolean> {
@@ -1346,9 +1358,16 @@ async function handleSlashCommand(cmd: string): Promise<boolean> {
     try {
       const result = await runLocalCommand("inbox", note);
       if (result.ok) {
+        appendMessage("user", `/inbox ${note}`);
+        sessionTurns.push({ role: "user", content: `/inbox ${note}`, ts: new Date().toISOString() });
         appendToolCard(
           `<span class="tool-icon">↳</span> inbox captured · <code>${result.path ?? "inbox.md"}</code>`
         );
+        messages.push({
+          role: "user",
+          content: inboxContextPrompt(note, result.path ?? null)
+        });
+        await sendMessages();
       } else {
         appendStatus(result.message, "error");
       }

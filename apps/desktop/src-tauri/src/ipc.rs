@@ -1849,7 +1849,7 @@ fn resolve_vault_root() -> Option<PathBuf> {
     let cfg_path = claude_dir().join("twin.config.json");
     let bytes = fs::read(&cfg_path).ok()?;
     let cfg: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    for key in &["brainPath", "obsidianVaultPath"] {
+    for key in &["obsidianVaultPath", "brainPath"] {
         if let Some(raw) = cfg[key].as_str().filter(|s| !s.is_empty()) {
             let p = expand_tilde(raw);
             let pb = PathBuf::from(p);

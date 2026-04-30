@@ -73,7 +73,7 @@ fn expand_tilde(input: &str) -> String {
 pub fn resolve_vault_root() -> Option<PathBuf> {
     let bytes = fs::read(twin_config_path()).ok()?;
     let cfg: Value = serde_json::from_slice(&bytes).ok()?;
-    for key in &["brainPath", "obsidianVaultPath"] {
+    for key in &["obsidianVaultPath", "brainPath"] {
         if let Some(raw) = cfg[key].as_str().filter(|s| !s.is_empty()) {
             let pb = PathBuf::from(expand_tilde(raw));
             if pb.exists() {
@@ -316,7 +316,6 @@ pub fn apply_profile_to_config(profile: &VaultProfile) -> Result<(), String> {
     }
     if let Some(vault) = profile.vault_path.as_ref().filter(|s| !s.is_empty()) {
         obj.insert("obsidianVaultPath".to_string(), json!(vault));
-        obj.insert("brainPath".to_string(), json!(vault));
     }
     if let Some(sprite) = profile.sprite_evolution.clone() {
         obj.insert("spriteEvolution".to_string(), sprite);
