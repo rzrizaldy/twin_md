@@ -104,14 +104,12 @@ done
 NOTES="$(mktemp -t twin-md-release-notes-XXXXXX.md)"
 cat > "$NOTES" <<EOF
 ## Summary
-- Final desktop-first closeout release.
-- Removes terminal watch and daemon surfaces so Twin does not keep CLI UI sessions alive.
-- Makes GitHub Releases the supported public install path.
-- Adds reproducible clean/release tooling and checksum output.
-- Fixes desktop local MCP wiring from /Applications by resolving the source
-  checkout plus Node/npm paths explicitly.
-- Fixes desktop onboarding init from /Applications by resolving the source CLI
-  checkout before running twin-md init.
+- Public desktop bundle refresh.
+- Stops stale terminal sprite launchers from opening Terminal windows.
+- Keeps \`twin-md watch\` as a deprecated no-op so old shortcuts fail quietly.
+- Makes desktop action approvals one-shot instead of saving trusted capabilities.
+- Updates the README and landing/install pages for the public desktop-first flow.
+- Ships a macOS DMG plus SHA256 checksum through GitHub Releases.
 
 ## Verification
 - npm run clean

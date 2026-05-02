@@ -184,55 +184,6 @@ where
     Ok(Some(profile))
 }
 
-fn normalize_capability(capability: &str) -> Option<String> {
-    let cleaned = capability.trim().to_ascii_lowercase();
-    if cleaned.is_empty() {
-        return None;
-    }
-    match cleaned.as_str() {
-        "playwright" | "spotify" | "reminders" | "calendar" | "mail" | "notes" | "desktop" => Some(cleaned),
-        _ => None,
-    }
-}
-
-pub fn approved_action_capabilities() -> Vec<String> {
-    let Some(vault_root) = resolve_vault_root() else {
-        return Vec::new();
-    };
-    read_profile_from(&vault_root)
-        .ok()
-        .flatten()
-        .map(|profile| profile.permissions.approved_action_capabilities)
-        .unwrap_or_default()
-}
-
-pub fn is_action_capability_approved(capability: &str) -> bool {
-    let Some(capability) = normalize_capability(capability) else {
-        return false;
-    };
-    approved_action_capabilities()
-        .into_iter()
-        .any(|approved| approved == capability)
-}
-
-pub fn approve_action_capability(capability: &str) -> Result<(), String> {
-    let Some(capability) = normalize_capability(capability) else {
-        return Ok(());
-    };
-    update_profile(|profile| {
-        if !profile
-            .permissions
-            .approved_action_capabilities
-            .iter()
-            .any(|approved| approved == &capability)
-        {
-            profile.permissions.approved_action_capabilities.push(capability);
-            profile.permissions.approved_action_capabilities.sort();
-        }
-    })?;
-    Ok(())
-}
-
 pub fn write_session_copy(session_id: &str, content: &str) -> Result<Option<PathBuf>, String> {
     let Some(vault_root) = resolve_vault_root() else {
         return Ok(None);

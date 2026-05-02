@@ -10,14 +10,13 @@ the bundled MCP bridge.
 
 ## Release Status
 
-The latest published GitHub Release is `v0.9.4`. `main` may contain newer
-desktop fixes before the next DMG is published. There is no `v1.0.0` release
-yet.
+The latest public GitHub Release is `v0.9.5`. There is no `v1.0.0` release yet.
 
 The current desktop-first system is:
 
 - GitHub Releases is the supported public install path.
-- The terminal pet, `watch`, and background `daemon` surfaces are removed.
+- The terminal pet and background `daemon` surfaces are removed. `watch` is
+  only a deprecated no-op so stale launchers fail quietly.
 - Obsidian or a Markdown vault is the primary knowledge root when configured.
   `~/twin-brain` remains a fallback/internal notes root, not the default public
   destination for people who already have an Obsidian vault.
@@ -30,6 +29,8 @@ The current desktop-first system is:
   clean `main` checkout.
 - Desktop local MCP wiring resolves the monorepo and Node/npm paths correctly
   when launched from `/Applications/twin.app`.
+- Desktop action handoffs require per-request approval. Twin does not keep
+  trusted desktop capabilities or auto-open Terminal watch windows.
 
 Download the latest macOS build from
 [GitHub Releases](https://github.com/rzrizaldy/twin_md/releases).
@@ -98,8 +99,9 @@ node packages/cli/dist/bin.js action list
 node packages/cli/dist/bin.js action approve <id>
 ```
 
-There is no `watch` command and no background `daemon` command in the supported
-surface.
+`watch` is a deprecated no-op kept only so stale launchers do not print
+`unknown command 'watch'`. There is no background `daemon` command in the
+supported surface.
 
 ## Release
 

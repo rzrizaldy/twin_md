@@ -20,7 +20,7 @@ const program = new Command();
 program
   .name("twin-md")
   .description("Local-first twin.md pet: CLI, MCP, and desktop companion")
-  .version("0.9.4");
+  .version("0.9.5");
 
 program
   .command("init")
@@ -41,6 +41,13 @@ program
   .command("harvest")
   .description("harvest local sources into twin.md")
   .action(runHarvestCommand);
+
+program
+  .command("watch")
+  .description("deprecated no-op; terminal watch mode was removed")
+  .action(() => {
+    console.log("twin-md watch was removed. Use the desktop app or `twin-md harvest` instead.");
+  });
 
 program
   .command("mcp")

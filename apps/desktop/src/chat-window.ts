@@ -444,7 +444,7 @@ async function confirmClaudeApproval(action: TwinActionRequest): Promise<boolean
   const label = capabilityDisplayName(capability);
   const request = actionRequestSummary(action);
   return confirmDialog(
-    `Allow Twin to send this ${label} request to Claude Code?\n\n${request}\n\nClaude will run in the background with the approved desktop tools. No Terminal window will open.`,
+    `Allow Twin to send this ${label} request to Claude Code?\n\n${request}\n\nThis approval is one-time only. Claude will run in the background without opening Terminal.`,
     {
       title: `Approve ${label} action`,
       kind: "warning",
@@ -520,9 +520,9 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
       approveOnly.disabled = true;
       try {
         const ok = await confirmDialog(
-          `Approve this ${capabilityDisplayName(String(capability ?? "desktop"))} capability for Claude?\n\n${actionRequestSummary(action)}\n\nThis saves the capability approval, but does not start a new background runner.`,
+          `Approve this queued Claude request?\n\n${actionRequestSummary(action)}\n\nThis does not save the capability as trusted and does not start a background runner.`,
           {
-            title: "Approve Claude capability",
+            title: "Approve Claude request",
             kind: "warning",
             okLabel: "Approve only",
             cancelLabel: "Cancel"
@@ -535,8 +535,8 @@ function renderActionCard(card: HTMLDivElement, action: TwinActionRequest): void
         }
         const updated = await approveTwinAction(id);
         renderActionCard(card, updated);
-        appendStatus(`approved ${id}; Claude Desktop can pick it up`);
-        void notifyTwin("Twin approved Claude action", `${capabilityDisplayName(String(capability ?? "desktop"))} is approved`);
+        appendStatus(`approved ${id}; it is still manual to run`);
+        void notifyTwin("Twin approved Claude action", `${id} is approved one time`);
       } catch (e) {
         appendStatus(`approval failed: ${String(e)}`, "error");
       }
@@ -644,18 +644,13 @@ async function refreshActionCards(): Promise<void> {
 async function appendPermissionCenter(): Promise<void> {
   const statuses: TwinActionStatus[] = ["needs_approval", "pending", "done", "failed", "needs_user", "cancelled"];
   const actions = await listTwinActions(statuses);
-  const profile = await getVaultProfileStatus().catch(() => null);
-  const savedApprovals = profile?.approvedActionCapabilities ?? [];
   const recent = actions.slice(-8).reverse();
   const wrap = document.createElement("div");
   wrap.className = "cw-tool-card cw-tool-card--approval cw-permission-center";
   const title = document.createElement("div");
   title.className = "cw-tool-card-copy";
-  const saved = savedApprovals.length
-    ? `Saved approvals: ${savedApprovals.map((capability) => capabilityDisplayName(String(capability))).join(", ")}.`
-    : "No saved capability approvals yet.";
   title.innerHTML = DOMPurify.sanitize(
-    `<span class="tool-icon">permission</span><span>Permission Center</span><small>${saved} Approve once per capability, then future matching requests skip manual approval.</small>`
+    `<span class="tool-icon">permission</span><span>Permission Center</span><small>Approvals are one-time only. Future matching requests still require manual approval.</small>`
   );
   wrap.appendChild(title);
 
@@ -1253,25 +1248,8 @@ async function queueClaudeAction(request: string): Promise<void> {
       capability: result.capability ?? capability
     };
     appendClaudeActionCard(action);
-    if (result.status === "pending" || result.trusted) {
-      appendStatus(`trusted ${capabilityDisplayName(String(result.capability ?? capability ?? "desktop"))} · ${result.id}`);
-      appendAssistantIntro(contextualPermissionMessage(request, result.capability ?? capability, true));
-      try {
-        await openClaudeActionRunner(result.id);
-        appendStatus(`Claude is running ${result.id} in the background`);
-        void notifyTwin("Twin started Claude", `${result.id} is running in the background`);
-      } catch (e) {
-        appendStatus(`trusted approval saved, but couldn't start Claude: ${String(e)}`, "error");
-      }
-      return;
-    }
     appendStatus(`permission queued · ${result.id}`);
     appendAssistantIntro(contextualPermissionMessage(request, result.capability ?? capability, false));
-    try {
-      await approveAndRunClaudeAction(action, actionCards.get(result.id));
-    } catch (e) {
-      appendStatus(`approval/run failed: ${String(e)}`, "error");
-    }
   } catch (e) {
     appendStatus(`couldn't queue Claude request: ${String(e)}`, "error");
   }
@@ -1306,12 +1284,12 @@ function contextualPermissionMessage(
 
   if (trusted) {
     return indonesian
-      ? `${capabilityDisplayName(String(capability ?? "desktop"))} sudah pernah kamu approve, jadi aku langsung lempar ke Claude Code. Hasilnya akan balik di chat ini.`
-      : `${capabilityDisplayName(String(capability ?? "desktop"))} is already approved, so I’m sending it straight to Claude Code. I’ll return the result in this chat.`;
+      ? `${capabilityDisplayName(String(capability ?? "desktop"))} perlu approval untuk request ini sebelum jalan.`
+      : `${capabilityDisplayName(String(capability ?? "desktop"))} needs approval for this request before it runs.`;
   }
   return indonesian
-    ? `Aku butuh izin sekali untuk ${target}. Setelah kamu approve, ${capabilityDisplayName(String(capability ?? "desktop"))} akan tersimpan sebagai approval, jadi request berikutnya bisa langsung jalan.`
-    : `I need one approval for ${target}. After you approve it, ${capabilityDisplayName(String(capability ?? "desktop"))} will be saved as trusted so future matching requests can run directly.`;
+    ? `Aku butuh izin untuk ${target}. Approval ini cuma untuk request ini dan tidak akan disimpan sebagai trusted.`
+    : `I need approval for ${target}. This approval is only for this request and will not be saved as trusted.`;
 }
 
 function inboxContextPrompt(note: string, filePath: string | null): string {

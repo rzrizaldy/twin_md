@@ -49,9 +49,10 @@ This app is mostly a **reader** of twin-md runtime state:
   `quickNotesPath`
 
 The app also writes `~/.claude/twin.companion.json` for its own window position
-+ prefs. Long-running terminal watch and daemon surfaces were removed in the
-desktop-first closeout; use the tray harvest action or one-shot source CLI
-commands when you need to refresh state manually.
+and prefs. Long-running terminal watch and daemon surfaces were removed in the
+desktop-first closeout. The CLI `watch` command is only a deprecated no-op for
+stale launchers; use the tray harvest action or one-shot source CLI commands
+when you need to refresh state manually.
 
 ## Windows
 

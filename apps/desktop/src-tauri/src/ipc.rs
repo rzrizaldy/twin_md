@@ -761,11 +761,8 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         .map(str::trim)
         .filter(|candidate| !candidate.is_empty())
         .map(str::to_string);
-    let trusted = capability
-        .as_deref()
-        .map(crate::profile::is_action_capability_approved)
-        .unwrap_or(false);
-    let status = if trusted { "pending" } else { "needs_approval" };
+    let trusted = false;
+    let status = "needs_approval";
     let id = format!("act-{}", chrono::Utc::now().timestamp_millis());
     let queue_path = action_queue_path();
     if let Some(parent) = queue_path.parent() {
@@ -779,11 +776,7 @@ pub fn request_claude_action(payload: ClaudeActionPayload) -> Result<ClaudeActio
         "capability": capability,
         "trustedApproval": trusted,
         "createdAt": chrono::Utc::now().to_rfc3339(),
-        "hint": if trusted {
-            "This action matched a saved twin.md capability approval. Twin can start Claude Code quietly in the background, or Claude Desktop can read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
-        } else {
-            "User must approve this first in Twin's macOS dialog or Permission Center. After approval, Twin can start Claude Code quietly in the background, or Claude Desktop can read it through twin MCP get_pending_twin_actions, act with its own tools, then call resolve_twin_action."
-        }
+        "hint": "User must approve this specific request first in Twin's Permission Center. Approvals are one-shot and are not saved as trusted capabilities."
     });
     let mut file = OpenOptions::new()
         .create(true)
@@ -943,9 +936,6 @@ pub fn approve_twin_action(app: AppHandle, id: String) -> Result<serde_json::Val
         obj.insert("status".to_string(), serde_json::json!("pending"));
         obj.insert("approvedAt".to_string(), serde_json::json!(chrono::Utc::now().to_rfc3339()));
     })?;
-    if let Some(capability) = updated.get("capability").and_then(|value| value.as_str()) {
-        crate::profile::approve_action_capability(capability)?;
-    }
     let _ = app.emit("twin://action-queue-changed", serde_json::json!({ "id": id }));
     Ok(updated)
 }
@@ -974,22 +964,6 @@ fn write_text_file(path: &std::path::Path, body: &str) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     fs::write(path, body).map_err(|e| e.to_string())
-}
-
-fn claude_runner_allowed_tools() -> &'static str {
-    "mcp__twin-md__get_pending_twin_actions,mcp__twin-md__resolve_twin_action,\
-mcp__plugin_playwright_playwright__browser_tabs,\
-mcp__plugin_playwright_playwright__browser_navigate,\
-mcp__plugin_playwright_playwright__browser_snapshot,\
-mcp__plugin_playwright_playwright__browser_wait_for,\
-mcp__plugin_playwright_playwright__browser_click,\
-mcp__plugin_playwright_playwright__browser_type,\
-mcp__plugin_playwright_playwright__browser_fill_form,\
-mcp__plugin_playwright_playwright__browser_press_key,\
-mcp__plugin_playwright_playwright__browser_take_screenshot,\
-mcp__plugin_playwright_playwright__browser_console_messages,\
-mcp__plugin_playwright_playwright__browser_network_requests,\
-Bash(osascript *),Bash(open *)"
 }
 
 fn action_request_by_id(id: &str) -> Result<serde_json::Value, String> {
@@ -1042,11 +1016,10 @@ fn prepare_claude_action_runner(id: &str) -> Result<ClaudeActionRunner, String> 
     let log_path = runner_dir.join(format!("{id}.log"));
     write_text_file(&prompt_path, &prompt)?;
     let script = format!(
-        "#!/bin/zsh -f\nset -e\ncat {} | {} --mcp-config {} --print --permission-mode auto --allowedTools {}\n",
+        "#!/bin/zsh -f\nset -e\ncat {} | {} --mcp-config {} --print\n",
         shell_quote(&prompt_path.display().to_string()),
         shell_quote(&claude.display().to_string()),
-        shell_quote(&mcp_config.display().to_string()),
-        shell_quote(claude_runner_allowed_tools())
+        shell_quote(&mcp_config.display().to_string())
     );
     write_text_file(&script_path, &script)?;
     Ok(ClaudeActionRunner {

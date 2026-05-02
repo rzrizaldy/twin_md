@@ -68,7 +68,7 @@ export async function startTwinMcpServer(): Promise<void> {
   const notesRoot = resolveNotesRoot(config);
 
   const server = new McpServer(
-    { name: "twin-md", version: "0.9.4" },
+    { name: "twin-md", version: "0.9.5" },
     {
       instructions: [
         "Use brain_context to orient yourself — it returns recent notes from the configured Obsidian vault when present, otherwise the fallback twin-brain notes.",
